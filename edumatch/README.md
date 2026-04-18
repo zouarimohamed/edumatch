@@ -292,6 +292,3 @@ npm run build
 - Les fichiers uploadés sont dans `backend/static/uploads/`
 - La clé Groq est requise pour le chatbot
 
----
-
-*EduMatch PFE — Développé avec ❤️*
