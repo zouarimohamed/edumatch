@@ -1,134 +1,297 @@
-# 🎓 EduMatch – Plateforme Intelligente de Matching Professeur-Étudiant
+# 🎓 EduMatch — Plateforme de Mise en Relation Étudiants / Formateurs
 
-> Projet de Fin d'Études (PFE) – Architecture 3-Tier : React.js / FastAPI / PostgreSQL
+> Projet de Fin d'Études (PFE) — Application web fullstack avec IA intégrée
 
 ---
 
-## 🗂️ Structure du projet
+## 📋 Table des matières
+
+- [Présentation](#présentation)
+- [Stack technique](#stack-technique)
+- [Prérequis](#prérequis)
+- [Installation](#installation)
+- [Lancer le projet](#lancer-le-projet)
+- [Structure du projet](#structure-du-projet)
+- [Variables d'environnement](#variables-denvironnement)
+- [Comptes de test](#comptes-de-test)
+- [Fonctionnalités principales](#fonctionnalités-principales)
+
+---
+
+## 🎯 Présentation
+
+EduMatch est une plateforme intelligente qui met en relation des **étudiants** avec des **formateurs** qualifiés. Elle intègre un **chatbot IA** capable d'analyser les besoins pédagogiques et de recommander le formateur le plus adapté.
+
+---
+
+## 🛠 Stack technique
+
+| Couche | Technologie |
+|--------|------------|
+| Frontend | React 18 + Vite |
+| Backend | FastAPI (Python 3.11) |
+| Base de données | PostgreSQL 15+ |
+| ORM | SQLAlchemy |
+| IA / Chatbot | Groq API (LLaMA) |
+| Authentification | JWT (jose) |
+| Styling | CSS-in-JS (inline styles) |
+
+---
+
+## ✅ Prérequis
+
+Avant de commencer, assurez-vous d'avoir installé :
+
+- **Node.js** v18+ → [nodejs.org](https://nodejs.org)
+- **Python** 3.11+ → [python.org](https://python.org)
+- **PostgreSQL** 15+ → [postgresql.org](https://postgresql.org)
+- **Git** → [git-scm.com](https://git-scm.com)
+
+---
+
+## 📦 Installation
+
+### 1. Cloner le projet
+
+```bash
+git clone https://github.com/votre-repo/edumatch.git
+cd edumatch
+```
+
+---
+
+### 2. Backend — FastAPI
+
+```bash
+cd backend
+
+# Créer l'environnement virtuel
+python -m venv venv_new
+
+# Activer l'environnement (Windows)
+venv_new\Scripts\activate
+
+# Activer l'environnement (Mac/Linux)
+source venv_new/bin/activate
+
+# Installer les dépendances
+pip install -r requirements.txt
+```
+
+Créer le fichier `.env` dans `backend/` :
+
+```env
+DATABASE_URL=postgresql://postgres:votre_mot_de_passe@localhost:5432/pfe_db
+SECRET_KEY=votre_secret_key_jwt
+GROQ_API_KEY=gsk_votre_cle_groq
+```
+
+Créer la base de données PostgreSQL :
+
+```sql
+CREATE DATABASE pfe_db;
+```
+
+---
+
+### 3. Frontend — React
+
+```bash
+cd frontend
+
+# Installer les dépendances
+npm install
+```
+
+---
+
+## 🚀 Lancer le projet
+
+### Backend (FastAPI)
+
+```bash
+cd backend
+
+# Activer l'environnement virtuel (Windows)
+venv_new\Scripts\activate
+
+# Lancer le serveur
+uvicorn app.main:app --reload --port 8001
+```
+
+> L'API sera disponible sur : **http://localhost:8001**
+> Documentation Swagger : **http://localhost:8001/docs**
+
+---
+
+### Frontend (React + Vite)
+
+```bash
+cd frontend
+
+npm run dev
+```
+
+> L'application sera disponible sur : **http://localhost:5173**
+
+---
+
+### Lancer les deux en même temps (Windows)
+
+Ouvrez **deux terminaux** séparés :
+
+**Terminal 1 — Backend :**
+```bash
+cd backend
+venv_new\Scripts\activate
+uvicorn app.main:app --reload --port 8001
+```
+
+**Terminal 2 — Frontend :**
+```bash
+cd frontend
+npm run dev
+```
+
+---
+
+## 🗂 Structure du projet
 
 ```
 edumatch/
-├── backend/                  # FastAPI + SQLAlchemy
+├── backend/
 │   ├── app/
-│   │   ├── main.py           # Point d'entrée
-│   │   ├── config.py         # Configuration
-│   │   ├── database.py       # Connexion DB
-│   │   ├── models/           # 9 modèles SQLAlchemy
-│   │   ├── schemas/          # Pydantic schemas
-│   │   ├── routers/          # 8 routers REST
-│   │   ├── services/         # Matching + Chatbot IA
-│   │   └── utils/            # JWT + bcrypt
+│   │   ├── main.py              # Point d'entrée FastAPI
+│   │   ├── database.py          # Connexion PostgreSQL
+│   │   ├── models/              # Modèles SQLAlchemy
+│   │   │   ├── user.py
+│   │   │   ├── professeur.py
+│   │   │   ├── etudiant.py
+│   │   │   ├── reservation.py
+│   │   │   ├── disponibilite.py
+│   │   │   └── ...
+│   │   ├── routers/             # Routes API
+│   │   │   ├── auth.py
+│   │   │   ├── professeurs.py
+│   │   │   ├── etudiants.py
+│   │   │   ├── reservations.py
+│   │   │   ├── admin.py
+│   │   │   ├── admin_finances.py
+│   │   │   ├── chatbot.py
+│   │   │   ├── messages.py
+│   │   │   └── avis.py
+│   │   ├── schemas/             # Schémas Pydantic
+│   │   └── utils/               # Utilitaires (JWT, deps)
+│   ├── static/                  # Uploads (photos, certificats)
 │   ├── requirements.txt
 │   └── .env
-├── frontend/                 # React.js 18
-│   ├── src/
-│   │   ├── App.jsx           # Router principal
-│   │   ├── pages/            # 7 pages
-│   │   ├── components/       # Composants réutilisables
-│   │   ├── services/         # API + Auth
-│   │   └── context/          # AuthContext (JWT)
-│   └── package.json
-└── database/
-    └── schema.sql            # Schema PostgreSQL complet
+│
+└── frontend/
+    ├── src/
+    │   ├── pages/               # Pages principales
+    │   │   ├── Admin.jsx
+    │   │   ├── ProfDashboard.jsx
+    │   │   ├── EtudiantDashboard.jsx
+    │   │   ├── Profs.jsx
+    │   │   ├── Chatbot.jsx
+    │   │   ├── Disponibilites.jsx
+    │   │   ├── MesReservations.jsx
+    │   │   ├── Paiement.jsx
+    │   │   ├── FinancesTab.jsx
+    │   │   └── ...
+    │   ├── services/
+    │   │   ├── api.js           # Instance Axios configurée
+    │   │   └── exportPDF.js
+    │   ├── context/
+    │   │   └── AuthContext.jsx
+    │   ├── App.jsx
+    │   └── main.jsx
+    ├── package.json
+    └── vite.config.js
 ```
 
 ---
 
-## ⚙️ Installation & Démarrage
+## 🔐 Variables d'environnement
 
-### Prérequis
-- Python 3.10+
-- Node.js 18+
-- PostgreSQL 14+
-
-### 1. Base de données
-```bash
-psql -U postgres -c "CREATE DATABASE pfe_db;"
-psql -U postgres -d pfe_db -f database/schema.sql
-```
-
-### 2. Backend FastAPI
-```bash
-cd backend
-python -m venv venv
-source venv/bin/activate        # Windows: venv\Scripts\activate
-pip install -r requirements.txt
-cp .env .env.local              # Puis éditer les valeurs
-uvicorn app.main:app --reload --port 8000
-```
-→ API Docs: http://localhost:8000/docs
-
-### 3. Frontend React
-```bash
-cd frontend
-npm install
-npm start
-```
-→ App: http://localhost:3000
-
----
-
-## 🔐 Variables d'environnement (.env)
+### `backend/.env`
 
 ```env
-DATABASE_URL=postgresql://postgres:password@localhost:5432/pfe_db
-SECRET_KEY=votre_secret_jwt_256bits
+DATABASE_URL=postgresql://postgres:postgres@localhost:5432/pfe_db
+SECRET_KEY=votre_secret_jwt_super_securise_256bits_changez_moi
 ALGORITHM=HS256
 ACCESS_TOKEN_EXPIRE_MINUTES=30
-ANTHROPIC_API_KEY=sk-ant-votre_cle
+GROQ_API_KEY=gsk_votre_cle_groq_ici
 ```
 
 ---
 
-## 🔌 API REST – Routes principales
-
-| Méthode | Route | Description | Auth |
-|---------|-------|-------------|------|
-| POST | /api/auth/register | Inscription | ❌ |
-| POST | /api/auth/login | Connexion JWT | ❌ |
-| GET | /api/professeurs/ | Liste professeurs | ✅ |
-| GET | /api/matching/top | Top matches IA | ✅ Étudiant |
-| POST | /api/chatbot/message | Message EduBot | ✅ Étudiant |
-| POST | /api/reservations/ | Créer réservation | ✅ Étudiant |
-| PUT | /api/reservations/{id} | Confirmer/Refuser | ✅ Prof |
-| POST | /api/avis/ | Laisser un avis | ✅ Étudiant |
-| GET | /api/admin/stats | Statistiques | ✅ Admin |
-| PUT | /api/admin/professeurs/{id}/valider | Valider prof | ✅ Admin |
-
----
-
-## 🧠 Algorithme de Matching (Score sur 100%)
-
-| Critère | Poids | Calcul |
-|---------|-------|--------|
-| Matière | 30% | Correspondance exacte |
-| Ville | 20% | Exacte +20, grande ville +10 |
-| Niveau | 20% | Niveau dans la liste du prof |
-| Budget | 15% | ≤ budget: +15, ≤ 120%: +7 |
-| Note moyenne | 10% | (note/5) × 10 |
-| Disponibilité | 5% | Au moins 1 créneau disponible |
-
----
-
-## 👥 Comptes de démonstration
+## 👤 Comptes de test
 
 | Rôle | Email | Mot de passe |
 |------|-------|--------------|
 | Admin | admin@edumatch.tn | admin123 |
-| Étudiant | etudiant@test.tn | test123 |
-| Professeur | prof@test.tn | test123 |
+| Professeur | mohamed@test.tn | password123 |
+| Professeur | iheb.gharbi51@edumatch.tn | password123 |
+| Étudiant | *(créer via inscription)* | — |
 
 ---
 
-## 🎨 Stack Technique
+## ✨ Fonctionnalités principales
 
-- **Frontend**: React 18, React Router v6, Axios, CSS Variables
-- **Backend**: FastAPI, SQLAlchemy 2, Pydantic v2, Alembic
-- **Base de données**: PostgreSQL 14, 10 tables, indexes optimisés
-- **Auth**: JWT (python-jose) + bcrypt (passlib)
-- **IA**: Anthropic Claude API (claude-sonnet)
-- **Design**: Dark theme SaaS, Google Fonts (Syne + DM Sans)
+### 👨‍🎓 Étudiant
+- Recherche et filtrage de formateurs par matière, niveau, ville, mode
+- Système de favoris
+- Réservation de séances (présentiel / en ligne)
+- Chat en temps réel avec le formateur
+- Paiement simulé avec carte
+- Chatbot IA — recommandation personnalisée de formateur
+
+### 👨‍🏫 Formateur
+- Dashboard avec gestion des réservations
+- Création de disponibilités avec niveau et description
+- Chat avec les étudiants
+- Gestion des gains et historique des paiements
+- Profil avec certificats, matières et tarifs
+
+### 🛡️ Admin
+- Validation / refus des formateurs
+- Dashboard analytiques complet (réservations, entonnoir, performance)
+- Gestion du référentiel (domaines, niveaux, matières, villes)
+- Approbation des demandes de nouvelles matières
+- Tableau de bord financier (CA, taux de paiement, alertes)
+
+### 🤖 Chatbot IA
+- Recommandation de formateurs selon les besoins
+- Analyse de séries d'exercices pour identifier la matière
+- Matching étudiant ↔ formateur 1:1
 
 ---
 
-*EduMatch PFE 2026 – Mention Très Bien* 🎓
+## 🔧 Commandes utiles
+
+```bash
+# Réinitialiser la base de données
+cd backend
+python -c "from app.database import Base, engine; Base.metadata.drop_all(engine); Base.metadata.create_all(engine)"
+
+# Installer psycopg2 (si erreur)
+pip install psycopg2-binary --break-system-packages
+
+# Build frontend pour production
+cd frontend
+npm run build
+```
+
+---
+
+## 📝 Notes importantes
+
+- Le backend tourne sur le **port 8001** (pas 8000)
+- PostgreSQL doit être en mode **lecture/écriture** (pas standby)
+- Les fichiers uploadés sont dans `backend/static/uploads/`
+- La clé Groq est requise pour le chatbot
+
+---
+
+*EduMatch PFE — Développé avec ❤️*
