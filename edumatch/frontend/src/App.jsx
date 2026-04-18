@@ -16,6 +16,7 @@ import ProfDashboard     from './pages/ProfDashboard';
 import Disponibilites    from './pages/Disponibilites';
 import Admin             from './pages/Admin';
 import Chatbot           from './pages/Chatbot';
+import Paiement          from './pages/Paiement';
 
 /* ── Garde : route privée avec vérification de rôle ── */
 function PrivateRoute({ children, roles }) {
@@ -66,6 +67,11 @@ export default function App() {
             <Route path="/" element={<RootRoute />} />
             <Route path="/login"    element={<PublicRoute><Auth mode="login"    /></PublicRoute>} />
             <Route path="/register" element={<PublicRoute><Auth mode="register" /></PublicRoute>} />
+
+            {/* Paiement — sans sidebar */}
+            <Route path="/paiement/:id"
+              element={<PrivateRoute roles={['étudiant']}><Paiement /></PrivateRoute>}
+            />
 
             {/* Pages avec sidebar Layout */}
             <Route element={<Layout />}>

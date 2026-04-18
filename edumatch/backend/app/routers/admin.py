@@ -52,9 +52,7 @@ def get_stats_charts(db: Session = Depends(get_db), _=Depends(require_admin)):
             "total": count,
         })
 
-    # ── 2. Matières par domaine — SQL brut garanti ───────────────
-    # ProfMatiereTarif n'a PAS de colonne "id" (clé composite)
-    # → on utilise func.count(ProfMatiereTarif.prof_id.distinct())
+    # ── 2. Matières par domaine ───────────────────────────────────
     matieres_par_domaine = []
     try:
         domaines = db.query(Domaine).all()
@@ -64,7 +62,6 @@ def get_stats_charts(db: Session = Depends(get_db), _=Depends(require_admin)):
             for niveau in niveaux:
                 matieres = db.query(Matiere).filter(Matiere.niveau_id == niveau.id).all()
                 for matiere in matieres:
-                    # Compter profs distincts via colonne prof_id (pas id)
                     try:
                         nb_profs = db.query(
                             func.count(ProfMatiereTarif.prof_id.distinct())
@@ -74,12 +71,10 @@ def get_stats_charts(db: Session = Depends(get_db), _=Depends(require_admin)):
                     except Exception as e:
                         print(f"[charts] nb_profs error matiere {matiere.id}: {e}")
                         nb_profs = 0
-
-                    # Compter réservations liées à cette matière
                     try:
                         nb_resa = (
                             db.query(func.count(Reservation.id))
-                            .join(Professeur, Professeur.id == Reservation.professeur_id)
+                            .join(Professeur, Professeur.id == Reservation.prof_id)
                             .join(ProfMatiereTarif,
                                   ProfMatiereTarif.prof_id == Professeur.id)
                             .filter(ProfMatiereTarif.matiere_id == matiere.id)
@@ -88,22 +83,17 @@ def get_stats_charts(db: Session = Depends(get_db), _=Depends(require_admin)):
                     except Exception as e:
                         print(f"[charts] nb_resa error matiere {matiere.id}: {e}")
                         nb_resa = 0
-
                     matieres_data.append({
                         "matiere":  matiere.nom,
                         "nb_profs": nb_profs,
                         "nb_resa":  nb_resa,
                     })
-
             if matieres_data:
-                matieres_data.sort(
-                    key=lambda x: (x["nb_resa"], x["nb_profs"]), reverse=True
-                )
+                matieres_data.sort(key=lambda x: (x["nb_resa"], x["nb_profs"]), reverse=True)
                 matieres_par_domaine.append({
                     "domaine":  domaine.nom,
                     "matieres": matieres_data[:8],
                 })
-
     except Exception as e:
         print(f"[charts] Erreur globale matières: {e}")
         import traceback; traceback.print_exc()
@@ -116,13 +106,10 @@ def get_stats_charts(db: Session = Depends(get_db), _=Depends(require_admin)):
         nb_en_ligne   = sum(1 for p in profs_valides if p.mode_enseignement == "en_ligne")
         nb_presentiel = sum(1 for p in profs_valides if p.mode_enseignement == "presentiel")
         nb_les_deux   = sum(1 for p in profs_valides if p.mode_enseignement == "les_deux")
-        # "Les deux" = peut enseigner EN LIGNE et EN PRÉSENTIEL
-        # → compté dans les deux catégories (capacité réelle de la plateforme)
         modes_enseignement = [
             {"label": "En ligne",   "val": nb_en_ligne + nb_les_deux},
             {"label": "Présentiel", "val": nb_presentiel + nb_les_deux},
         ]
-        # Enlever les catégories à 0
         modes_enseignement = [m for m in modes_enseignement if m["val"] > 0]
         total_valides = len(profs_valides)
     except Exception as e:
@@ -155,19 +142,9 @@ def get_stats_charts(db: Session = Depends(get_db), _=Depends(require_admin)):
         print(f"[charts] Erreur jours: {e}")
         reservations_par_jour = [{"jour": j, "total": 0} for j in JOURS_FR]
 
-    # ── 6. Analyse matières par domaine ET par niveau ───────────────
-    # LOGIQUE CORRECTE :
-    # Une réservation est liée à une disponibilité (créneau du prof).
-    # Ce créneau appartient à un prof. Ce prof enseigne certaines matières
-    # via prof_matiere_tarif. On doit joindre r → dispo → prof → pmt → matière
-    # MAIS : une réservation n'est pas liée à une matière précise en base.
-    # Donc on compte les réservations du prof PONDÉRÉES par le nombre de matières
-    # qu'il enseigne dans ce domaine (répartition équitable).
-    # Plus simple et plus juste : compter les réservations uniques par prof,
-    # et les attribuer aux matières qu'il enseigne (COUNT DISTINCT r.id / nb_matieres_prof).
-    # Solution la plus fiable : comptage direct via sous-requête.
-
+    # ── 6. Analyse matières par domaine ET par niveau ─────────────
     top_matieres_par_domaine = []
+    par_niveau = []
     try:
         rows = db.execute(text("""
             SELECT
@@ -196,10 +173,8 @@ def get_stats_charts(db: Session = Depends(get_db), _=Depends(require_admin)):
         """)).fetchall()
 
         from collections import defaultdict
-
-        # Structure : { domaine: { matiere_nom: {nb_profs, nb_resa, niveaux:[]} } }
-        grouped_dom  = defaultdict(lambda: defaultdict(lambda: {"nb_profs":0,"nb_resa":0,"niveaux":set()}))
-        grouped_niv  = defaultdict(lambda: defaultdict(list))  # domaine → niveau → matieres
+        grouped_dom = defaultdict(lambda: defaultdict(lambda: {"nb_profs":0,"nb_resa":0,"niveaux":set()}))
+        grouped_niv = defaultdict(lambda: defaultdict(list))
 
         for row in rows:
             dom = row.domaine
@@ -207,13 +182,9 @@ def get_stats_charts(db: Session = Depends(get_db), _=Depends(require_admin)):
             mat = row.matiere
             nb_p = int(row.nb_profs or 0)
             nb_r = int(row.nb_resa  or 0)
-
-            # Vue par domaine (matières dédupliquées)
             grouped_dom[dom][mat]["nb_profs"] = max(grouped_dom[dom][mat]["nb_profs"], nb_p)
             grouped_dom[dom][mat]["nb_resa"]  += nb_r
             grouped_dom[dom][mat]["niveaux"].add(niv)
-
-            # Vue par niveau
             existing = next((x for x in grouped_niv[dom][niv] if x["matiere"] == mat), None)
             if existing:
                 existing["nb_profs"] += nb_p
@@ -221,8 +192,6 @@ def get_stats_charts(db: Session = Depends(get_db), _=Depends(require_admin)):
             else:
                 grouped_niv[dom][niv].append({"matiere": mat, "nb_profs": nb_p, "nb_resa": nb_r})
 
-        # Construire matieres_par_domaine (vue agrégée par domaine)
-        top_matieres_par_domaine = []
         for domaine_nom, mats_dict in grouped_dom.items():
             mats = []
             for mat_nom, data in mats_dict.items():
@@ -238,23 +207,18 @@ def get_stats_charts(db: Session = Depends(get_db), _=Depends(require_admin)):
                 "matieres": mats_sorted[:15],
             })
 
-        # Construire par_niveau (vue détaillée par niveau)
-        par_niveau = []
         for domaine_nom in grouped_niv:
             niveaux_list = []
             for niv_nom, mats in grouped_niv[domaine_nom].items():
                 mats_sorted = sorted(mats, key=lambda x: (x["nb_resa"], x["nb_profs"]), reverse=True)
                 niveaux_list.append({
-                    "niveau":   niv_nom,
-                    "matieres": mats_sorted,
+                    "niveau":      niv_nom,
+                    "matieres":    mats_sorted,
                     "total_profs": sum(m["nb_profs"] for m in mats_sorted),
                     "total_resa":  sum(m["nb_resa"]  for m in mats_sorted),
                 })
             niveaux_list.sort(key=lambda x: x["total_resa"], reverse=True)
-            par_niveau.append({
-                "domaine":  domaine_nom,
-                "niveaux":  niveaux_list,
-            })
+            par_niveau.append({"domaine": domaine_nom, "niveaux": niveaux_list})
 
         if top_matieres_par_domaine:
             matieres_par_domaine = top_matieres_par_domaine
@@ -262,39 +226,29 @@ def get_stats_charts(db: Session = Depends(get_db), _=Depends(require_admin)):
     except Exception as e:
         print(f"[charts] Erreur analyse matières: {e}")
         import traceback; traceback.print_exc()
-        par_niveau = []
+
     # ── 7. Entonnoir de conversion ────────────────────────────────
     try:
-        nb_etudiants  = db.query(Etudiant).count()
-        nb_resa_total = db.query(Reservation).count()
-        nb_resa_confirmees = db.query(Reservation).filter(
-            Reservation.statut == "confirmé"
-        ).count()
-        nb_resa_terminees = db.query(Reservation).filter(
-            Reservation.statut == "terminé"
-        ).count()
-        nb_resa_refusees = db.query(Reservation).filter(
-            Reservation.statut == "refusé"
-        ).count()
-        nb_resa_attente = db.query(Reservation).filter(
-            Reservation.statut == "en_attente"
-        ).count()
-        # Étudiants ayant fait au moins une réservation
+        nb_etudiants       = db.query(Etudiant).count()
+        nb_resa_total      = db.query(Reservation).count()
+        nb_resa_confirmees = db.query(Reservation).filter(Reservation.statut == "confirmé").count()
+        nb_resa_terminees  = db.query(Reservation).filter(Reservation.statut == "terminé").count()
+        nb_resa_refusees   = db.query(Reservation).filter(Reservation.statut == "refusé").count()
+        nb_resa_attente    = db.query(Reservation).filter(Reservation.statut == "en_attente").count()
         nb_etudiants_actifs = db.query(
             func.count(Reservation.etudiant_id.distinct())
         ).scalar() or 0
-
         entonnoir = {
-            "etudiants_inscrits":   nb_etudiants,
-            "etudiants_actifs":     nb_etudiants_actifs,
-            "reservations_total":   nb_resa_total,
-            "reservations_attente": nb_resa_attente,
+            "etudiants_inscrits":      nb_etudiants,
+            "etudiants_actifs":        nb_etudiants_actifs,
+            "reservations_total":      nb_resa_total,
+            "reservations_attente":    nb_resa_attente,
             "reservations_confirmees": nb_resa_confirmees,
             "reservations_terminees":  nb_resa_terminees,
             "reservations_refusees":   nb_resa_refusees,
-            "taux_activation":      round(nb_etudiants_actifs/nb_etudiants*100,1) if nb_etudiants>0 else 0,
-            "taux_confirmation":    round(nb_resa_confirmees/nb_resa_total*100,1)  if nb_resa_total>0  else 0,
-            "taux_refus":           round(nb_resa_refusees/nb_resa_total*100,1)    if nb_resa_total>0  else 0,
+            "taux_activation":    round(nb_etudiants_actifs/nb_etudiants*100, 1) if nb_etudiants > 0 else 0,
+            "taux_confirmation":  round(nb_resa_confirmees/nb_resa_total*100,  1) if nb_resa_total > 0 else 0,
+            "taux_refus":         round(nb_resa_refusees/nb_resa_total*100,    1) if nb_resa_total > 0 else 0,
         }
     except Exception as e:
         print(f"[charts] Erreur entonnoir: {e}")
@@ -303,50 +257,87 @@ def get_stats_charts(db: Session = Depends(get_db), _=Depends(require_admin)):
     # ── 8. Performance des formateurs ────────────────────────────
     try:
         profs_data = []
+        seen_user_ids = set()
+        seen_noms = set()
+
         profs_all = db.query(Professeur).filter_by(statut_validation="validé").all()
+
         for p in profs_all:
             u = p.user
-            nom = f"{u.prenom or ''} {u.nom or ''}".strip() if u else "—"
-            nb_r_total     = db.query(func.count(Reservation.id)).filter(Reservation.prof_id == p.id).scalar() or 0
-            nb_r_confirme  = db.query(func.count(Reservation.id)).filter(Reservation.prof_id == p.id, Reservation.statut == "confirmé").scalar() or 0
-            nb_r_termine   = db.query(func.count(Reservation.id)).filter(Reservation.prof_id == p.id, Reservation.statut == "terminé").scalar() or 0
-            nb_r_refuse    = db.query(func.count(Reservation.id)).filter(Reservation.prof_id == p.id, Reservation.statut == "refusé").scalar() or 0
-            note           = float(p.note_moyenne or 0)
-            taux_conf      = round(nb_r_confirme / nb_r_total * 100, 1) if nb_r_total > 0 else 0
-            matieres       = list({pmt.matiere.nom for pmt in p.tarifs_matieres if pmt.matiere}) if p.tarifs_matieres else []
+            if not u:
+                continue
+            if u.id in seen_user_ids:
+                continue
+            seen_user_ids.add(u.id)
+            nom_key = f"{(u.prenom or '').strip().lower()} {(u.nom or '').strip().lower()}"
+            if nom_key in seen_noms:
+                continue
+            seen_noms.add(nom_key)
+
+            nom           = f"{u.prenom or ''} {u.nom or ''}".strip()
+            nb_r_total    = db.query(func.count(Reservation.id)).filter(Reservation.prof_id == p.id).scalar() or 0
+            nb_r_confirme = db.query(func.count(Reservation.id)).filter(Reservation.prof_id == p.id, Reservation.statut == "confirmé").scalar() or 0
+            nb_r_termine  = db.query(func.count(Reservation.id)).filter(Reservation.prof_id == p.id, Reservation.statut == "terminé").scalar() or 0
+            nb_r_refuse   = db.query(func.count(Reservation.id)).filter(Reservation.prof_id == p.id, Reservation.statut == "refusé").scalar() or 0
+            note          = float(p.note_moyenne or 0)
+            taux_conf     = round(nb_r_confirme / nb_r_total * 100, 1) if nb_r_total > 0 else 0
+            matieres      = list({pmt.matiere.nom for pmt in p.tarifs_matieres if pmt.matiere}) if p.tarifs_matieres else []
+
             profs_data.append({
-                "id":           p.id,
-                "nom":          nom,
-                "note":         note,
-                "nb_avis":      p.nb_avis or 0,
-                "nb_resa":      nb_r_total,
-                "nb_confirme":  nb_r_confirme,
-                "nb_termine":   nb_r_termine,
-                "nb_refuse":    nb_r_refuse,
+                "id":                p.id,
+                "nom":               nom,
+                "note":              note,
+                "nb_avis":           p.nb_avis or 0,
+                "nb_resa":           nb_r_total,
+                "nb_confirme":       nb_r_confirme,
+                "nb_termine":        nb_r_termine,
+                "nb_refuse":         nb_r_refuse,
                 "taux_confirmation": taux_conf,
-                "mode":         p.mode_enseignement or "presentiel",
-                "ville":        p.ville or "",
-                "matieres":     matieres[:3],
-                "photo":        p.photo_url or "",
+                "mode":              p.mode_enseignement or "presentiel",
+                "ville":             p.ville or "",
+                "matieres":          matieres[:3],
+                "photo":             p.photo_url or "",
             })
-        # Trier par note puis nb_reservations
+
         profs_data.sort(key=lambda x: (x["note"], x["nb_resa"]), reverse=True)
+        total_profs_performance = len(profs_data)
+
     except Exception as e:
         print(f"[charts] Erreur performance profs: {e}")
         import traceback; traceback.print_exc()
         profs_data = []
+        total_profs_performance = 0
+
+    # ── 9. Demandes matières stats ← AJOUTÉ ──────────────────────
+    demandes_stats = []
+    try:
+        rows = db.execute(text(
+            "SELECT statut, COUNT(*) AS nb, "
+            "ROUND(COUNT(*) * 100.0 / NULLIF(SUM(COUNT(*)) OVER (), 0), 1) AS pct "
+            "FROM demandes_matieres GROUP BY statut ORDER BY statut"
+        )).fetchall()
+        for d in rows:
+            demandes_stats.append({
+                "statut": d.statut,
+                "nb":     int(d.nb or 0),
+                "pct":    float(d.pct or 0),
+            })
+    except Exception as e:
+        print(f"[charts] demandes_stats error: {e}")
 
     return {
-        "reservations_par_mois":    reservations_par_mois,
-        "reservations_par_jour":    reservations_par_jour,
-        "par_niveau":               par_niveau if 'par_niveau' in dir() else [],
-        "matieres_par_domaine":     matieres_par_domaine,
-        "modes_enseignement":       modes_enseignement,
-        "statut_profs":             statut_profs,
-        "total_profs_valides":      total_valides,
-        "top_matieres_par_domaine": top_matieres_par_domaine,
-        "entonnoir":                entonnoir,
-        "performance_profs":        profs_data,
+        "reservations_par_mois":      reservations_par_mois,
+        "reservations_par_jour":      reservations_par_jour,
+        "par_niveau":                 par_niveau,
+        "matieres_par_domaine":       matieres_par_domaine,
+        "modes_enseignement":         modes_enseignement,
+        "statut_profs":               statut_profs,
+        "total_profs_valides":        total_valides,
+        "top_matieres_par_domaine":   top_matieres_par_domaine,
+        "entonnoir":                  entonnoir,
+        "performance_profs":          profs_data,
+        "performance_profs_total":    total_profs_performance,
+        "demandes_stats":             demandes_stats,        # ← AJOUTÉ
     }
 
 

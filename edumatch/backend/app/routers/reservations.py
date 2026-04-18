@@ -17,14 +17,9 @@ def generate_meet_link() -> str:
 
 
 def get_or_create_meet_link(dispo: Disponibilite, db: Session) -> str:
-    """
-    Retourne le lien Meet de la disponibilité.
-    Si elle n'en a pas encore, en génère un et le sauvegarde.
-    Ainsi TOUS les étudiants d'un même créneau partagent le même lien.
-    """
     if not hasattr(dispo, 'lien_meet') or not dispo.lien_meet:
         dispo.lien_meet = generate_meet_link()
-        db.flush()  # Persiste sans commit pour garder la transaction
+        db.flush()
     return dispo.lien_meet
 
 
@@ -53,16 +48,12 @@ def create_reservation(
 
     mode = data.mode_seance or dispo.mode_seance if dispo else "presentiel"
 
-    # ── Lien Meet : partagé sur la disponibilité ──────────────────
-    # Toutes les réservations du même créneau ont le même lien Meet.
     lien_meet = None
     if mode == "en_ligne" and dispo:
         lien_meet = get_or_create_meet_link(dispo, db)
     elif mode == "en_ligne" and not dispo:
-        # Cas sans créneau spécifique : générer un lien individuel
         lien_meet = generate_meet_link()
 
-    # ── Tarif ─────────────────────────────────────────────────────
     tarif = None
     if mode == "en_ligne" and prof.tarif_en_ligne and float(prof.tarif_en_ligne) > 0:
         tarif = prof.tarif_en_ligne
@@ -97,10 +88,6 @@ def create_reservation(
 
 
 def is_session_today_or_soon(date_cours, heure_debut, heure_fin) -> dict:
-    """
-    Détermine si la session est aujourd'hui ou dans moins de 30 minutes.
-    Retourne un dict avec les flags pour le frontend.
-    """
     if not date_cours:
         return {"is_today": False, "is_active": False, "is_past": False, "minutes_until": None}
 
@@ -116,7 +103,6 @@ def is_session_today_or_soon(date_cours, heure_debut, heure_fin) -> dict:
     is_today = (session_date == today)
     is_past  = (session_date < today)
 
-    # Si c'est aujourd'hui, calculer si la session est active ou imminente
     is_active       = False
     is_imminent     = False
     minutes_until   = None
@@ -131,7 +117,6 @@ def is_session_today_or_soon(date_cours, heure_debut, heure_fin) -> dict:
             debut_dt = now.replace(hour=h_debut, minute=m_debut, second=0, microsecond=0)
             fin_dt   = now.replace(hour=h_fin,   minute=m_fin,   second=0, microsecond=0)
 
-            # Session active = entre l'heure de début et 30 min après la fin
             from datetime import timedelta
             is_active    = debut_dt <= now <= (fin_dt + timedelta(minutes=30))
             is_imminent  = timedelta(0) <= (debut_dt - now) <= timedelta(minutes=30)
@@ -149,20 +134,17 @@ def is_session_today_or_soon(date_cours, heure_debut, heure_fin) -> dict:
 
 
 def serialize_reservation(r: Reservation, db: Session = None) -> dict:
-    """Sérialise une réservation avec toutes les infos + statut de la session."""
     etudiant      = r.etudiant
     etudiant_user = etudiant.user if etudiant else None
     prof          = r.professeur
     prof_user     = prof.user if prof else None
 
-    # Récupérer le lien Meet depuis la disponibilité si disponible
     lien_meet = r.lien_meet
     if not lien_meet and r.disponibilite_id and db:
         dispo = db.query(Disponibilite).filter(Disponibilite.id == r.disponibilite_id).first()
         if dispo and hasattr(dispo, 'lien_meet'):
             lien_meet = dispo.lien_meet
 
-    # Infos de timing pour affichage conditionnel du Meet
     session_info = is_session_today_or_soon(r.date_cours, r.heure_debut, r.heure_fin)
 
     return {
@@ -174,26 +156,24 @@ def serialize_reservation(r: Reservation, db: Session = None) -> dict:
         "heure_debut":      str(r.heure_debut)[:5] if r.heure_debut else None,
         "heure_fin":        str(r.heure_fin)[:5]   if r.heure_fin   else None,
         "statut":           r.statut,
+        "statut_paiement":  getattr(r, 'statut_paiement', 'non_payé') or 'non_payé',
         "mode_seance":      r.mode_seance or "presentiel",
         "lien_meet":        lien_meet,
         "tarif_applique":   float(r.tarif_applique) if r.tarif_applique else None,
         "notes_etudiant":   r.notes_etudiant,
         "created_at":       str(r.created_at) if r.created_at else None,
 
-        # ── Description de la séance (depuis la disponibilité) ──
         "description_seance": (
             db.query(Disponibilite).filter_by(id=r.disponibilite_id).first().description
             if r.disponibilite_id and db else None
         ),
 
-        # ── Timing session ──
         "session_today":    session_info["is_today"],
         "session_active":   session_info["is_active"],
         "session_imminent": session_info["is_imminent"],
         "session_past":     session_info["is_past"],
         "minutes_until":    session_info["minutes_until"],
 
-        # ── Infos étudiant ──
         "etudiant_nom":       f"{etudiant_user.prenom or ''} {etudiant_user.nom or ''}".strip() if etudiant_user else "—",
         "etudiant_email":     etudiant_user.email  if etudiant_user else None,
         "etudiant_telephone": etudiant.telephone   if etudiant      else None,
@@ -201,7 +181,6 @@ def serialize_reservation(r: Reservation, db: Session = None) -> dict:
         "etudiant_niveau":    etudiant.niveau      if etudiant      else None,
         "etudiant_photo":     None,
 
-        # ── Infos prof ──
         "prof_nom":       f"{prof_user.prenom or ''} {prof_user.nom or ''}".strip() if prof_user else "—",
         "prof_email":     prof_user.email     if prof_user else None,
         "prof_telephone": prof.telephone      if prof      else None,
@@ -246,7 +225,6 @@ def update_reservation(
     ancien_statut = res.statut
     res.statut    = data.statut
 
-    # Libérer la place si annulé/refusé
     if data.statut in ("refusé", "annulé") and ancien_statut == "en_attente":
         if res.disponibilite_id:
             dispo = db.query(Disponibilite).filter(
@@ -257,3 +235,36 @@ def update_reservation(
 
     db.commit()
     return {"message": f"Réservation {data.statut}", "lien_meet": res.lien_meet}
+
+
+# ── NOUVEAU : Route paiement ──────────────────────────────────────
+@router.post("/{res_id}/payer")
+def payer_reservation(
+    res_id: int,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    """Marque une réservation comme payée."""
+    res = db.query(Reservation).filter(Reservation.id == res_id).first()
+    if not res:
+        raise HTTPException(404, "Réservation introuvable")
+
+    # Vérifier que c'est bien l'étudiant propriétaire
+    etudiant = db.query(Etudiant).filter(Etudiant.user_id == current_user.id).first()
+    if not etudiant or res.etudiant_id != etudiant.id:
+        raise HTTPException(403, "Non autorisé")
+
+    # Vérifier que la réservation est confirmée
+    if res.statut != "confirmé":
+        raise HTTPException(400, "La réservation doit être confirmée avant le paiement")
+
+    # Marquer comme payée
+    res.statut_paiement = "payé"
+    db.commit()
+
+    return {
+        "message": "Paiement enregistré avec succès",
+        "reservation_id": res_id,
+        "statut_paiement": "payé",
+        "montant": float(res.tarif_applique) if res.tarif_applique else 0,
+    }

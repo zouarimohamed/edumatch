@@ -466,10 +466,10 @@ export default function Profs() {
     return list;
   }, [profs, search, filterVille, filterMode, filterDomaine, filterNiveau, filterMatiere, filterBudget, sortBy]);
 
-  const hasFilters = filterVille || filterMode || filterMatiere || filterBudget;
-  const resetFilters = () => { setFilterVille(''); setFilterMode(''); setFilterMatiere(''); setFilterBudget(''); setSearch(''); };
+  const hasFilters = filterVille || filterMode || filterDomaine || filterNiveau || filterMatiere || filterBudget;
+  const resetFilters = () => { setFilterVille(''); setFilterMode(''); setFilterDomaine(''); setFilterNiveau(''); setFilterMatiere(''); setFilterBudget(''); setSearch(''); };
 
-  const nbFiltersActive = [filterVille, filterMode, filterMatiere, filterBudget].filter(Boolean).length;
+  const nbFiltersActive = [filterVille, filterMode, filterDomaine, filterNiveau, filterMatiere, filterBudget].filter(Boolean).length;
 
   if (loading) return (
     <div className="profs-root" style={{ padding: 80, textAlign: 'center' }}>

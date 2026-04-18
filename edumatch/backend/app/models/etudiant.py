@@ -14,9 +14,9 @@ class Etudiant(Base):
     bio        = Column(Text)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
-    user         = relationship("User", back_populates="etudiant")
-    # On met les autres relations en commentaires ou on s'assure qu'elles pointent vers les bons noms
-    reservations = relationship("Reservation", back_populates="etudiant")
-    avis         = relationship("Avis", back_populates="etudiant")
-    preferences  = relationship("PreferencesEtudiant", back_populates="etudiant")
+    user          = relationship("User", back_populates="etudiant")
+    reservations  = relationship("Reservation", back_populates="etudiant")
+    avis          = relationship("Avis", back_populates="etudiant")
+    preferences   = relationship("PreferencesEtudiant", back_populates="etudiant")
     conversations = relationship("ConversationChat", back_populates="etudiant")
+    chat_sessions = relationship("ChatSession", back_populates="etudiant", cascade="all, delete-orphan")  # ← NOUVEAU

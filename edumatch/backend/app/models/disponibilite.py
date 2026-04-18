@@ -16,8 +16,10 @@ class Disponibilite(Base):
     nb_inscrits      = Column(Integer, default=0, nullable=False)
     mode_seance      = Column(String(20), default="presentiel")
     actif            = Column(Boolean, default=True)
-    description      = Column(Text, nullable=True)        # ← AJOUTÉ
+    description      = Column(Text, nullable=True)
+    niveau_id        = Column(Integer, ForeignKey("niveaux.id"), nullable=True)  # ← AJOUTÉ
     created_at       = Column(DateTime(timezone=True), server_default=func.now())
 
     professeur   = relationship("Professeur",  back_populates="disponibilites")
     reservations = relationship("Reservation", back_populates="disponibilite")
+    niveau       = relationship("Niveau", foreign_keys=[niveau_id])              # ← AJOUTÉ

@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
-import { useOutletContext } from 'react-router-dom';
+import { useOutletContext, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -264,7 +264,7 @@ function InfoBlock({ icon, label, value, accent }) {
   );
 }
 
-function ReservationCard({ r, onChat, unreadCount, index }) {
+function ReservationCard({ r, onChat, onPay, unreadCount, index }) {
   const [expanded, setExpanded] = useState(false);
   const isFuture = r.date_cours && new Date(r.date_cours + 'T23:59:59') >= new Date();
   const topBarColor = r.statut === 'confirmé' ? 'linear-gradient(90deg,#10B981,#34D399)' : r.statut === 'en_attente' ? 'linear-gradient(90deg,#F59E0B,#FCD34D)' : r.statut === 'refusé' ? 'linear-gradient(90deg,#EF4444,#F87171)' : 'linear-gradient(90deg,#3B82F6,#818CF8)';
@@ -298,16 +298,34 @@ function ReservationCard({ r, onChat, unreadCount, index }) {
             </div>
           </div>
 
+          {/* Boutons action : Payer + Contacter */}
           {r.statut === 'confirmé' && (
-            <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: .96 }} onClick={() => onChat(r)}
-              style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 8, padding: '11px 20px', background: '#00153D', color: '#fff', border: 'none', borderRadius: 14, fontFamily: 'Cabinet Grotesk, sans-serif', fontWeight: 800, cursor: 'pointer', fontSize: '.82rem', flexShrink: 0, boxShadow: '0 5px 18px rgba(0,21,61,0.25)' }}>
-              <MessageCircle size={15}/> Contacter
-              {unreadCount > 0 && (
-                <motion.span initial={{ scale: 0 }} animate={{ scale: 1 }} style={{ position: 'absolute', top: -8, right: -8, background: '#EF4444', color: '#fff', fontSize: '.6rem', fontWeight: 900, padding: '2px 6px', borderRadius: 20, minWidth: 18, textAlign: 'center', border: '2px solid #fff' }}>
-                  {unreadCount}
-                </motion.span>
+            <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
+              {/* Bouton Payer — caché si déjà payé */}
+              {r.statut_paiement === 'payé' ? (
+                <span style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '11px 16px', background: '#ECFDF5', color: '#065F46', border: '1.5px solid #6EE7B7', borderRadius: 14, fontSize: '.82rem', fontWeight: 800, fontFamily: 'Cabinet Grotesk, sans-serif' }}>
+                  ✅ Payé
+                </span>
+              ) : (
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: .96 }}
+                  onClick={() => onPay(r)}
+                  style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '11px 18px', background: 'linear-gradient(135deg,#065F46,#10B981)', color: '#fff', border: 'none', borderRadius: 14, fontFamily: 'Cabinet Grotesk, sans-serif', fontWeight: 800, cursor: 'pointer', fontSize: '.82rem', boxShadow: '0 4px 14px rgba(16,185,129,0.3)' }}>
+                  <CreditCard size={14}/> Payer
+                </motion.button>
               )}
-            </motion.button>
+              {/* Bouton Contacter */}
+              <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: .96 }} onClick={() => onChat(r)}
+                style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 8, padding: '11px 20px', background: '#00153D', color: '#fff', border: 'none', borderRadius: 14, fontFamily: 'Cabinet Grotesk, sans-serif', fontWeight: 800, cursor: 'pointer', fontSize: '.82rem', boxShadow: '0 5px 18px rgba(0,21,61,0.25)' }}>
+                <MessageCircle size={15}/> Contacter
+                {unreadCount > 0 && (
+                  <motion.span initial={{ scale: 0 }} animate={{ scale: 1 }} style={{ position: 'absolute', top: -8, right: -8, background: '#EF4444', color: '#fff', fontSize: '.6rem', fontWeight: 900, padding: '2px 6px', borderRadius: 20, minWidth: 18, textAlign: 'center', border: '2px solid #fff' }}>
+                    {unreadCount}
+                  </motion.span>
+                )}
+              </motion.button>
+            </div>
           )}
         </div>
 
@@ -396,6 +414,7 @@ function SkeletonCard() {
 
 export default function MesReservations() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const outletCtx = useOutletContext?.() || {};
   const { chatResaId, setChatResaId } = outletCtx;
 
@@ -546,7 +565,13 @@ export default function MesReservations() {
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           {filtered.sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0)).map((r, i) => (
-            <ReservationCard key={r.id} r={r} onChat={resa => setChatResa(resa)} unreadCount={unreadMap[r.id] || 0} index={i}/>
+            <ReservationCard
+              key={r.id} r={r}
+              onChat={resa => setChatResa(resa)}
+              onPay={resa => navigate(`/paiement/${resa.id}`)}
+              unreadCount={unreadMap[r.id] || 0}
+              index={i}
+            />
           ))}
         </div>
       )}

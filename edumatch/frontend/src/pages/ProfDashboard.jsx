@@ -420,6 +420,28 @@ function ReservationModal({ reservation, onClose, onAction, onChat }) {
             </div>
           )}
 
+          {/* Description séance par le prof — éditable si confirmé */}
+          {r.statut==='confirmé' && (
+            <div style={{ background:'#F0F4FF', borderRadius:14, padding:16, border:'1.5px solid #C7D2FE' }}>
+              <div style={{ fontSize:'.65rem', fontWeight:900, color:'#4F46E5', textTransform:'uppercase', letterSpacing:'.12em', marginBottom:10, fontFamily:'Cabinet Grotesk,sans-serif' }}>📝 Description de la séance (optionnel)</div>
+              <textarea
+                defaultValue={r.description_seance || ''}
+                placeholder="Ex: Cours de révision sur les équations, apportez votre cahier..."
+                rows={3}
+                onBlur={async (e) => {
+                  const val = e.target.value.trim();
+                  if (val !== (r.description_seance || '').trim()) {
+                    try { await api.put(`/api/reservations/${r.id}`, { description_seance: val }); }
+                    catch {}
+                  }
+                }}
+                style={{ width:'100%', background:'#fff', border:'1.5px solid #C7D2FE', borderRadius:10, padding:'9px 12px', fontSize:'.84rem', resize:'vertical', outline:'none', fontFamily:'Instrument Sans,sans-serif', color:'#374151', boxSizing:'border-box', transition:'border-color .15s' }}
+                onFocus={e => e.target.style.borderColor='#4F46E5'}
+              />
+              <div style={{ fontSize:'.68rem', color:'#94A3B8', marginTop:5 }}>Sauvegardé automatiquement</div>
+            </div>
+          )}
+
           {/* Actions */}
           <div style={{ display:'flex', gap:10, flexDirection:'column' }}>
             {r.statut==='en_attente' && (
@@ -466,10 +488,15 @@ function ReservationCard({ r, onView, onAction, onChat, unreadCount, index }) {
             <StatutBadge statut={r.statut}/>
             <ModeBadge mode={r.mode_seance}/>
           </div>
-          <div style={{ display:'flex', gap:14, fontSize:'.76rem', color:'#94A3B8', fontWeight:600, flexWrap:'wrap' }}>
+          <div style={{ display:'flex', gap:14, fontSize:'.76rem', color:'#94A3B8', fontWeight:600, flexWrap:'wrap', alignItems:'center' }}>
             <span>📅 {dateStr}</span>
             <span>🕒 {String(r.heure_debut||'').slice(0,5)} – {String(r.heure_fin||'').slice(0,5)}</span>
             {r.etudiant_telephone && <span>📞 {r.etudiant_telephone}</span>}
+            {(r.statut==='confirmé'||r.statut==='terminé') && (
+              r.statut_paiement==='payé'
+                ? <span style={{ display:'inline-flex',alignItems:'center',gap:4,fontSize:'.65rem',fontWeight:800,padding:'2px 8px',borderRadius:20,background:'#ECFDF5',color:'#065F46',border:'1.5px solid #6EE7B7' }}>💳 Payé</span>
+                : <span style={{ display:'inline-flex',alignItems:'center',gap:4,fontSize:'.65rem',fontWeight:700,padding:'2px 8px',borderRadius:20,background:'#F8FAFC',color:'#94A3B8',border:'1.5px solid #E2E8F0' }}>⏳ Non payé</span>
+            )}
           </div>
           {r.notes_etudiant && (
             <div style={{ marginTop:5, fontSize:'.74rem', color:'#94A3B8', fontStyle:'italic', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', maxWidth:260 }}>
@@ -507,10 +534,180 @@ function ReservationCard({ r, onView, onAction, onChat, unreadCount, index }) {
 /* ════════════════════════════════════════════════
    PAGE PRINCIPALE
 ════════════════════════════════════════════════ */
+
+/* ─── Badge Paiement ───────────────────────── */
+function PaiementBadge({ statut }) {
+  if (statut === 'payé') return (
+    <span style={{ display:'inline-flex', alignItems:'center', gap:4, fontSize:'.68rem', fontWeight:800, padding:'3px 10px', borderRadius:20, background:'#ECFDF5', color:'#065F46', border:'1.5px solid #6EE7B7' }}>
+      💳 Payé
+    </span>
+  );
+  return (
+    <span style={{ display:'inline-flex', alignItems:'center', gap:4, fontSize:'.68rem', fontWeight:700, padding:'3px 10px', borderRadius:20, background:'#F8FAFC', color:'#94A3B8', border:'1.5px solid #E2E8F0' }}>
+      ⏳ En attente
+    </span>
+  );
+}
+
+/* ─── Section Gestion des Gains ─────────────── */
+function GainsSection({ reservations }) {
+  // getDuree doit être défini AVANT calcTotal
+  const getDuree = (r) => {
+    if (!r.heure_debut || !r.heure_fin) return 1;
+    const [hd, md] = String(r.heure_debut).slice(0,5).split(':').map(Number);
+    const [hf, mf] = String(r.heure_fin).slice(0,5).split(':').map(Number);
+    const diff = (hf * 60 + mf) - (hd * 60 + md);
+    return diff > 0 ? (diff / 60).toFixed(1) : 1;
+  };
+
+  const seancesPayees    = reservations.filter(r => r.statut_paiement === 'payé');
+  const seancesEnAttente = reservations.filter(r => (r.statut === 'confirmé' || r.statut === 'terminé') && r.statut_paiement !== 'payé');
+  const calcTotal = (r) => {
+    const duree = getDuree(r);
+    return (parseFloat(r.tarif_applique) || 0) * parseFloat(duree);
+  };
+  const totalGains     = seancesPayees.reduce((acc, r) => acc + calcTotal(r), 0);
+  const totalEnAttente = seancesEnAttente.reduce((acc, r) => acc + calcTotal(r), 0);
+  const totalSeances   = reservations.filter(r => r.statut === 'confirmé' || r.statut === 'terminé').length;
+
+  const seancesAll = reservations
+    .filter(r => r.statut === 'confirmé' || r.statut === 'terminé')
+    .sort((a, b) => new Date(b.date_cours || 0) - new Date(a.date_cours || 0));
+
+  return (
+    <div style={{ display:'flex', flexDirection:'column', gap:20 }}>
+      <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:14 }}>
+        {[
+          { icon:'💰', label:'Gains totaux reçus',    val:`${totalGains.toFixed(2)} DT`,    color:'#065F46', bg:'#ECFDF5', border:'#6EE7B7', iconBg:'#A7F3D0' },
+          { icon:'⏳', label:'En attente de paiement', val:`${totalEnAttente.toFixed(2)} DT`, color:'#B45309', bg:'#FFFBEB', border:'#FCD34D', iconBg:'#FDE68A' },
+          { icon:'📅', label:'Séances effectuées',    val:`${totalSeances} séance${totalSeances!==1?'s':''}`, color:'#1E40AF', bg:'#EFF6FF', border:'#93C5FD', iconBg:'#BFDBFE' },
+        ].map((k, i) => (
+          <div key={i} style={{ background:k.bg, border:`1.5px solid ${k.border}`, borderRadius:20, padding:'20px 22px', display:'flex', alignItems:'center', gap:14, boxShadow:'0 2px 10px rgba(0,0,0,0.04)' }}>
+            <div style={{ width:46, height:46, borderRadius:13, background:k.iconBg, display:'flex', alignItems:'center', justifyContent:'center', fontSize:'1.2rem', flexShrink:0 }}>{k.icon}</div>
+            <div>
+              <div style={{ fontFamily:'Cabinet Grotesk,sans-serif', fontWeight:900, fontSize:'1.4rem', color:k.color, lineHeight:1, marginBottom:4 }}>{k.val}</div>
+              <div style={{ fontSize:'.7rem', color:k.color, opacity:.7, fontWeight:700, textTransform:'uppercase', letterSpacing:'.06em' }}>{k.label}</div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div style={{ background:'linear-gradient(135deg,#00153D,#1E3A8A)', borderRadius:22, padding:'28px 32px', color:'#fff', position:'relative', overflow:'hidden' }}>
+        <div style={{ position:'absolute', top:-20, right:-20, width:150, height:150, borderRadius:'50%', background:'rgba(255,255,255,0.04)' }}/>
+        <div style={{ position:'relative', zIndex:1 }}>
+          <div style={{ fontSize:'.7rem', fontWeight:900, color:'rgba(255,255,255,0.5)', textTransform:'uppercase', letterSpacing:'.14em', marginBottom:8 }}>Votre solde actuel</div>
+          <div style={{ fontFamily:'Cabinet Grotesk,sans-serif', fontWeight:900, fontSize:'2.8rem', letterSpacing:'-.03em', marginBottom:6 }}>
+            {totalGains.toFixed(2)} <span style={{ fontSize:'1.4rem', opacity:.7 }}>DT</span>
+          </div>
+          <div style={{ fontSize:'.82rem', color:'rgba(255,255,255,0.55)', marginBottom:16 }}>
+            {seancesPayees.length} paiement{seancesPayees.length!==1?'s':''} reçu{seancesPayees.length!==1?'s':''}
+          </div>
+          {totalEnAttente > 0 && (
+            <div style={{ display:'inline-flex', alignItems:'center', gap:7, padding:'7px 14px', background:'rgba(255,255,255,0.1)', borderRadius:20, border:'1.5px solid rgba(255,255,255,0.15)', fontSize:'.78rem', fontWeight:700 }}>
+              ⏳ {totalEnAttente.toFixed(2)} DT en attente de paiement
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div style={{ background:'#fff', border:'1.5px solid #F1F5F9', borderRadius:20, overflow:'hidden', boxShadow:'0 2px 10px rgba(0,0,0,0.04)' }}>
+        <div style={{ padding:'18px 22px', borderBottom:'1.5px solid #F1F5F9', display:'flex', alignItems:'center', gap:9 }}>
+          <div style={{ width:4, height:20, background:'linear-gradient(180deg,#00153D,#3B82F6)', borderRadius:2 }}/>
+          <h3 style={{ fontFamily:'Cabinet Grotesk,sans-serif', fontWeight:900, fontSize:'1rem', color:'#0F172A', margin:0 }}>Historique des séances</h3>
+          <span style={{ fontSize:'.72rem', color:'#94A3B8', marginLeft:4 }}>Confirmées et terminées</span>
+        </div>
+        {seancesAll.length === 0 ? (
+          <div style={{ textAlign:'center', padding:'52px 20px', color:'#94A3B8' }}>
+            <div style={{ fontSize:'2.8rem', marginBottom:12 }}>💼</div>
+            <div style={{ fontFamily:'Cabinet Grotesk,sans-serif', fontWeight:800, fontSize:'1rem', color:'#0F172A', marginBottom:5 }}>Aucune séance encore</div>
+            <div style={{ fontSize:'.83rem', fontStyle:'italic' }}>Vos séances confirmées apparaîtront ici</div>
+          </div>
+        ) : (
+          <div style={{ overflowX:'auto' }}>
+            <table style={{ width:'100%', borderCollapse:'collapse', fontSize:'.83rem' }}>
+              <thead>
+                <tr style={{ background:'#F8FAFC' }}>
+                  {['Étudiant','Date','Horaire','Durée','Tarif/h','Total','Mode','Paiement'].map((h, i) => (
+                    <th key={i} style={{ padding:'10px 16px', textAlign:'left', fontSize:'.66rem', fontWeight:900, color:'#94A3B8', textTransform:'uppercase', letterSpacing:'.08em', borderBottom:'1.5px solid #F1F5F9', whiteSpace:'nowrap' }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {seancesAll.map((r, i) => {
+                  const duree = getDuree(r);
+                  const total = (parseFloat(r.tarif_applique) || 0) * parseFloat(duree);
+                  return (
+                    <tr key={r.id}
+                      style={{ borderBottom: i < seancesAll.length-1 ? '1px solid #F8FAFC' : 'none', transition:'background .12s' }}
+                      onMouseEnter={e => e.currentTarget.style.background='#F8FAFC'}
+                      onMouseLeave={e => e.currentTarget.style.background='transparent'}>
+                      <td style={{ padding:'12px 16px' }}>
+                        <div style={{ display:'flex', alignItems:'center', gap:9 }}>
+                          <Avatar nom={r.etudiant_nom} size={32}/>
+                          <span style={{ fontFamily:'Cabinet Grotesk,sans-serif', fontWeight:700, color:'#0F172A' }}>{r.etudiant_nom || '—'}</span>
+                        </div>
+                      </td>
+                      <td style={{ padding:'12px 16px', color:'#64748B', fontWeight:600, whiteSpace:'nowrap' }}>
+                        {r.date_cours ? new Date(r.date_cours+'T00:00:00').toLocaleDateString('fr-FR',{day:'numeric',month:'short',year:'numeric'}) : '—'}
+                      </td>
+                      <td style={{ padding:'12px 16px', color:'#64748B', fontWeight:600, whiteSpace:'nowrap' }}>
+                        {String(r.heure_debut||'').slice(0,5)} → {String(r.heure_fin||'').slice(0,5)}
+                      </td>
+                      <td style={{ padding:'12px 16px', textAlign:'center' }}>
+                        <span style={{ fontFamily:'Cabinet Grotesk,sans-serif', fontWeight:800, color:'#1E40AF' }}>{duree}h</span>
+                      </td>
+                      <td style={{ padding:'12px 16px', textAlign:'center', color:'#64748B', fontWeight:600 }}>
+                        {r.tarif_applique ? `${parseFloat(r.tarif_applique).toFixed(0)} DT` : '—'}
+                      </td>
+                      <td style={{ padding:'12px 16px', textAlign:'center' }}>
+                        <span style={{ fontFamily:'Cabinet Grotesk,sans-serif', fontWeight:900, color: r.statut_paiement==='payé'?'#065F46':'#94A3B8' }}>
+                          {r.tarif_applique ? `${total.toFixed(2)} DT` : '—'}
+                        </span>
+                      </td>
+                      <td style={{ padding:'12px 16px' }}><ModeBadge mode={r.mode_seance}/></td>
+                      <td style={{ padding:'12px 16px' }}><PaiementBadge statut={r.statut_paiement}/></td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+              <tfoot>
+                <tr style={{ background:'#F8FAFC', borderTop:'2px solid #F1F5F9' }}>
+                  <td colSpan={5} style={{ padding:'12px 16px', fontFamily:'Cabinet Grotesk,sans-serif', fontWeight:900, fontSize:'.88rem', color:'#0F172A' }}>
+                    Total ({seancesAll.length} séance{seancesAll.length!==1?'s':''})
+                  </td>
+                  <td style={{ padding:'12px 16px', textAlign:'center' }}>
+                    <span style={{ fontFamily:'Cabinet Grotesk,sans-serif', fontWeight:900, fontSize:'1rem', color:'#065F46' }}>
+                      {seancesAll.reduce((acc, r) => {
+                        const d = (() => {
+                          if (!r.heure_debut || !r.heure_fin) return 1;
+                          const [hd,md]=String(r.heure_debut).slice(0,5).split(':').map(Number);
+                          const [hf,mf]=String(r.heure_fin).slice(0,5).split(':').map(Number);
+                          const diff=(hf*60+mf)-(hd*60+md);
+                          return diff>0?diff/60:1;
+                        })();
+                        return acc + (parseFloat(r.tarif_applique)||0) * d;
+                      }, 0).toFixed(2)} DT
+                    </span>
+                  </td>
+                  <td colSpan={2} style={{ padding:'12px 16px', textAlign:'right' }}>
+                    <span style={{ fontSize:'.72rem', color:'#94A3B8', fontWeight:600 }}>
+                      dont <span style={{ color:'#065F46', fontWeight:800 }}>{totalGains.toFixed(2)} DT payés</span>
+                    </span>
+                  </td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function ProfDashboard() {
   const { user }  = useAuth();
   const outletCtx = useOutletContext?.() || {};
-  const { chatResaId, setChatResaId } = outletCtx;
+  const { chatResaId, setChatResaId, openResaId, setOpenResaId } = outletCtx;
 
   const [reservations, setReservations] = useState([]);
   const [profile, setProfile]           = useState(null);
@@ -544,6 +741,18 @@ export default function ProfDashboard() {
     }
   }, [chatResaId, reservations]);
 
+  // Ouvrir la modal de réservation depuis une notification (clic sur notif pending)
+  useEffect(() => {
+    if (openResaId && reservations.length > 0) {
+      const resa = reservations.find(r => r.id === openResaId);
+      if (resa) {
+        setSelectedResa(resa);
+        setActiveTab('en_attente');
+        setOpenResaId?.(null);
+      }
+    }
+  }, [openResaId, reservations]);
+
   const loadUnread = async () => {
     try {
       const res = await api.get('/api/messages/non-lus');
@@ -565,6 +774,7 @@ export default function ProfDashboard() {
     { key:'confirmé',   label:'Confirmées',  color:'#065F46', bg:'#ECFDF5', border:'#6EE7B7' },
     { key:'refusé',     label:'Refusées',    color:'#991B1B', bg:'#FEF2F2', border:'#FCA5A5' },
     { key:'all',        label:'Toutes',      color:'#1E40AF', bg:'#EFF6FF', border:'#93C5FD' },
+    { key:'gains',      label:'💰 Gains',    color:'#065F46', bg:'#ECFDF5', border:'#6EE7B7' },
   ];
 
   const MONTH_LABELS = ['Jan','Fév','Mar','Avr','Mai','Jun','Jul','Aoû','Sep','Oct','Nov','Déc'];
@@ -579,6 +789,7 @@ export default function ProfDashboard() {
     confirmé:   reservations.filter(r => r.statut==='confirmé').length,
     refusé:     reservations.filter(r => r.statut==='refusé').length,
     all:        reservations.length,
+    gains:      reservations.filter(r => r.statut_paiement==='payé').length,
   };
 
   const filtered = reservations.filter(r => {
@@ -618,7 +829,7 @@ export default function ProfDashboard() {
               </div>
             )}
             <button
-              onClick={() => exportProfReservations(filtered, `${user?.prenom || ''} ${user?.nom || ''}`.trim())}
+              onClick={(e) => { e.preventDefault(); e.stopPropagation(); exportProfReservations(reservations, `${user?.prenom || ''} ${user?.nom || ''}`.trim()); }}
               style={{ display:'flex', alignItems:'center', gap:7, padding:'9px 16px', background:'#00153D', color:'#fff', border:'none', borderRadius:12, cursor:'pointer', fontFamily:"'Cabinet Grotesk',sans-serif", fontWeight:800, fontSize:'.8rem', boxShadow:'0 4px 14px rgba(0,21,61,0.2)', transition:'all .18s' }}
               onMouseEnter={e => { e.currentTarget.style.background='#1E3A8A'; e.currentTarget.style.transform='translateY(-1px)'; }}
               onMouseLeave={e => { e.currentTarget.style.background='#00153D'; e.currentTarget.style.transform='none'; }}>
@@ -668,7 +879,13 @@ export default function ProfDashboard() {
             <span style={{ fontFamily:'Cabinet Grotesk,sans-serif', fontWeight:900, color:'#B45309' }}>{counts.en_attente} demande{counts.en_attente>1?'s':''} en attente</span>
             <div style={{ fontSize:'.78rem', color:'#92400E', marginTop:2, fontStyle:'italic' }}>Répondez rapidement pour ne pas faire attendre vos étudiants.</div>
           </div>
-          <button onClick={() => setActiveTab('en_attente')} style={{ padding:'7px 16px', background:'#F59E0B', color:'#fff', border:'none', borderRadius:10, cursor:'pointer', fontFamily:'Cabinet Grotesk,sans-serif', fontWeight:800, fontSize:'.78rem', transition:'all .18s' }}
+          <button onClick={() => {
+            setActiveTab('en_attente');
+            // Scroll vers la section réservations
+            setTimeout(() => {
+              document.querySelector('.pdb-section')?.scrollIntoView({ behavior:'smooth', block:'start' });
+            }, 100);
+          }} style={{ padding:'7px 16px', background:'#F59E0B', color:'#fff', border:'none', borderRadius:10, cursor:'pointer', fontFamily:'Cabinet Grotesk,sans-serif', fontWeight:800, fontSize:'.78rem', transition:'all .18s' }}
             onMouseEnter={e => e.currentTarget.style.background='#D97706'}
             onMouseLeave={e => e.currentTarget.style.background='#F59E0B'}>
             Traiter →
@@ -677,7 +894,7 @@ export default function ProfDashboard() {
       )}
 
       {/* ── SECTION RÉSERVATIONS ── */}
-      <div className="pdb-section" style={{ animation:'fadeUp3 .5s .1s ease both', opacity:0, animationFillMode:'forwards' }}>
+      {activeTab !== 'gains' && <div className="pdb-section" style={{ animation:'fadeUp3 .5s .1s ease both', opacity:0, animationFillMode:'forwards' }}>
         <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:20, paddingBottom:16, borderBottom:'1.5px solid #F1F5F9' }}>
           <div style={{ display:'flex', alignItems:'center', gap:8 }}>
             <div style={{ width:4, height:20, background:'linear-gradient(180deg,#00153D,#3B82F6)', borderRadius:2 }}/>
@@ -755,7 +972,26 @@ export default function ProfDashboard() {
               ))}
           </div>
         )}
-      </div>
+      </div>}
+
+      {/* ── SECTION GAINS ── */}
+      {activeTab === 'gains' && (
+        <div style={{ animation:'fadeUp3 .5s .1s ease both', opacity:0, animationFillMode:'forwards' }}>
+          {/* Barre de navigation avec bouton retour */}
+          <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:20 }}>
+            <button
+              onClick={() => setActiveTab('all')}
+              style={{ display:'flex', alignItems:'center', gap:7, padding:'8px 16px', background:'#F8FAFC', border:'1.5px solid #E2E8F0', borderRadius:12, cursor:'pointer', fontFamily:"'Cabinet Grotesk',sans-serif", fontWeight:700, fontSize:'.82rem', color:'#64748B', transition:'all .18s' }}
+              onMouseEnter={e => { e.currentTarget.style.background='#EFF6FF'; e.currentTarget.style.borderColor='#BFDBFE'; e.currentTarget.style.color='#1D4ED8'; }}
+              onMouseLeave={e => { e.currentTarget.style.background='#F8FAFC'; e.currentTarget.style.borderColor='#E2E8F0'; e.currentTarget.style.color='#64748B'; }}>
+              ← Retour aux réservations
+            </button>
+            <div style={{ width:4, height:22, background:'linear-gradient(180deg,#065F46,#10B981)', borderRadius:2 }}/>
+            <h2 style={{ fontFamily:'Cabinet Grotesk,sans-serif', fontWeight:900, fontSize:'1.2rem', color:'#0F172A', margin:0 }}>💰 Gestion des gains</h2>
+          </div>
+          <GainsSection reservations={reservations}/>
+        </div>
+      )}
 
       {selectedResa && (
         <ReservationModal reservation={selectedResa} onClose={() => setSelectedResa(null)}

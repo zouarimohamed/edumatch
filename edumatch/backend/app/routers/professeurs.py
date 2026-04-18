@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
 from sqlalchemy.orm import Session
-from sqlalchemy import func
+from sqlalchemy import func, text
 from typing import List
 import os
 import shutil
@@ -157,8 +157,56 @@ def get_my_disponibilites(
             "actif":            d.actif,
             "mode_seance":      d.mode_seance or "presentiel",
             "description":      d.description or None,
+            "niveau_id":        getattr(d, "niveau_id", None),
+            "niveau_nom":       d.niveau.nom if getattr(d, "niveau", None) else None,
         }
         for d in dispos
+    ]
+
+
+# ── GET /me/niveaux ─────────────────────────────────────────────
+# IMPORTANT : doit être avant /{prof_id} pour ne pas être capturé
+@router.get("/me/niveaux")
+def get_my_niveaux(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Retourne les niveaux des matières enseignées par le prof connecté."""
+    prof = db.query(Professeur).filter(Professeur.user_id == current_user.id).first()
+    if not prof:
+        return []
+    niveaux = db.execute(text("""
+        SELECT DISTINCT niv.id, niv.nom, dom.nom AS domaine
+        FROM prof_matiere_tarif pmt
+        JOIN matieres m ON m.id = pmt.matiere_id
+        JOIN niveaux niv ON niv.id = m.niveau_id
+        JOIN domaines dom ON dom.id = niv.domaine_id
+        WHERE pmt.prof_id = :prof_id
+        ORDER BY dom.nom, niv.nom
+    """), {"prof_id": prof.id}).fetchall()
+    return [{"id": n.id, "nom": n.nom, "domaine": n.domaine} for n in niveaux]
+
+
+# ── GET /me/demandes-matieres ────────────────────────────────────
+@router.get("/me/demandes-matieres")
+def get_mes_demandes(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_professeur)
+):
+    prof = db.query(Professeur).filter(Professeur.user_id == current_user.id).first()
+    demandes = db.query(DemandeMatiere).filter(
+        DemandeMatiere.prof_id == prof.id
+    ).order_by(DemandeMatiere.created_at.desc()).all()
+    return [
+        {
+            "id":          d.id,
+            "nom_matiere": d.nom_matiere,
+            "niveau_id":   d.niveau_id,
+            "nom_niveau":  d.niveau.nom if d.niveau else "—",
+            "statut":      d.statut,
+            "created_at":  d.created_at,
+        }
+        for d in demandes
     ]
 
 
@@ -179,7 +227,8 @@ def add_disponibilite(
         nb_inscrits=0,
         actif=True,
         mode_seance=data.mode_seance or "presentiel",
-        description=getattr(data, 'description', None),
+        description=getattr(data, "description", None),
+        niveau_id=getattr(data, "niveau_id", None),
     )
     db.add(new_dispo)
     db.commit()
@@ -202,94 +251,6 @@ def delete_disponibilite(
     if dispo:
         dispo.actif = False
         db.commit()
-    return {"message": "ok"}
-
-
-# ── GET / — liste tous les profs validés ─────────────────────────
-@router.get("/")
-def list_profs(db: Session = Depends(get_db)):
-    profs = db.query(Professeur).filter(
-        Professeur.statut_validation == "validé"
-    ).all()
-    return [prof_to_out(p) for p in profs]
-
-
-# ── GET /{prof_id} — profil public d'un prof ────────────────────
-@router.get("/{prof_id}")
-def get_prof_by_id(prof_id: int, db: Session = Depends(get_db)):
-    """
-    Retourne le profil public d'un professeur validé par son ID.
-    Utilisé par :
-    - La page Favoris pour enrichir les données des profs sauvegardés
-    - Le ProfModal pour recharger des données fraîches
-    """
-    prof = db.query(Professeur).filter(
-        Professeur.id == prof_id,
-        Professeur.statut_validation == "validé",
-    ).first()
-    if not prof:
-        raise HTTPException(404, "Professeur introuvable ou non validé")
-    return prof_to_out(prof)
-
-
-# ── GET /{prof_id}/disponibilites — dispos publiques ─────────────
-@router.get("/{prof_id}/disponibilites")
-def get_prof_disponibilites(prof_id: int, db: Session = Depends(get_db)):
-    """Route publique — liste les disponibilités actives d'un prof."""
-    dispos = db.query(Disponibilite).filter(
-        Disponibilite.prof_id == prof_id,
-        Disponibilite.actif == True,
-    ).order_by(Disponibilite.date_specifique).all()
-    return [
-        {
-            "id":               d.id,
-            "date_specifique":  d.date_specifique.strftime("%Y-%m-%d") if d.date_specifique else None,
-            "heure_debut":      d.heure_debut.strftime("%H:%M") if d.heure_debut else None,
-            "heure_fin":        d.heure_fin.strftime("%H:%M")   if d.heure_fin   else None,
-            "nb_max_etudiants": d.nb_max_etudiants,
-            "nb_inscrits":      d.nb_inscrits,
-            "mode_seance":      d.mode_seance or "presentiel",
-            "actif":            d.actif,
-            "description":      d.description or None,
-        }
-        for d in dispos
-    ]
-
-
-# ── POST /me/photo ───────────────────────────────────────────────
-@router.post("/me/photo")
-async def upload_photo(
-    file: UploadFile = File(...),
-    db: Session = Depends(get_db),
-    current_user: User = Depends(require_professeur)
-):
-    prof = db.query(Professeur).filter(Professeur.user_id == current_user.id).first()
-    ext = os.path.splitext(file.filename)[1]
-    file_path = f"static/uploads/profiles/avatar_{prof.id}{ext}"
-    os.makedirs("static/uploads/profiles", exist_ok=True)
-    with open(file_path, "wb") as buffer:
-        shutil.copyfileobj(file.file, buffer)
-    prof.photo_url = f"/{file_path}"
-    db.commit()
-    return {"url": prof.photo_url}
-
-
-# ── POST /me/certificats ─────────────────────────────────────────
-@router.post("/me/certificats")
-async def add_certificat(
-    titre: str = Form(...),
-    file: UploadFile = File(...),
-    db: Session = Depends(get_db),
-    current_user: User = Depends(require_professeur)
-):
-    prof = db.query(Professeur).filter(Professeur.user_id == current_user.id).first()
-    ext = os.path.splitext(file.filename)[1]
-    file_path = f"static/uploads/certificats/cert_{prof.id}_{os.urandom(2).hex()}{ext}"
-    os.makedirs("static/uploads/certificats", exist_ok=True)
-    with open(file_path, "wb") as buffer:
-        shutil.copyfileobj(file.file, buffer)
-    db.add(Certificat(prof_id=prof.id, titre=titre, fichier_url=f"/{file_path}"))
-    db.commit()
     return {"message": "ok"}
 
 
@@ -340,30 +301,7 @@ def demander_matiere(
     return {"message": "Demande envoyée à l'administrateur", "id": demande.id}
 
 
-# ── GET /me/demandes-matieres ────────────────────────────────────
-@router.get("/me/demandes-matieres")
-def get_mes_demandes(
-    db: Session = Depends(get_db),
-    current_user: User = Depends(require_professeur)
-):
-    prof = db.query(Professeur).filter(Professeur.user_id == current_user.id).first()
-    demandes = db.query(DemandeMatiere).filter(
-        DemandeMatiere.prof_id == prof.id
-    ).order_by(DemandeMatiere.created_at.desc()).all()
-    return [
-        {
-            "id":          d.id,
-            "nom_matiere": d.nom_matiere,
-            "niveau_id":   d.niveau_id,
-            "nom_niveau":  d.niveau.nom if d.niveau else "—",
-            "statut":      d.statut,
-            "created_at":  d.created_at,
-        }
-        for d in demandes
-    ]
-
-
-# ── DELETE /me/demandes-matieres/{demande_id} — Prof ignore/supprime sa demande ──
+# ── DELETE /me/demandes-matieres/{demande_id} ────────────────────
 @router.delete("/me/demandes-matieres/{demande_id}")
 def supprimer_demande(
     demande_id: int,
@@ -380,3 +318,84 @@ def supprimer_demande(
     db.delete(demande)
     db.commit()
     return {"message": "Demande supprimée"}
+
+
+# ── POST /me/photo ───────────────────────────────────────────────
+@router.post("/me/photo")
+async def upload_photo(
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_professeur)
+):
+    prof = db.query(Professeur).filter(Professeur.user_id == current_user.id).first()
+    ext = os.path.splitext(file.filename)[1]
+    file_path = f"static/uploads/profiles/avatar_{prof.id}{ext}"
+    os.makedirs("static/uploads/profiles", exist_ok=True)
+    with open(file_path, "wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+    prof.photo_url = f"/{file_path}"
+    db.commit()
+    return {"url": prof.photo_url}
+
+
+# ── POST /me/certificats ─────────────────────────────────────────
+@router.post("/me/certificats")
+async def add_certificat(
+    titre: str = Form(...),
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_professeur)
+):
+    prof = db.query(Professeur).filter(Professeur.user_id == current_user.id).first()
+    ext = os.path.splitext(file.filename)[1]
+    file_path = f"static/uploads/certificats/cert_{prof.id}_{os.urandom(2).hex()}{ext}"
+    os.makedirs("static/uploads/certificats", exist_ok=True)
+    with open(file_path, "wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+    db.add(Certificat(prof_id=prof.id, titre=titre, fichier_url=f"/{file_path}"))
+    db.commit()
+    return {"message": "ok"}
+
+
+# ── GET / — liste tous les profs validés ─────────────────────────
+@router.get("/")
+def list_profs(db: Session = Depends(get_db)):
+    profs = db.query(Professeur).filter(
+        Professeur.statut_validation == "validé"
+    ).all()
+    return [prof_to_out(p) for p in profs]
+
+
+# ── GET /{prof_id} — profil public d'un prof ────────────────────
+@router.get("/{prof_id}")
+def get_prof_by_id(prof_id: int, db: Session = Depends(get_db)):
+    prof = db.query(Professeur).filter(
+        Professeur.id == prof_id,
+        Professeur.statut_validation == "validé",
+    ).first()
+    if not prof:
+        raise HTTPException(404, "Professeur introuvable ou non validé")
+    return prof_to_out(prof)
+
+
+# ── GET /{prof_id}/disponibilites — dispos publiques ─────────────
+@router.get("/{prof_id}/disponibilites")
+def get_prof_disponibilites(prof_id: int, db: Session = Depends(get_db)):
+    dispos = db.query(Disponibilite).filter(
+        Disponibilite.prof_id == prof_id,
+        Disponibilite.actif == True,
+    ).order_by(Disponibilite.date_specifique).all()
+    return [
+        {
+            "id":               d.id,
+            "date_specifique":  d.date_specifique.strftime("%Y-%m-%d") if d.date_specifique else None,
+            "heure_debut":      d.heure_debut.strftime("%H:%M") if d.heure_debut else None,
+            "heure_fin":        d.heure_fin.strftime("%H:%M")   if d.heure_fin   else None,
+            "nb_max_etudiants": d.nb_max_etudiants,
+            "nb_inscrits":      d.nb_inscrits,
+            "mode_seance":      d.mode_seance or "presentiel",
+            "actif":            d.actif,
+            "description":      d.description or None,
+        }
+        for d in dispos
+    ]

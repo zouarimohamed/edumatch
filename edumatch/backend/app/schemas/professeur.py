@@ -10,7 +10,8 @@ class DisponibiliteCreate(BaseModel):
     heure_fin: time
     nb_max_etudiants: int = 1
     mode_seance: Optional[str] = "presentiel"
-    description:      Optional[str] = None
+    description: Optional[str] = None
+    niveau_id:   Optional[int] = None          # ← AJOUTÉ
 
 class DisponibiliteOut(BaseModel):
     id: int
@@ -22,6 +23,7 @@ class DisponibiliteOut(BaseModel):
     nb_inscrits: int
     actif: bool
     mode_seance: Optional[str] = "presentiel"
+    niveau_id:   Optional[int] = None          # ← AJOUTÉ
     model_config = ConfigDict(from_attributes=True)
 
 class ProfMatiereTarifSchema(BaseModel):

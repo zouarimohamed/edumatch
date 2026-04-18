@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useMemo, useRef, useCallback } from 'react';
 import api from '../services/api';
+import FinancesTab from './FinancesTab';
 import { exportAdminProfs, exportAdminAnalytiques } from '../services/exportPDF';
 
 const CSS = `
@@ -623,7 +624,7 @@ function OverviewTab({ stats, allProfs, demandes, counts, onTabChange, onViewPro
   );
 }
 
-function AnalytiquesTab({ stats, allProfs, chartData }) {
+function AnalytiquesTab({ stats, allProfs, chartData, onTabChange }) {
   const [domainIdx,  setDomainIdx]  = useState(0);
   const [metric,     setMetric]     = useState('nb_profs');
   const [viewMode,   setViewMode]   = useState('matiere'); // 'matiere' | 'niveau'
@@ -671,10 +672,10 @@ function AnalytiquesTab({ stats, allProfs, chartData }) {
 
   // KPIs globaux analytiques
   const kpis = [
-    {icon:'📊', label:'Total réservations', val:totalResa,                                                                           color:'#3b82f6', bg:'#eff6ff'},
+    {icon:'📊', label:'Total réservations', val:totalResa||stats.total_reservations||0,                                              color:'#3b82f6', bg:'#eff6ff'},
     {icon:'📅', label:'Ce mois',            val:stats.reservations_mois||reservations_par_mois.at(-1)?.total||0,                     color:'#10b981', bg:'#ecfdf5'},
-    {icon:'✅', label:'Taux validation',    val:`${tauxValid}%`,                                                                     color:'#8b5cf6', bg:'#f5f3ff'},
-    {icon:'⏳', label:'En attente valid.',   val:statutData.find(s=>s.label==='En attente')?.val||0,                                  color:'#f59e0b', bg:'#fffbeb'},
+    {icon:'✅', label:'Taux validation',    val:tauxValid>0?`${tauxValid}%`:(stats.total_professeurs>0?`${Math.round(stats.total_professeurs/(stats.total_professeurs+(stats.en_attente||0)+(stats.refuses||0)||1)*100)}%`:'—'), color:'#8b5cf6', bg:'#f5f3ff'},
+    {icon:'⏳', label:'En attente valid.',   val:statutData.find(s=>s.label==='En attente')?.val||stats.en_attente||0,                color:'#f59e0b', bg:'#fffbeb'},
   ];
 
   // Composant Vue Niveau
@@ -690,7 +691,7 @@ function AnalytiquesTab({ stats, allProfs, chartData }) {
     return (
       <div style={{display:'flex',flexDirection:'column',gap:12}}>
         {niveauxDomActif.niveaux.map((niv, ni) => {
-          const isOpen = expandedNiv[ni] !== false;
+          const isOpen = expandedNiv[ni] === true;  // fermé par défaut, ouvert si cliqué
           const totalR = niv.total_resa || niv.matieres.reduce((a,m)=>a+(m.nb_resa||0),0);
           const totalP2 = niv.total_profs || niv.matieres.reduce((a,m)=>a+(m.nb_profs||0),0);
           const hasActivity = totalR > 0 || totalP2 > 0;
@@ -810,8 +811,8 @@ function AnalytiquesTab({ stats, allProfs, chartData }) {
       {/* KPIs globaux */}
       <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:14}}>
         {kpis.map((k,i)=>(
-          <div key={i} className="adm-stat adm-scaleIn" style={{animationDelay:`${i*45}ms`}}>
-            <div className="adm-stat-accent" style={{background:k.color}}/>
+          <div key={i} className="adm-stat adm-scaleIn" style={{animationDelay:`${i*60}ms`}}>
+            <div className="adm-stat-accent" style={{background:k.color,animation:`adm-fadeUp .6s ${i*60}ms ease both`}}/>
             <div style={{width:40,height:40,borderRadius:12,background:k.bg,display:'flex',alignItems:'center',justifyContent:'center',fontSize:18,marginBottom:14}}>{k.icon}</div>
             <div style={{fontFamily:'Cabinet Grotesk,sans-serif',fontSize:28,fontWeight:900,color:k.color,lineHeight:1,marginBottom:5}}>{k.val}</div>
             <div style={{fontSize:12,color:'#94a3b8',fontWeight:500}}>{k.label}</div>
@@ -968,7 +969,7 @@ function AnalytiquesTab({ stats, allProfs, chartData }) {
       {/* Donuts */}
       <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:20}}>
         <div className="adm-chart-card">
-          <SectionTitle title="Modes d'enseignement" sub={`${modesF.reduce((a,b)=>a+(b.val||0),0)} formateurs`}/>
+          <SectionTitle title="Modes d'enseignement" sub={`${allProfs.filter(p=>p.statut_validation==='validé').length} formateurs validés`}/>
           {modesF.length>0
             ?<div className="adm-canvas-wrap"><ChartDoughnut data={modesF} colors={['#3b82f6','#10b981','#8b5cf6']}/></div>
             :<EmptyState icon="🌐" title="Aucun formateur validé"/>
@@ -981,14 +982,27 @@ function AnalytiquesTab({ stats, allProfs, chartData }) {
       </div>
 
       {/* ═══ Performance des formateurs ═══ */}
-      {performance_profs.length>0&&(
+      {performance_profs.length>0&&(()=>{
+        const [showAll, setShowAll] = React.useState(false);
+        const PREVIEW = 10;
+        const displayed = showAll ? performance_profs : performance_profs.slice(0, PREVIEW);
+        return (
         <div style={{background:'#fff',border:'1.5px solid #f1f5f9',borderRadius:24,padding:28,boxShadow:'0 2px 12px rgba(0,0,0,.04)'}}>
-          <div style={{display:'flex',alignItems:'center',gap:9,marginBottom:6}}>
-            <div style={{width:4,height:22,borderRadius:2,background:'linear-gradient(180deg,#f59e0b,#10b981)'}}/>
-            <h3 style={{fontFamily:'Cabinet Grotesk,sans-serif',fontWeight:900,fontSize:17,color:'#0F172A',margin:0}}>Performance des formateurs</h3>
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:6,flexWrap:'wrap',gap:10}}>
+            <div style={{display:'flex',alignItems:'center',gap:9}}>
+              <div style={{width:4,height:22,borderRadius:2,background:'linear-gradient(180deg,#f59e0b,#10b981)'}}/>
+              <h3 style={{fontFamily:'Cabinet Grotesk,sans-serif',fontWeight:900,fontSize:17,color:'#0F172A',margin:0}}>Performance des formateurs</h3>
+            </div>
+            <button
+              onClick={()=>setShowAll(v=>!v)}
+              style={{display:'flex',alignItems:'center',gap:6,padding:'8px 16px',background:'linear-gradient(135deg,#f59e0b22,#10b98122)',color:'#b45309',border:'1.5px solid #fcd34d',borderRadius:10,cursor:'pointer',fontFamily:"'Cabinet Grotesk',sans-serif",fontWeight:800,fontSize:12,transition:'all .18s'}}
+              onMouseEnter={e=>{e.currentTarget.style.background='linear-gradient(135deg,#f59e0b,#10b981)';e.currentTarget.style.color='#fff';e.currentTarget.style.borderColor='transparent';}}
+              onMouseLeave={e=>{e.currentTarget.style.background='linear-gradient(135deg,#f59e0b22,#10b98122)';e.currentTarget.style.color='#b45309';e.currentTarget.style.borderColor='#fcd34d';}}>
+              {showAll ? `▲ Réduire` : `👁 Voir tout (${performance_profs.length})`}
+            </button>
           </div>
           <div style={{fontSize:13,color:'#94a3b8',paddingLeft:13,marginBottom:22}}>
-            Classement par note et activité · {performance_profs.length} formateur{performance_profs.length>1?'s':''}
+            {showAll ? `${performance_profs.length} formateurs` : `Top ${PREVIEW} sur ${performance_profs.length}`} · classement par note et activité
           </div>
 
           <div style={{overflowX:'auto',borderRadius:16,border:'1.5px solid #f1f5f9'}}>
@@ -1001,7 +1015,7 @@ function AnalytiquesTab({ stats, allProfs, chartData }) {
                 </tr>
               </thead>
               <tbody>
-                {performance_profs.map((p,i)=>{
+                {displayed.map((p,i)=>{
                   const medal = i===0?'🥇':i===1?'🥈':i===2?'🥉':null;
                   const initials = p.nom.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);
                   const pals=[['#00153D','#1E3A8A'],['#065F46','#047857'],['#4C1D95','#6D28D9'],['#7C2D12','#B45309']];
@@ -1010,7 +1024,7 @@ function AnalytiquesTab({ stats, allProfs, chartData }) {
 
                   return (
                     <tr key={p.id}
-                      style={{borderBottom:i<performance_profs.length-1?'1px solid #f1f5f9':'none',transition:'background .12s'}}
+                      style={{borderBottom:i<displayed.length-1?'1px solid #f1f5f9':'none',transition:'background .12s'}}
                       onMouseEnter={e=>e.currentTarget.style.background='#f8fafc'}
                       onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
                       {/* Rang */}
@@ -1080,17 +1094,145 @@ function AnalytiquesTab({ stats, allProfs, chartData }) {
             </table>
           </div>
 
-          {/* Légende */}
-          <div style={{marginTop:14,paddingTop:12,borderTop:'1px solid #f1f5f9',display:'flex',gap:18,flexWrap:'wrap',fontSize:12,color:'#64748b'}}>
-            <div style={{display:'flex',alignItems:'center',gap:6}}><span style={{color:'#059669',fontWeight:700}}>≥70%</span> Excellent taux de confirmation</div>
-            <div style={{display:'flex',alignItems:'center',gap:6}}><span style={{color:'#d97706',fontWeight:700}}>40–70%</span> Taux moyen</div>
+          {/* Légende + bouton voir plus/moins */}
+          <div style={{marginTop:14,paddingTop:12,borderTop:'1px solid #f1f5f9',display:'flex',gap:14,flexWrap:'wrap',fontSize:12,color:'#64748b',alignItems:'center'}}>
+            <div style={{display:'flex',alignItems:'center',gap:6}}><span style={{color:'#059669',fontWeight:700}}>≥70%</span> Excellent</div>
+            <div style={{display:'flex',alignItems:'center',gap:6}}><span style={{color:'#d97706',fontWeight:700}}>40–70%</span> Moyen</div>
             <div style={{display:'flex',alignItems:'center',gap:6}}><span style={{color:'#dc2626',fontWeight:700}}>&lt;40%</span> À améliorer</div>
+            {performance_profs.length > PREVIEW && (
+              <button
+                onClick={()=>setShowAll(v=>!v)}
+                style={{marginLeft:'auto',display:'flex',alignItems:'center',gap:6,padding:'7px 16px',background:showAll?'#f8fafc':'linear-gradient(135deg,#f59e0b,#10b981)',color:showAll?'#64748b':'#fff',border:showAll?'1.5px solid #e2e8f0':'none',borderRadius:10,cursor:'pointer',fontFamily:"'Cabinet Grotesk',sans-serif",fontWeight:800,fontSize:12,transition:'all .2s',boxShadow:showAll?'none':'0 3px 12px rgba(245,158,11,0.3)'}}>
+                {showAll ? '▲ Réduire la liste' : `👁 Voir les ${performance_profs.length - PREVIEW} formateurs restants`}
+              </button>
+            )}
           </div>
         </div>
-      )}
+        );
+      })()}
+
+            {/* ═══ Top matières demandées par les profs ═══ */}
+      {(()=>{
+        const demandesStats = chartData.demandes_stats || [];
+        if(!demandesStats.length) return null;
+        const total = demandesStats.reduce((a,d)=>a+(d.nb||0),0);
+        const approuvees = demandesStats.find(d=>d.statut==='approuvé')?.nb||0;
+        const enAttente  = demandesStats.find(d=>d.statut==='en_attente')?.nb||0;
+        const refusees   = demandesStats.find(d=>d.statut==='refusé')?.nb||0;
+        const tauxAppro  = total>0?Math.round(approuvees/total*100):0;
+        const COLORS = {'approuvé':'#10B981','en_attente':'#F59E0B','refusé':'#EF4444'};
+        const LABELS = {'approuvé':'Approuvées','en_attente':'En attente','refusé':'Refusées'};
+        const ICONS  = {'approuvé':'✅','en_attente':'⏳','refusé':'❌'};
+
+        const DonutDemandes = () => {
+          const [anim, setAnim] = React.useState(false);
+          React.useEffect(()=>{ const t=setTimeout(()=>setAnim(true),400); return()=>clearTimeout(t); },[]);
+          const r=54, cx=70, cy=70, circ=2*Math.PI*r;
+          let cum=0;
+          return (
+            <div style={{position:'relative',width:140,height:140,flexShrink:0}}>
+              <svg width={140} height={140} style={{transform:'rotate(-90deg)'}}>
+                <circle cx={cx} cy={cy} r={r} fill="none" stroke="#F1F5F9" strokeWidth={14}/>
+                {demandesStats.map((d,i)=>{
+                  const pct=total>0?d.nb/total:0;
+                  const color=COLORS[d.statut]||'#94A3B8';
+                  const dash=anim?`${pct*circ} ${circ}`:`0 ${circ}`;
+                  const rot=-90+(cum/Math.max(total,1))*360;
+                  cum+=d.nb;
+                  return <circle key={i} cx={cx} cy={cy} r={r} fill="none"
+                    stroke={color} strokeWidth={14} strokeLinecap="round"
+                    strokeDasharray={dash}
+                    style={{transformOrigin:`${cx}px ${cy}px`,transform:`rotate(${rot}deg)`,
+                      transition:`stroke-dasharray 1.2s cubic-bezier(.22,1,.36,1) ${i*0.15}s`}}/>;
+                })}
+              </svg>
+              <div style={{position:'absolute',inset:0,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center'}}>
+                <div style={{fontFamily:'Cabinet Grotesk,sans-serif',fontWeight:900,fontSize:'1.5rem',color:'#10B981',lineHeight:1}}>{tauxAppro}%</div>
+                <div style={{fontSize:'.58rem',color:'#94A3B8',fontWeight:700,marginTop:2,textTransform:'uppercase',letterSpacing:'.05em'}}>approuvées</div>
+              </div>
+            </div>
+          );
+        };
+
+        return (
+          <div style={{background:'#fff',border:'1.5px solid #f1f5f9',borderRadius:24,padding:28,boxShadow:'0 2px 12px rgba(0,0,0,.04)'}}>
+            <div style={{display:'flex',alignItems:'center',gap:9,marginBottom:22}}>
+              <div style={{width:4,height:22,borderRadius:2,background:'linear-gradient(180deg,#4F46E5,#818CF8)'}}/>
+              <h3 style={{fontFamily:'Cabinet Grotesk,sans-serif',fontWeight:900,fontSize:17,color:'#0F172A',margin:0}}>📚 Analyse des demandes de matières</h3>
+              <span style={{fontSize:12,color:'#94a3b8',marginLeft:4}}>{total} demande{total!==1?'s':''} au total</span>
+            </div>
+
+            {/* KPIs */}
+            <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:12,marginBottom:22}}>
+              {[
+                {icon:'⏳',label:'En attente', val:enAttente,  color:'#B45309',bg:'#FFFBEB',border:'#FCD34D'},
+                {icon:'✅',label:'Approuvées', val:approuvees,  color:'#065F46',bg:'#ECFDF5',border:'#6EE7B7'},
+                {icon:'❌',label:'Refusées',   val:refusees,    color:'#991B1B',bg:'#FEF2F2',border:'#FCA5A5'},
+              ].map((k,i)=>(
+                <div key={i} style={{background:k.bg,border:`1.5px solid ${k.border}`,borderRadius:16,padding:'14px 16px',display:'flex',alignItems:'center',gap:12,
+                  transition:'all .2s'}}
+                  onMouseEnter={e=>{e.currentTarget.style.transform='translateY(-2px)';e.currentTarget.style.boxShadow=`0 8px 20px rgba(0,0,0,0.07)`;}}
+                  onMouseLeave={e=>{e.currentTarget.style.transform='none';e.currentTarget.style.boxShadow='none';}}>
+                  <div style={{width:40,height:40,borderRadius:12,background:'rgba(255,255,255,0.6)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'1.1rem',flexShrink:0}}>{k.icon}</div>
+                  <div>
+                    <div style={{fontFamily:'Cabinet Grotesk,sans-serif',fontWeight:900,fontSize:'1.5rem',color:k.color,lineHeight:1}}>{k.val}</div>
+                    <div style={{fontSize:'.68rem',color:k.color,opacity:.7,fontWeight:700,textTransform:'uppercase',letterSpacing:'.06em',marginTop:2}}>{k.label}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Donut + barres */}
+            <div style={{display:'grid',gridTemplateColumns:'140px 1fr',gap:28,alignItems:'center'}}>
+              <DonutDemandes/>
+              <div style={{display:'flex',flexDirection:'column',gap:14}}>
+                {demandesStats.map((d,i)=>{
+                  const color=COLORS[d.statut]||'#94A3B8';
+                  return (
+                    <div key={i}>
+                      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:5}}>
+                        <span style={{display:'inline-flex',alignItems:'center',gap:7,fontSize:'.83rem',fontWeight:700,color:'#0F172A'}}>
+                          <span style={{width:10,height:10,borderRadius:'50%',background:color,display:'inline-block',flexShrink:0}}/>
+                          {ICONS[d.statut]} {LABELS[d.statut]||d.statut}
+                        </span>
+                        <div style={{display:'flex',alignItems:'center',gap:10}}>
+                          <span style={{fontFamily:'Cabinet Grotesk,sans-serif',fontWeight:900,fontSize:'.95rem',color}}>{d.pct}%</span>
+                          <span style={{fontSize:'.72rem',color:'#94A3B8',fontWeight:600}}>{d.nb} demande{d.nb!==1?'s':''}</span>
+                        </div>
+                      </div>
+                      <div style={{height:10,background:'#F1F5F9',borderRadius:6,overflow:'hidden'}}>
+                        <div style={{height:'100%',borderRadius:6,background:color,width:`${d.pct}%`,transition:'width 1.3s cubic-bezier(.22,1,.36,1) .3s'}}/>
+                      </div>
+                    </div>
+                  );
+                })}
+                <div style={{marginTop:4,padding:'11px 16px',background:'#ECFDF5',border:'1.5px solid #6EE7B7',borderRadius:14,display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+                  <span style={{fontSize:'.82rem',fontWeight:700,color:'#065F46'}}>🎯 Taux d'approbation global</span>
+                  <span style={{fontFamily:'Cabinet Grotesk,sans-serif',fontWeight:900,fontSize:'1.05rem',color:'#065F46'}}>{tauxAppro}%</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* ═══ Entonnoir de conversion ═══ */}
       {entonnoir.etudiants_inscrits>0&&(
+        <EntonnierBlock entonnoir={entonnoir}/>
+      )}
+    </div>
+  );
+}
+
+// Composant séparé pour déclencher les animations après montage
+function EntonnierBlock({ entonnoir }) {
+  const [animated, setAnimated] = React.useState(false);
+  React.useEffect(() => {
+    const t = setTimeout(() => setAnimated(true), 100);
+    return () => clearTimeout(t);
+  }, []);
+
+  return (
         <div style={{background:'#fff',border:'1.5px solid #f1f5f9',borderRadius:24,padding:28,boxShadow:'0 2px 12px rgba(0,0,0,.04)'}}>
           <div style={{display:'flex',alignItems:'center',gap:9,marginBottom:6}}>
             <div style={{width:4,height:22,borderRadius:2,background:'linear-gradient(180deg,#f59e0b,#ef4444)'}}/>
@@ -1151,9 +1293,9 @@ function AnalytiquesTab({ stats, allProfs, chartData }) {
                     {step.pct!==null&&(
                       <div style={{
                         position:'absolute',bottom:0,left:0,right:0,
-                        height:`${step.pct}%`,
+                        height:animated?`${step.pct}%`:'0%',
                         background:`${step.color}12`,
-                        transition:'height .8s ease',
+                        transition:'height 1.2s cubic-bezier(.22,1,.36,1)',
                         maxHeight:'100%'
                       }}/>
                     )}
@@ -1216,8 +1358,8 @@ function AnalytiquesTab({ stats, allProfs, chartData }) {
                     <span style={{fontFamily:'Cabinet Grotesk,sans-serif',fontWeight:900,fontSize:20,color:m.color}}>{m.val}</span>
                     <span style={{fontSize:14}}>{m.good?'✅':'⚠️'}</span>
                   </div>
-                  <div style={{height:4,background:'#f1f5f9',borderRadius:2,overflow:'hidden'}}>
-                    <div style={{height:'100%',background:m.color,borderRadius:2,width:m.val,transition:'width .8s ease'}}/>
+                  <div style={{height:6,background:'#f1f5f9',borderRadius:3,overflow:'hidden',marginTop:6}}>
+                    <div style={{height:'100%',background:m.color,borderRadius:3,width:animated?m.val:'0%',transition:'width 1.4s cubic-bezier(.22,1,.36,1)'}}/>
                   </div>
                   <div style={{fontSize:10,color:'#94a3b8',marginTop:4,fontStyle:'italic'}}>{m.sub}</div>
                 </div>
@@ -1225,8 +1367,6 @@ function AnalytiquesTab({ stats, allProfs, chartData }) {
             </div>
           </div>
         </div>
-      )}
-    </div>
   );
 }
 
@@ -1406,13 +1546,67 @@ function DemandesTab({ demandes, onApprouver, onRefuser }) {
   return(
     <div style={{display:'flex',flexDirection:'column',gap:20}}>
       <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:14}}>
-        {[{label:'En attente',count:pending.length,color:'#f59e0b',border:'#fcd34d'},{label:'Approuvées',count:demandes.filter(d=>d.statut==='approuvé').length,color:'#10b981',border:'#6ee7b7'},{label:'Refusées',count:demandes.filter(d=>d.statut==='refusé').length,color:'#ef4444',border:'#fca5a5'}].map(s=><div key={s.label} className="adm-stat adm-scaleIn" style={{borderColor:s.border}}><div className="adm-stat-accent" style={{background:s.color}}/><div style={{fontFamily:'Cabinet Grotesk,sans-serif',fontSize:34,fontWeight:900,color:s.color,lineHeight:1,marginBottom:6}}>{s.count}</div><div style={{fontSize:12,color:'#94a3b8',fontWeight:500}}>{s.label}</div></div>)}
+        {[
+          {label:'En attente', count:pending.length,                                      color:'#B45309',bg:'#FFFBEB',border:'#FCD34D',icon:'⏳',shadow:'rgba(245,158,11,0.2)'},
+          {label:'Approuvées', count:demandes.filter(d=>d.statut==='approuvé').length,    color:'#065F46',bg:'#ECFDF5',border:'#6EE7B7',icon:'✅',shadow:'rgba(16,185,129,0.2)'},
+          {label:'Refusées',   count:demandes.filter(d=>d.statut==='refusé').length,      color:'#991B1B',bg:'#FEF2F2',border:'#FCA5A5',icon:'❌',shadow:'rgba(239,68,68,0.2)'},
+        ].map((s,i)=>(
+          <div key={s.label} style={{
+            background:s.bg, border:`1.5px solid ${s.border}`,
+            borderRadius:20, padding:'22px 24px',
+            display:'flex', alignItems:'center', gap:16,
+            boxShadow:`0 2px 12px ${s.shadow}`,
+            transition:'all .22s cubic-bezier(.22,1,.36,1)',
+            animationDelay:`${i*60}ms`, animation:'adm-scaleIn .45s cubic-bezier(.22,1,.36,1) both',
+            cursor:'default'
+          }}
+            onMouseEnter={e=>{e.currentTarget.style.transform='translateY(-4px)';e.currentTarget.style.boxShadow=`0 12px 32px ${s.shadow}`;}}
+            onMouseLeave={e=>{e.currentTarget.style.transform='none';e.currentTarget.style.boxShadow=`0 2px 12px ${s.shadow}`;}}>
+            <div style={{width:52,height:52,borderRadius:16,background:'rgba(255,255,255,0.6)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'1.4rem',flexShrink:0,boxShadow:'0 2px 8px rgba(0,0,0,0.06)'}}>{s.icon}</div>
+            <div>
+              <div style={{fontFamily:'Cabinet Grotesk,sans-serif',fontSize:'2.2rem',fontWeight:900,color:s.color,lineHeight:1,marginBottom:4}}>{s.count}</div>
+              <div style={{fontSize:'.72rem',color:s.color,opacity:.7,fontWeight:800,textTransform:'uppercase',letterSpacing:'.08em'}}>{s.label}</div>
+            </div>
+          </div>
+        ))}
       </div>
       {pending.length>0?(
         <div className="adm-card" style={{padding:22}}>
           <SectionTitle title="Demandes en attente" sub="A traiter en priorite"/>
           <div style={{display:'flex',flexDirection:'column',gap:10}}>
-            {pending.map(d=><div key={d.id} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'14px 18px',background:'#fffbeb',border:'1.5px solid #fcd34d',borderRadius:14,transition:'all .15s'}} onMouseEnter={e=>e.currentTarget.style.background='#fef3c7'} onMouseLeave={e=>e.currentTarget.style.background='#fffbeb'}><div><div style={{fontFamily:'Cabinet Grotesk,sans-serif',fontWeight:800,fontSize:14,color:'#0F172A',marginBottom:5}}>{d.nom_matiere}</div><div style={{display:'flex',gap:14,fontSize:12,color:'#94a3b8'}}><span>{d.nom_niveau}</span><span>{d.prof_nom}</span><span>{new Date(d.created_at).toLocaleDateString('fr-FR')}</span></div></div><div style={{display:'flex',gap:8}}><button className="adm-btn adm-btn-success" onClick={()=>onApprouver(d.id)}>Approuver</button><button className="adm-btn adm-btn-danger" onClick={()=>onRefuser(d.id)}>Refuser</button></div></div>)}
+            {pending.map(d=>(
+                <div key={d.id} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'16px 20px',background:'#fffbeb',border:'1.5px solid #fcd34d',borderRadius:16,transition:'all .2s',cursor:'default'}}
+                  onMouseEnter={e=>{e.currentTarget.style.background='#fef3c7';e.currentTarget.style.transform='translateX(3px)';e.currentTarget.style.boxShadow='0 4px 16px rgba(245,158,11,0.15)';}}
+                  onMouseLeave={e=>{e.currentTarget.style.background='#fffbeb';e.currentTarget.style.transform='none';e.currentTarget.style.boxShadow='none';}}>
+                  <div style={{display:'flex',alignItems:'center',gap:14}}>
+                    <div style={{width:42,height:42,borderRadius:12,background:'#FEF3C7',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'1.1rem',flexShrink:0}}>📚</div>
+                    <div>
+                      <div style={{fontFamily:'Cabinet Grotesk,sans-serif',fontWeight:800,fontSize:14,color:'#0F172A',marginBottom:4}}>{d.nom_matiere}</div>
+                      <div style={{display:'flex',gap:12,fontSize:12,color:'#94a3b8',alignItems:'center',flexWrap:'wrap'}}>
+                        <span style={{background:'#FEF3C7',color:'#B45309',padding:'2px 8px',borderRadius:8,fontWeight:700,fontSize:11}}>🎓 {d.nom_niveau}</span>
+                        <span>👨‍🏫 {d.prof_nom}</span>
+                        <span>📅 {new Date(d.created_at).toLocaleDateString('fr-FR')}</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div style={{display:'flex',gap:8,flexShrink:0}}>
+                    <button
+                      onClick={()=>onApprouver(d.id)}
+                      style={{display:'flex',alignItems:'center',gap:6,padding:'9px 18px',background:'#10B981',color:'#fff',border:'none',borderRadius:10,cursor:'pointer',fontFamily:"'Cabinet Grotesk',sans-serif",fontWeight:800,fontSize:13,boxShadow:'0 3px 10px rgba(16,185,129,0.25)',transition:'all .18s'}}
+                      onMouseEnter={e=>{e.currentTarget.style.background='#059669';e.currentTarget.style.transform='translateY(-1px)';e.currentTarget.style.boxShadow='0 6px 18px rgba(16,185,129,0.35)';}}
+                      onMouseLeave={e=>{e.currentTarget.style.background='#10B981';e.currentTarget.style.transform='none';e.currentTarget.style.boxShadow='0 3px 10px rgba(16,185,129,0.25)';}}>
+                      ✅ Approuver
+                    </button>
+                    <button
+                      onClick={()=>onRefuser(d.id)}
+                      style={{display:'flex',alignItems:'center',gap:6,padding:'9px 18px',background:'#FEF2F2',color:'#DC2626',border:'1.5px solid #FCA5A5',borderRadius:10,cursor:'pointer',fontFamily:"'Cabinet Grotesk',sans-serif",fontWeight:800,fontSize:13,transition:'all .18s'}}
+                      onMouseEnter={e=>{e.currentTarget.style.background='#FEE2E2';e.currentTarget.style.transform='translateY(-1px)';e.currentTarget.style.boxShadow='0 4px 12px rgba(220,38,38,0.15)';}}
+                      onMouseLeave={e=>{e.currentTarget.style.background='#FEF2F2';e.currentTarget.style.transform='none';e.currentTarget.style.boxShadow='none';}}>
+                      ❌ Refuser
+                    </button>
+                  </div>
+                </div>
+              ))}
           </div>
         </div>
       ):<div className="adm-card" style={{padding:32,textAlign:'center'}}><EmptyState icon="v" title="Aucune demande en attente" sub="Toutes les demandes ont ete traitees"/></div>}
@@ -1518,7 +1712,7 @@ function ReferentielTab({ structure, villes, onReload }) {
   );
 }
 
-const TABS = [{k:'overview',l:"Vue d'ensemble"},{k:'analytiques',l:'Analytiques'},{k:'profs',l:'Formateurs'},{k:'demandes',l:'Demandes'},{k:'referentiel',l:'Referentiel'}];
+const TABS = [{k:'overview',l:"Vue d'ensemble"},{k:'analytiques',l:'Analytiques'},{k:'profs',l:'Formateurs'},{k:'demandes',l:'Demandes'},{k:'referentiel',l:'Referentiel'},{k:'finances',l:'💳 Finances'}];
 
 export default function Admin() {
   const [tab,setTab]=useState('overview');
@@ -1533,17 +1727,29 @@ export default function Admin() {
   useEffect(()=>{injectCSS();loadAll();},[]);
   const loadAll=async()=>{
     setLoading(true);
+    const safe = (promise, fallback) => promise.catch(err => {
+      const status = err?.response?.status;
+      console.warn('[Admin] API error:', status, err?.config?.url);
+      // 401 = token expiré → recharger la page pour re-login
+      if (status === 401) { window.location.reload(); }
+      return { data: fallback };
+    });
     try{
       const[s,allP,struct,v,dem,cd]=await Promise.all([
-        api.get('/api/admin/stats'),
-        api.get('/api/admin/professeurs/all'),
-        api.get('/api/admin/referentiel/structure'),
-        api.get('/api/admin/referentiel/villes'),
-        api.get('/api/admin/demandes-matieres'),
-        api.get('/api/admin/stats/charts').catch(()=>({data:{}})),
+        safe(api.get('/api/admin/stats'),             {}),
+        safe(api.get('/api/admin/professeurs/all'),   []),
+        safe(api.get('/api/admin/referentiel/structure'), []),
+        safe(api.get('/api/admin/referentiel/villes'), []),
+        safe(api.get('/api/admin/demandes-matieres'), []),
+        safe(api.get('/api/admin/stats/charts'),      {}),
       ]);
-      setStats(s.data);setAllProfs(allP.data);setStructure(struct.data);setVilles(v.data);setDemandes(dem.data);setChartData(cd.data||{});
-    }catch(e){console.error(e);}finally{setLoading(false);}
+      setStats(s.data||{});
+      setAllProfs(Array.isArray(allP.data)?allP.data:[]);
+      setStructure(Array.isArray(struct.data)?struct.data:[]);
+      setVilles(Array.isArray(v.data)?v.data:[]);
+      setDemandes(Array.isArray(dem.data)?dem.data:[]);
+      setChartData(cd.data||{});
+    }catch(e){console.error('loadAll fatal error:',e);}finally{setLoading(false);}
   };
   const handleValider=async(id)=>{await api.put(`/api/admin/professeurs/${id}/valider`);alert('Professeur valide');loadAll();};
   const handleRefuser=async(id)=>{if(!window.confirm('Refuser ce professeur ?'))return;await api.put(`/api/admin/professeurs/${id}/refuser`);loadAll();};
@@ -1569,10 +1775,11 @@ export default function Admin() {
         {TABS.map(({k,l})=><button key={k} className={`adm-tab${tab===k?' active':''}`} onClick={()=>setTab(k)}>{l}{k==='demandes'&&demandesPending>0&&<span className="adm-tab-badge">{demandesPending}</span>}{k==='profs'&&counts.en_attente>0&&<span className="adm-tab-badge" style={{background:'#f59e0b'}}>{counts.en_attente}</span>}</button>)}
       </div>
       {tab==='overview'    &&<OverviewTab    stats={stats} allProfs={allProfs} demandes={demandes} counts={counts} onTabChange={setTab} onViewProf={p=>{setSelectedProf(p);}} chartData={chartData}/>}
-      {tab==='analytiques' &&<AnalytiquesTab stats={stats} allProfs={allProfs} chartData={chartData}/>}
+      {tab==='analytiques' &&<AnalytiquesTab stats={stats} allProfs={allProfs} chartData={chartData} onTabChange={setTab}/>}
       {tab==='profs'       &&<ProfsTab       allProfs={allProfs} structure={structure} onView={setSelectedProf} onValider={handleValider} onRefuser={handleRefuser}/>}
       {tab==='demandes'    &&<DemandesTab    demandes={demandes} onApprouver={handleApprouverDemande} onRefuser={handleRefuserDemande}/>}
       {tab==='referentiel' &&<ReferentielTab structure={structure} villes={villes} onReload={loadAll}/>}
+      {tab==='finances'    &&<FinancesTab/>}
       <ProfDrawer prof={selectedProf} onClose={()=>setSelectedProf(null)} onValider={handleValider} onRefuser={handleRefuser}/>
     </div>
   );

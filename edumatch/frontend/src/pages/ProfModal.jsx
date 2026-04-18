@@ -40,6 +40,12 @@ const CSS = `
   }
   .pm-cert-row:hover { border-color:#C7D2FE; background:#F0F4FF; }
 
+  .pm-contact-btn {
+    display:flex; align-items:center; gap:12px;
+    padding:12px 16px; border-radius:12px; text-decoration:none;
+    transition:all .18s; border:1.5px solid;
+  }
+
   .pm-mode-choice {
     padding:16px; border-radius:14px; cursor:pointer;
     border:1.5px solid #E2E8F0; background:#F8FAFC;
@@ -184,6 +190,10 @@ export default function ProfModal({ prof, onClose }) {
   const profNom = `${prof.user_prenom || ''} ${prof.user_nom || ''}`.trim() || 'Professeur';
   const profMode = prof.mode_enseignement || 'presentiel';
 
+  // Récupérer email depuis prof.user_email ou prof.email
+  const profEmail = prof.user_email || prof.email || null;
+  const profTel   = prof.telephone || null;
+
   const loadAvis = useCallback(() => {
     Promise.all([
       api.get(`/api/avis/professeur/${profId}`),
@@ -218,8 +228,8 @@ export default function ProfModal({ prof, onClose }) {
     return null;
   };
 
-  const needsModeChoice = profMode === 'les_deux' && (!selectedDispo?.mode_seance || selectedDispo.mode_seance === 'les_deux');
-  const canReserver     = selectedDispo && (!needsModeChoice || modeChoisi);
+  const needsModeChoice     = profMode === 'les_deux' && (!selectedDispo?.mode_seance || selectedDispo.mode_seance === 'les_deux');
+  const canReserver         = selectedDispo && (!needsModeChoice || modeChoisi);
 
   const handleReserver = () => {
     const modeEff = getModeEffectif();
@@ -272,7 +282,6 @@ export default function ProfModal({ prof, onClose }) {
               Vous serez notifié dès sa réponse.
             </p>
           </div>
-
           <div style={{ width: '100%', background: '#F8FAFC', borderRadius: 18, padding: 20, display: 'flex', flexDirection: 'column', gap: 10, border: '1.5px solid #F1F5F9', textAlign: 'left' }}>
             {[
               ['📆', 'Date',    fmt(reservationFaite.date_cours)],
@@ -291,7 +300,6 @@ export default function ProfModal({ prof, onClose }) {
               </div>
             )}
           </div>
-
           <div style={{ display: 'flex', gap: 10, width: '100%' }}>
             <button onClick={onClose} style={{ flex: 1, padding: '13px', background: '#F8FAFC', border: '1.5px solid #E2E8F0', borderRadius: 12, fontWeight: 600, cursor: 'pointer', color: '#64748B', fontFamily: 'Instrument Sans, sans-serif', transition: 'all .15s' }}
               onMouseEnter={e => e.currentTarget.style.background = '#F1F5F9'}
@@ -315,9 +323,8 @@ export default function ProfModal({ prof, onClose }) {
 
       {/* ── HERO ─────────────────────────────── */}
       <div style={{ flexShrink: 0 }}>
-        {/* Bandeau — hauteur réduite */}
+        {/* Bandeau */}
         <div style={{ height: 90, background: 'linear-gradient(135deg,#00153D 0%,#1E3A8A 55%,#2563EB 100%)', position: 'relative', overflow: 'hidden' }}>
-          {/* Décoration */}
           <div style={{ position: 'absolute', top: -40, right: -40, width: 200, height: 200, borderRadius: '50%', background: 'rgba(255,255,255,0.05)' }}/>
           <div style={{ position: 'absolute', bottom: -50, left: 80, width: 140, height: 140, borderRadius: '50%', background: 'rgba(255,255,255,0.04)' }}/>
           <svg style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', opacity: .07 }} viewBox="0 0 500 90" preserveAspectRatio="xMidYMid slice">
@@ -331,10 +338,8 @@ export default function ProfModal({ prof, onClose }) {
           </button>
         </div>
 
-        {/* Infos prof — avatar positionné via marginTop négatif, PAS dans le bandeau */}
-        {/* Infos prof — avatar sorti du bandeau par marginTop négatif sur le container */}
+        {/* Infos prof */}
         <div style={{ padding: '0 28px 16px', display: 'flex', alignItems: 'flex-end', gap: 18, marginTop: -44, position: 'relative', zIndex: 2 }}>
-          {/* Avatar — visible car le parent n'a PAS overflow:hidden */}
           <div style={{ flexShrink: 0 }}>
             <ProfAvatar prof={prof} size={88}/>
           </div>
@@ -351,6 +356,23 @@ export default function ProfModal({ prof, onClose }) {
                 <Stars value={prof.note_moyenne} size={14}/>
                 <span style={{ fontSize: '.75rem', color: '#94A3B8', fontWeight: 600 }}>({prof.nb_avis || 0} avis)</span>
               </div>
+              {/* ── Badges contact rapide dans le hero ── */}
+              {profTel && (
+                <a href={`tel:${profTel}`}
+                  style={{ display:'inline-flex', alignItems:'center', gap:5, fontSize:'.73rem', fontWeight:700, padding:'4px 11px', borderRadius:20, background:'#ECFDF5', color:'#065F46', border:'1.5px solid #6EE7B7', textDecoration:'none', transition:'all .15s' }}
+                  onMouseEnter={e => { e.currentTarget.style.background='#D1FAE5'; e.currentTarget.style.borderColor='#10B981'; }}
+                  onMouseLeave={e => { e.currentTarget.style.background='#ECFDF5'; e.currentTarget.style.borderColor='#6EE7B7'; }}>
+                  📞 {profTel}
+                </a>
+              )}
+              {profEmail && (
+                <a href={`mailto:${profEmail}`}
+                  style={{ display:'inline-flex', alignItems:'center', gap:5, fontSize:'.73rem', fontWeight:700, padding:'4px 11px', borderRadius:20, background:'#EFF6FF', color:'#1D4ED8', border:'1.5px solid #BFDBFE', textDecoration:'none', transition:'all .15s' }}
+                  onMouseEnter={e => { e.currentTarget.style.background='#DBEAFE'; e.currentTarget.style.borderColor='#3B82F6'; }}
+                  onMouseLeave={e => { e.currentTarget.style.background='#EFF6FF'; e.currentTarget.style.borderColor='#BFDBFE'; }}>
+                  ✉️ {profEmail}
+                </a>
+              )}
             </div>
           </div>
 
@@ -400,6 +422,45 @@ export default function ProfModal({ prof, onClose }) {
                 <p style={{ margin: 0, fontSize: '.88rem', color: '#374151', lineHeight: 1.78, borderLeft: '3px solid #00153D', paddingLeft: 14, fontStyle: 'italic' }}>
                   {prof.bio}
                 </p>
+              </div>
+            )}
+
+            {/* ── CONTACT ── */}
+            {(profTel || profEmail) && (
+              <div className="pm-section">
+                <div className="pm-section-title">📬 Contacter le formateur</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+
+                  {/* Téléphone */}
+                  {profTel && (
+                    <a href={`tel:${profTel}`} className="pm-contact-btn"
+                      style={{ background:'#fff', borderColor:'#6EE7B7', color:'inherit' }}
+                      onMouseEnter={e => { e.currentTarget.style.background='#ECFDF5'; e.currentTarget.style.borderColor='#10B981'; }}
+                      onMouseLeave={e => { e.currentTarget.style.background='#fff'; e.currentTarget.style.borderColor='#6EE7B7'; }}>
+                      <div style={{ width:38, height:38, borderRadius:10, background:'#ECFDF5', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'1.05rem', flexShrink:0 }}>📞</div>
+                      <div style={{ flex:1 }}>
+                        <div style={{ fontSize:'.68rem', fontWeight:900, color:'#94A3B8', textTransform:'uppercase', letterSpacing:'.08em', marginBottom:2, fontFamily:'Cabinet Grotesk, sans-serif' }}>Téléphone</div>
+                        <div style={{ fontFamily:'Cabinet Grotesk, sans-serif', fontWeight:800, color:'#065F46', fontSize:'.92rem' }}>{profTel}</div>
+                      </div>
+                      <span style={{ fontSize:'.72rem', fontWeight:700, color:'#065F46', background:'#ECFDF5', padding:'4px 12px', borderRadius:20, border:'1.5px solid #6EE7B7', whiteSpace:'nowrap' }}>Appeler →</span>
+                    </a>
+                  )}
+
+                  {/* Email */}
+                  {profEmail && (
+                    <a href={`mailto:${profEmail}`} className="pm-contact-btn"
+                      style={{ background:'#fff', borderColor:'#BFDBFE', color:'inherit' }}
+                      onMouseEnter={e => { e.currentTarget.style.background='#EFF6FF'; e.currentTarget.style.borderColor='#3B82F6'; }}
+                      onMouseLeave={e => { e.currentTarget.style.background='#fff'; e.currentTarget.style.borderColor='#BFDBFE'; }}>
+                      <div style={{ width:38, height:38, borderRadius:10, background:'#EFF6FF', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'1.05rem', flexShrink:0 }}>✉️</div>
+                      <div style={{ flex:1 }}>
+                        <div style={{ fontSize:'.68rem', fontWeight:900, color:'#94A3B8', textTransform:'uppercase', letterSpacing:'.08em', marginBottom:2, fontFamily:'Cabinet Grotesk, sans-serif' }}>Email</div>
+                        <div style={{ fontFamily:'Cabinet Grotesk, sans-serif', fontWeight:800, color:'#1D4ED8', fontSize:'.88rem', wordBreak:'break-all' }}>{profEmail}</div>
+                      </div>
+                      <span style={{ fontSize:'.72rem', fontWeight:700, color:'#1D4ED8', background:'#EFF6FF', padding:'4px 12px', borderRadius:20, border:'1.5px solid #BFDBFE', whiteSpace:'nowrap' }}>Écrire →</span>
+                    </a>
+                  )}
+                </div>
               </div>
             )}
 
@@ -458,7 +519,6 @@ export default function ProfModal({ prof, onClose }) {
         {/* ════ DISPONIBILITÉS ════ */}
         {tab === 'disponibilites' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-
             {step !== 'recapitulatif' && (
               <>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -570,7 +630,6 @@ export default function ProfModal({ prof, onClose }) {
                   </div>
                 </div>
 
-                {/* Choix mode */}
                 {needsModeChoice && (
                   <div>
                     <div style={{ fontSize: '.7rem', fontWeight: 900, color: '#94A3B8', marginBottom: 10, textTransform: 'uppercase', letterSpacing: '.1em', fontFamily: 'Cabinet Grotesk, sans-serif' }}>Choisissez votre mode</div>
@@ -593,7 +652,6 @@ export default function ProfModal({ prof, onClose }) {
                   </div>
                 )}
 
-                {/* Mode fixe */}
                 {!needsModeChoice && (
                   <div style={{ padding: '12px 16px', background: selectedDispo.mode_seance === 'en_ligne' ? '#EFF6FF' : '#ECFDF5', border: `1.5px solid ${selectedDispo.mode_seance === 'en_ligne' ? '#BFDBFE' : '#6EE7B7'}`, borderRadius: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <span style={{ fontWeight: 700, color: selectedDispo.mode_seance === 'en_ligne' ? '#1D4ED8' : '#065F46' }}>
@@ -634,7 +692,6 @@ export default function ProfModal({ prof, onClose }) {
         {tab === 'avis' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
 
-            {/* Stats */}
             {avisStats && (
               <div style={{ background: '#F8FAFC', borderRadius: 20, padding: 22, display: 'flex', gap: 24, alignItems: 'center', border: '1.5px solid #F1F5F9' }}>
                 <div style={{ textAlign: 'center', flexShrink: 0 }}>
@@ -663,7 +720,6 @@ export default function ProfModal({ prof, onClose }) {
               </div>
             )}
 
-            {/* Formulaire avis */}
             {user?.role === 'étudiant' && (
               <div style={{ background: '#F8FAFC', borderRadius: 18, padding: 20, border: '1.5px solid #F1F5F9' }}>
                 <div style={{ fontSize: '.68rem', fontWeight: 900, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '.12em', marginBottom: 14, fontFamily: 'Cabinet Grotesk, sans-serif' }}>
@@ -695,7 +751,6 @@ export default function ProfModal({ prof, onClose }) {
               </div>
             )}
 
-            {/* Liste avis */}
             {avis.length === 0 ? (
               <div style={{ textAlign: 'center', padding: '40px 20px', background: '#F8FAFC', borderRadius: 16, color: '#94A3B8', border: '1.5px solid #F1F5F9' }}>
                 <div style={{ fontSize: '2.5rem', marginBottom: 12 }}>💬</div>

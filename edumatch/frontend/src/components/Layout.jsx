@@ -268,15 +268,53 @@ function useNotifications(user) {
   const fetchNotifs = useCallback(async () => {
     if (!user) return;
     try {
-      const [r1,r2] = await Promise.all([
+      const isAdmin = user.role === 'admin';
+      const baseReqs = [
         api.get('/api/reservations/mes-reservations'),
         api.get('/api/messages/non-lus'),
-      ]);
-      const reservations = r1.data||[];
-      const nonLus = r2.data?.messages||[];
+      ];
+      if (isAdmin) {
+        baseReqs.push(api.get('/api/admin/professeurs/all').catch(()=>({data:[]})));
+        baseReqs.push(api.get('/api/admin/demandes-matieres').catch(()=>({data:[]})));
+      }
+      const results = await Promise.all(baseReqs);
+      const reservations = results[0].data||[];
+      const nonLus = results[1].data?.messages||[];
+
+      // Notifs admin
+      let adminNotifs = [];
+      if (isAdmin) {
+        const allProfs  = results[2]?.data||[];
+        const demandes  = results[3]?.data||[];
+        const profsEnAttente = allProfs.filter(p=>p.statut_validation==='en_attente');
+        profsEnAttente.forEach(p => {
+          const nm = `${p.user_prenom||''} ${p.user_nom||''}`.trim()||'Formateur';
+          const id = `admin-prof-${p.id}`;
+          adminNotifs.push({
+            id, type:'admin_prof', icon:'👨‍🏫',
+            title:'Nouveau profil à valider',
+            body:`${nm} souhaite rejoindre la plateforme`,
+            detail:`📍 ${p.ville||'Ville non renseignée'} · ${p.mode_enseignement||''}`,
+            color:'#B45309', bg:'#FFFBEB', border:'#FCD34D',
+            time: p.created_at, path:'/admin', read:readIds.current.has(id),
+          });
+        });
+        demandes.filter(d=>d.statut==='en_attente').forEach(d => {
+          const id = `admin-dem-${d.id}`;
+          adminNotifs.push({
+            id, type:'admin_demande', icon:'💡',
+            title:'Demande de matière',
+            body:`${d.prof_nom||'Un formateur'} propose "${d.nom_matiere}"`,
+            detail:`🎓 Niveau : ${d.nom_niveau||'—'}`,
+            color:'#1D4ED8', bg:'#EFF6FF', border:'#BFDBFE',
+            time: d.created_at, path:'/admin', read:readIds.current.has(id),
+          });
+        });
+      }
+
       const resa = buildResaNotifs(reservations, user.role);
       const msgs = buildMsgNotifs(nonLus, user.role, reservations);
-      const all = [...msgs,...resa].sort((a,b)=>{
+      const all = [...msgs,...resa,...adminNotifs].sort((a,b)=>{
         if(!a.read&&b.read) return -1;
         if(a.read&&!b.read) return 1;
         return new Date(b.time||0)-new Date(a.time||0);
@@ -330,11 +368,11 @@ function NotifTime({ str }) {
 }
 
 /* ─── Notif Item ── */
-function NotifItem({ n, isLast, onNavigate, onClose, onOpenChat, onMarkRead }) {
+function NotifItem({ n, isLast, onNavigate, onClose, onOpenChat, onOpenResa, onMarkRead }) {
   const isMsg = n.type==='message';
   return (
     <div className="notif-item"
-      onClick={()=>{ onMarkRead(n.id); if(isMsg&&onOpenChat) onOpenChat(n.resa_id); else onNavigate(n.path); onClose(); }}
+      onClick={()=>{ onMarkRead(n.id); if(isMsg&&onOpenChat) onOpenChat(n.resa_id); else if(n.type==='pending'&&onOpenResa) onOpenResa(n.resa_id); else onNavigate(n.path); onClose(); }}
       style={{ borderBottom:isLast?'none':`1px solid var(--border)`, background:!n.read?`${n.bg}55`:'transparent', position:'relative' }}>
       {!n.read&&<div style={{ position:'absolute',left:6,top:'50%',transform:'translateY(-50%)',width:6,height:6,borderRadius:'50%',background:n.color }}/>}
       <div style={{ width:42,height:42,borderRadius:12,flexShrink:0,background:n.bg,border:`1.5px solid ${n.border}`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:'1.05rem' }}>{n.icon}</div>
@@ -354,9 +392,10 @@ function NotifItem({ n, isLast, onNavigate, onClose, onOpenChat, onMarkRead }) {
 }
 
 /* ─── Panneau Notifications ── */
-function NotificationPanel({ notifs, unread, onMarkAllRead, onNavigate, onClose, onOpenChat, onMarkOneRead }) {
-  const msgs  = notifs.filter(n=>n.type==='message');
-  const resas = notifs.filter(n=>n.type!=='message');
+function NotificationPanel({ notifs, unread, onMarkAllRead, onNavigate, onClose, onOpenChat, onOpenResa, onMarkOneRead }) {
+  const msgs   = notifs.filter(n=>n.type==='message');
+  const adminN = notifs.filter(n=>n.type==='admin_prof'||n.type==='admin_demande');
+  const resas  = notifs.filter(n=>n.type!=='message'&&n.type!=='admin_prof'&&n.type!=='admin_demande');
   return (
     <>
       <div onClick={onClose} style={{ position:'fixed',inset:0,zIndex:298 }}/>
@@ -383,13 +422,19 @@ function NotificationPanel({ notifs, unread, onMarkAllRead, onNavigate, onClose,
               {msgs.length>0&&(
                 <>
                   <div style={{ padding:'9px 20px 7px',fontSize:'.66rem',fontWeight:900,color:'var(--text3)',textTransform:'uppercase',letterSpacing:'.12em',background:'var(--surface2)',borderBottom:`1px solid var(--border)` }}>💬 Messages non lus · {msgs.length}</div>
-                  {msgs.map((n,i)=><NotifItem key={n.id} n={n} isLast={i===msgs.length-1&&resas.length===0} onNavigate={onNavigate} onClose={onClose} onOpenChat={onOpenChat} onMarkRead={onMarkOneRead}/>)}
+                  {msgs.map((n,i)=><NotifItem key={n.id} n={n} isLast={i===msgs.length-1&&resas.length===0} onNavigate={onNavigate} onClose={onClose} onOpenChat={onOpenChat} onOpenResa={onOpenResa} onMarkRead={onMarkOneRead}/>)}
                 </>
               )}
               {resas.length>0&&(
                 <>
                   {msgs.length>0&&<div style={{ padding:'9px 20px 7px',fontSize:'.66rem',fontWeight:900,color:'var(--text3)',textTransform:'uppercase',letterSpacing:'.12em',background:'var(--surface2)',borderBottom:`1px solid var(--border)` }}>📅 Réservations · {resas.length}</div>}
-                  {resas.map((n,i)=><NotifItem key={n.id} n={n} isLast={i===resas.length-1} onNavigate={onNavigate} onClose={onClose} onOpenChat={onOpenChat} onMarkRead={onMarkOneRead}/>)}
+                  {resas.map((n,i)=><NotifItem key={n.id} n={n} isLast={i===resas.length-1&&adminN.length===0} onNavigate={onNavigate} onClose={onClose} onOpenChat={onOpenChat} onOpenResa={onOpenResa} onMarkRead={onMarkOneRead}/>)}
+                </>
+              )}
+              {adminN.length>0&&(
+                <>
+                  <div style={{ padding:'9px 20px 7px',fontSize:'.66rem',fontWeight:900,color:'var(--text3)',textTransform:'uppercase',letterSpacing:'.12em',background:'var(--surface2)',borderBottom:`1px solid var(--border)` }}>🛠 Admin · {adminN.length}</div>
+                  {adminN.map((n,i)=><NotifItem key={n.id} n={n} isLast={i===adminN.length-1} onNavigate={onNavigate} onClose={onClose} onOpenChat={onOpenChat} onMarkRead={onMarkOneRead}/>)}
                 </>
               )}
             </>
@@ -549,6 +594,7 @@ export default function Layout() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [notifSound, setNotifSound]     = useState(()=>{ try { return localStorage.getItem('edumatch_notif_sound')!=='false'; } catch { return true; } });
   const [chatResaId, setChatResaId]     = useState(null);
+  const [openResaId, setOpenResaId]     = useState(null);
 
   const { notifs, unread, markAllRead, markOneRead, refresh, msgUnread } = useNotifications(user);
 
@@ -561,6 +607,13 @@ export default function Layout() {
   function handleSettingsOpen(){ setSettingsOpen(p=>!p); setNotifOpen(false); }
   function handleOpenChat(resaId) {
     setChatResaId(resaId);
+    navigate(user?.role==='professeur'?'/prof':'/reservations');
+    setNotifOpen(false);
+  }
+
+  function handleOpenResa(resaId) {
+    // Ouvre la modal de réservation depuis une notification pending
+    setOpenResaId(resaId);
     navigate(user?.role==='professeur'?'/prof':'/reservations');
     setNotifOpen(false);
   }
@@ -658,6 +711,7 @@ export default function Layout() {
                   onNavigate={navigate}
                   onClose={()=>setNotifOpen(false)}
                   onOpenChat={handleOpenChat}
+                  onOpenResa={handleOpenResa}
                 />
               )}
             </div>
@@ -691,7 +745,7 @@ export default function Layout() {
 
         {/* Contenu scrollable */}
         <div className="ly-content">
-          <Outlet context={{ chatResaId, setChatResaId }}/>
+          <Outlet context={{ chatResaId, setChatResaId, openResaId, setOpenResaId }}/>
         </div>
       </div>
     </div>

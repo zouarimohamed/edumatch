@@ -100,7 +100,7 @@ function injectCSS() {
   }
 }
 
-const EMPTY_DISPO = { date_specifique:'', heure_debut:'09:00', heure_fin:'10:00', nb_max_etudiants:1, mode_seance:'presentiel', description:'' };
+const EMPTY_DISPO = { date_specifique:'', heure_debut:'09:00', heure_fin:'10:00', nb_max_etudiants:1, mode_seance:'presentiel', description:'', niveau_id:'' };
 
 function getDuration(debut, fin) {
   if (!debut || !fin) return null;
@@ -268,6 +268,7 @@ function SmartCalendar({ dispos }) {
 export default function Disponibilites() {
   const [dispos, setDispos]         = useState([]);
   const [profile, setProfile]       = useState(null);
+  const [niveaux, setNiveaux]       = useState([]);
   const [loading, setLoading]       = useState(true);
   const [showForm, setShowForm]     = useState(false);
   const [newDispo, setNewDispo]     = useState({ ...EMPTY_DISPO });
@@ -297,13 +298,15 @@ export default function Disponibilites() {
 
   const fetchAll = async () => {
     try {
-      const [r1, r2] = await Promise.all([
+      const [r1, r2, r3] = await Promise.all([
         api.get('/api/professeurs/me/disponibilites'),
         api.get('/api/professeurs/me'),
+        api.get('/api/professeurs/me/niveaux').catch(() => ({ data: [] })),
       ]);
       const prof = r2.data ?? null;
       setDispos(r1.data ?? []);
       setProfile(prof);
+      setNiveaux(r3.data ?? []);
       const mode = prof?.mode_enseignement;
       setNewDispo(prev => ({ ...prev, mode_seance: mode==='les_deux'?'presentiel':(mode||'presentiel') }));
     } catch (e) { console.error(e); }
@@ -483,6 +486,12 @@ export default function Disponibilites() {
                                 </span>
                               )}
                             </div>
+                            {/* ── Niveau de la séance ── */}
+                            {d.niveau_nom && (
+                              <div style={{ display:'inline-flex', alignItems:'center', gap:5, marginBottom:6, fontSize:'.68rem', fontWeight:700, padding:'2px 10px', borderRadius:20, background:'#EEF2FF', color:'#4F46E5', border:'1.5px solid #C7D2FE' }}>
+                                🎓 {d.niveau_nom}
+                              </div>
+                            )}
                             {/* ── Description de la séance ── */}
                             {d.description && (
                               <div style={{ display:'flex', alignItems:'flex-start', gap:8, marginBottom:8, padding:'8px 12px', background:'#F0F4FF', borderRadius:10, border:'1.5px solid #C7D2FE' }}>
@@ -608,6 +617,32 @@ export default function Disponibilites() {
                 )}
               </div>
 
+              {/* Niveau */}
+              <div>
+                <div style={{ fontSize:'.68rem', fontWeight:900, color:'#94A3B8', textTransform:'uppercase', letterSpacing:'.1em', marginBottom:8, fontFamily:'Cabinet Grotesk,sans-serif' }}>
+                  🎓 Niveau de la séance <span style={{ fontWeight:500, textTransform:'none', letterSpacing:0, color:'#CBD5E1', fontSize:'.65rem' }}>(recommandé)</span>
+                </div>
+                {niveaux.length > 0 ? (
+                  <select className="modal-inp"
+                    value={newDispo.niveau_id}
+                    onChange={e => setNewDispo({...newDispo, niveau_id: e.target.value})}>
+                    <option value="">-- Sélectionner un niveau --</option>
+                    {niveaux.map(n => (
+                      <option key={n.id} value={n.id}>{n.domaine} — {n.nom}</option>
+                    ))}
+                  </select>
+                ) : (
+                  <div style={{ padding:'10px 14px', background:'#F8FAFC', borderRadius:12, border:'1.5px solid #E2E8F0', fontSize:'.84rem', color:'#94A3B8', fontStyle:'italic' }}>
+                    Aucun niveau configuré — ajoutez des matières dans votre profil
+                  </div>
+                )}
+                {newDispo.niveau_id && (
+                  <div style={{ marginTop:6, fontSize:'.76rem', color:'#065F46', fontWeight:700, background:'#ECFDF5', padding:'5px 12px', borderRadius:9, border:'1px solid #6EE7B7', display:'inline-flex', alignItems:'center', gap:5 }}>
+                    ✓ Niveau sélectionné — les étudiants de ce niveau verront cette séance en priorité
+                  </div>
+                )}
+              </div>
+
               {/* Capacité */}
               <div>
                 <div style={{ fontSize:'.68rem', fontWeight:900, color:'#94A3B8', textTransform:'uppercase', letterSpacing:'.1em', marginBottom:10, fontFamily:'Cabinet Grotesk,sans-serif' }}>👥 Capacité maximale</div>
@@ -664,7 +699,8 @@ export default function Disponibilites() {
                       ['🕒', `${newDispo.heure_debut} → ${newDispo.heure_fin} (${getDuration(newDispo.heure_debut,newDispo.heure_fin)})`],
                       [newDispo.mode_seance==='en_ligne'?'🌐':'🏫', newDispo.mode_seance==='en_ligne'?'En ligne':'Présentiel'],
                       ['👥', `${newDispo.nb_max_etudiants} étudiant${newDispo.nb_max_etudiants>1?'s':''} max`],
-                      ...(newDispo.description ? [['📝', newDispo.description.slice(0,60)+(newDispo.description.length>60?'…':'')]] : []),
+                      ...(newDispo.niveau_id && niveaux.find(n=>String(n.id)===String(newDispo.niveau_id)) ? [['🎓', niveaux.find(n=>String(n.id)===String(newDispo.niveau_id))?.nom || '']] : []),
+                    ...(newDispo.description ? [['📝', newDispo.description.slice(0,60)+(newDispo.description.length>60?'…':'')]] : []),
                     ].map(([icon,val]) => (
                       <div key={icon} style={{ display:'flex', alignItems:'center', gap:8 }}>
                         <span>{icon}</span>

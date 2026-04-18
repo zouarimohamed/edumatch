@@ -16,10 +16,11 @@ class Reservation(Base):
     statut           = Column(String(20), default="en_attente", index=True)
     tarif_applique   = Column(Numeric(8, 2))
     notes_etudiant   = Column(Text)
+    statut_paiement  = Column(String(20), default="non_payé")   # ← AJOUTÉ
 
     # NOUVEAUX CHAMPS
-    mode_seance      = Column(String(20), default="presentiel")  # en_ligne | presentiel
-    lien_meet        = Column(String(500), nullable=True)        # généré auto si en_ligne
+    mode_seance      = Column(String(20), default="presentiel")
+    lien_meet        = Column(String(500), nullable=True)
 
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
