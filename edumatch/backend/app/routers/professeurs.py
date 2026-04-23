@@ -4,6 +4,7 @@ from sqlalchemy import func, text
 from typing import List
 import os
 import shutil
+from datetime import datetime
 
 from app.database import get_db
 from app.models import Professeur, User, Disponibilite, Matiere, Niveau
@@ -78,6 +79,19 @@ def prof_to_out(p: Professeur) -> dict:
             for d in p.disponibilites if d.actif
         ]
     }
+
+
+def _is_future(d: Disponibilite) -> bool:
+    """Retourne True si la disponibilité n'est pas encore passée (comparaison date+heure_fin)."""
+    try:
+        if not d.date_specifique or not d.heure_fin:
+            return True
+        date_str = d.date_specifique.strftime("%Y-%m-%d")
+        heure_str = d.heure_fin.strftime("%H:%M")
+        fin = datetime.strptime(f"{date_str} {heure_str}", "%Y-%m-%d %H:%M")
+        return fin > datetime.now()
+    except Exception:
+        return True
 
 
 # ── GET /me ──────────────────────────────────────────────────────
@@ -236,6 +250,48 @@ def add_disponibilite(
     return new_dispo
 
 
+# ── PUT /me/disponibilites/{dispo_id} — modifier une séance ────
+@router.put("/me/disponibilites/{dispo_id}")
+def update_disponibilite(
+    dispo_id: int,
+    data: dict,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_professeur)
+):
+    prof = db.query(Professeur).filter(Professeur.user_id == current_user.id).first()
+    dispo = db.query(Disponibilite).filter(
+        Disponibilite.id == dispo_id,
+        Disponibilite.prof_id == prof.id
+    ).first()
+    if not dispo:
+        raise HTTPException(404, "Disponibilité introuvable")
+
+    from datetime import date, time
+    if data.get("date_specifique"):
+        dispo.date_specifique = date.fromisoformat(data["date_specifique"])
+    if data.get("heure_debut"):
+        h, m = map(int, data["heure_debut"].split(":"))
+        dispo.heure_debut = time(h, m)
+    if data.get("heure_fin"):
+        h, m = map(int, data["heure_fin"].split(":"))
+        dispo.heure_fin = time(h, m)
+    if data.get("nb_max_etudiants") is not None:
+        nb = int(data["nb_max_etudiants"])
+        if nb < dispo.nb_inscrits:
+            raise HTTPException(400, f"Impossible : {dispo.nb_inscrits} étudiant(s) déjà inscrit(s)")
+        dispo.nb_max_etudiants = nb
+    if data.get("mode_seance"):
+        dispo.mode_seance = data["mode_seance"]
+    if "description" in data:
+        dispo.description = data["description"] or None
+    if "niveau_id" in data:
+        dispo.niveau_id = int(data["niveau_id"]) if data["niveau_id"] else None
+
+    db.commit()
+    db.refresh(dispo)
+    return {"message": "Séance modifiée", "id": dispo.id}
+
+
 # ── DELETE /me/disponibilites/{dispo_id} ────────────────────────
 @router.delete("/me/disponibilites/{dispo_id}")
 def delete_disponibilite(
@@ -378,15 +434,29 @@ def get_prof_by_id(prof_id: int, db: Session = Depends(get_db)):
     return prof_to_out(prof)
 
 
-# ── GET /{prof_id}/disponibilites — dispos publiques ─────────────
+# ── GET /{prof_id}/disponibilites — dispos publiques (futures uniquement) ──
 @router.get("/{prof_id}/disponibilites")
 def get_prof_disponibilites(prof_id: int, db: Session = Depends(get_db)):
     dispos = db.query(Disponibilite).filter(
         Disponibilite.prof_id == prof_id,
         Disponibilite.actif == True,
     ).order_by(Disponibilite.date_specifique).all()
-    return [
-        {
+
+    # Filtrer côté backend : ne retourner que les créneaux futurs
+    now = datetime.now()
+    result = []
+    for d in dispos:
+        try:
+            if d.date_specifique and d.heure_fin:
+                date_str  = d.date_specifique.strftime("%Y-%m-%d")
+                heure_str = d.heure_fin.strftime("%H:%M")
+                fin = datetime.strptime(f"{date_str} {heure_str}", "%Y-%m-%d %H:%M")
+                if fin <= now:
+                    continue  # créneau passé → on le saute
+        except Exception:
+            pass  # en cas d'erreur de parsing, on inclut le créneau
+
+        result.append({
             "id":               d.id,
             "date_specifique":  d.date_specifique.strftime("%Y-%m-%d") if d.date_specifique else None,
             "heure_debut":      d.heure_debut.strftime("%H:%M") if d.heure_debut else None,
@@ -396,6 +466,6 @@ def get_prof_disponibilites(prof_id: int, db: Session = Depends(get_db)):
             "mode_seance":      d.mode_seance or "presentiel",
             "actif":            d.actif,
             "description":      d.description or None,
-        }
-        for d in dispos
-    ]
+        })
+
+    return result

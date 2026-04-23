@@ -72,6 +72,36 @@ const NIVEAUX_ACADEMIQUES = [
   { key:'Université', icon:'🎓', desc:'Licence, Master, Doctorat'    },
 ];
 
+// Hiérarchie fixe — noms EXACTS du référentiel (après migration)
+const NIVEAUX_HIERARCHIE = {
+  'Primaire': [
+    '1ère année primaire',
+    '2ème année primaire',
+    '3ème année primaire',
+    '4ème année primaire',
+    '5ème année primaire',
+    '6ème année primaire',
+  ],
+  'Collège': [
+    '7ème année',
+    '8ème année',
+    '9ème année',
+  ],
+  'Lycée': [
+    '1ère année Lycée',
+    '2ème année Lycée',
+    '3ème année Lycée',
+    'Baccalauréat',
+  ],
+};
+
+// Groupes visuels pour l'affichage dans Mes Enseignements
+const GROUPES_NIVEAUX = [
+  { key:'Primaire', icon:'📚', color:'#10b981', bg:'#ECFDF5', border:'#6EE7B7', desc:'1ère → 6ème année' },
+  { key:'Collège',  icon:'📖', color:'#3b82f6', bg:'#EFF6FF', border:'#BFDBFE', desc:'7ème → 9ème année' },
+  { key:'Lycée',    icon:'🎒', color:'#8b5cf6', bg:'#F5F3FF', border:'#DDD6FE', desc:'Secondaire & Bac'  },
+];
+
 function StatutBadge({ statut }) {
   const cfg = {
     en_attente: { bg:'rgba(245,158,11,.1)',  color:'#d97706', label:'⏳ En attente' },
@@ -267,6 +297,7 @@ export default function Profile() {
   const [saved, setSaved]           = useState(false);
   const [demandes, setDemandes]     = useState([]);
 
+  const [openGroupe, setOpenGroupe]               = useState({});
   const [showCertModal, setShowCertModal]         = useState(false);
   const [newCert, setNewCert]                     = useState({ titre:'' });
   const [selectedFile, setSelectedFile]           = useState(null);
@@ -276,6 +307,8 @@ export default function Profile() {
 
   // ── Modal confirmation custom ──
   const [confirmModal, setConfirmModal] = useState(null); // { title, subtitle, icon, onConfirm }
+  const [soumettre, setSoumettre]       = useState(false);
+  const [soumettreLoading, setSoumettreLoading] = useState(false);
 
   useEffect(() => { injectCSS(); }, []);
   useEffect(() => { fetchProfileData(); }, [user]);
@@ -301,6 +334,7 @@ export default function Profile() {
         mode_enseignement:data.mode_enseignement||'presentiel',
         tarif_en_ligne:   data.tarif_en_ligne  !=null ? data.tarif_en_ligne  : '',
         tarif_presentiel: data.tarif_presentiel!=null ? data.tarif_presentiel: '',
+        statut_validation: data.statut_validation||'incomplet',
       }));
       if (user.role==='professeur' && results[2]) setDemandes(results[2].data);
     } catch(e) { console.error(e); }
@@ -378,6 +412,60 @@ export default function Profile() {
     });
   };
 
+  // ── Soumettre profil pour validation ──
+  const handleSoumettre = () => {
+    setConfirmModal({
+      icon: '🚀',
+      iconBg: '#EFF6FF',
+      title: 'Soumettre pour validation ?',
+      subtitle: "Votre profil sera envoyé à l'administrateur pour validation. Assurez-vous que toutes vos informations sont correctes.",
+      confirmLabel: '🚀 Soumettre',
+      confirmBg: '#00153D',
+      confirmShadow: 'rgba(0,21,61,0.3)',
+      onConfirm: async () => {
+        setConfirmModal(null);
+        setSoumettreLoading(true);
+        try {
+          await api.post('/api/professeurs/me/soumettre-profil');
+          setForm(f => ({ ...f, statut_validation: 'en_attente' }));
+          setSoumettre(true);
+          setTimeout(() => setSoumettre(false), 4000);
+        } catch(e) {
+          const detail = e.response?.data?.detail;
+          if (detail?.errors) {
+            alert('Profil incomplet :\n\n' + detail.errors.map(err => '• ' + err).join('\n'));
+          } else {
+            alert(detail || 'Erreur lors de la soumission');
+          }
+        } finally { setSoumettreLoading(false); }
+      },
+    });
+  };
+
+  const isProfesseur = user?.role==='professeur';
+  const isEtudiant   = user?.role==='étudiant';
+
+  // ── Score de complétion du profil ──
+  const getCompletionScore = () => {
+    if (!isProfesseur) return 100;
+    let score = 0, total = 5;
+    if (form.telephone) score++;
+    if (form.bio) score++;
+    if (form.tarif_en_ligne || form.tarif_presentiel) score++;
+    if (form.tarifs_matieres?.length > 0) score++;
+    if (form.ville) score++;
+    return Math.round((score / total) * 100);
+  };
+
+  const completionScore = getCompletionScore();
+  const completionItems = isProfesseur ? [
+    { label: 'Téléphone',       done: !!form.telephone,                                  icon: '📞' },
+    { label: 'Bio',             done: !!form.bio,                                         icon: '📝' },
+    { label: 'Tarif',           done: !!(form.tarif_en_ligne || form.tarif_presentiel),   icon: '💰' },
+    { label: 'Matière',         done: form.tarifs_matieres?.length > 0,                   icon: '📚' },
+    { label: 'Ville',           done: !!form.ville,                                       icon: '📍' },
+  ] : [];
+
   if (loading) return (
     <div className="profile-root" style={{ padding:60, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:12, color:'#94a3b8', minHeight:'60vh' }}>
       <div style={{ width:40, height:40, border:'3px solid #e2e8f0', borderTopColor:'#3b82f6', borderRadius:'50%', animation:'spin2 .8s linear infinite' }} />
@@ -385,8 +473,6 @@ export default function Profile() {
     </div>
   );
 
-  const isProfesseur = user?.role==='professeur';
-  const isEtudiant   = user?.role==='étudiant';
   const currentMode  = MODES.find(m=>m.value===form.mode_enseignement);
 
   // ── Composant modal confirm inline ──
@@ -420,6 +506,93 @@ export default function Profile() {
     <div className="profile-root" style={{ padding:'32px 36px', maxWidth: isProfesseur ? 1280 : 780, margin:'0 auto', background:'#f8fafc', minHeight:'100vh' }}>
 
       {ConfirmModalEl}
+
+      {/* ════ BANNIÈRE STATUT PROF ════ */}
+      {isProfesseur && (
+        <>
+          {/* Statut incomplet */}
+          {form.statut_validation === 'incomplet' && (
+            <div style={{ marginBottom:20, padding:'18px 24px', background:'linear-gradient(135deg,#FFF7ED,#FFFBEB)', border:'1.5px solid #FCD34D', borderRadius:18, animation:'fadeUp .4s ease both' }}>
+              <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', flexWrap:'wrap', gap:14 }}>
+                <div style={{ flex:1 }}>
+                  <div style={{ display:'flex', alignItems:'center', gap:9, marginBottom:8 }}>
+                    <div style={{ width:36, height:36, borderRadius:10, background:'#FEF3C7', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'1.1rem' }}>⚠️</div>
+                    <div>
+                      <div style={{ fontFamily:'Cabinet Grotesk,sans-serif', fontWeight:900, color:'#92400E', fontSize:'.95rem' }}>Profil en cours de complétion</div>
+                      <div style={{ fontSize:'.75rem', color:'#B45309', marginTop:1 }}>Complétez votre profil puis soumettez-le pour validation</div>
+                    </div>
+                  </div>
+                  {/* Barre de progression */}
+                  <div style={{ marginBottom:10 }}>
+                    <div style={{ display:'flex', justifyContent:'space-between', marginBottom:5 }}>
+                      <span style={{ fontSize:'.72rem', fontWeight:700, color:'#B45309' }}>Complétion du profil</span>
+                      <span style={{ fontFamily:'Cabinet Grotesk,sans-serif', fontWeight:900, color:'#92400E', fontSize:'.82rem' }}>{completionScore}%</span>
+                    </div>
+                    <div style={{ height:7, background:'#FDE68A', borderRadius:4, overflow:'hidden' }}>
+                      <div style={{ height:'100%', width:`${completionScore}%`, background:'linear-gradient(90deg,#F59E0B,#D97706)', borderRadius:4, transition:'width .8s ease' }}/>
+                    </div>
+                  </div>
+                  {/* Checklist */}
+                  <div style={{ display:'flex', flexWrap:'wrap', gap:6 }}>
+                    {completionItems.map(item => (
+                      <span key={item.label} style={{ display:'inline-flex', alignItems:'center', gap:4, fontSize:'.7rem', fontWeight:700, padding:'3px 9px', borderRadius:20, background:item.done?'#ECFDF5':'#FEF3C7', color:item.done?'#065F46':'#92400E', border:`1px solid ${item.done?'#6EE7B7':'#FCD34D'}` }}>
+                        {item.done ? '✓' : '○'} {item.icon} {item.label}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+                <button
+                  onClick={handleSoumettre}
+                  disabled={completionScore < 100 || soumettreLoading}
+                  style={{ padding:'11px 22px', background: completionScore >= 100 ? '#00153D' : '#E2E8F0', color: completionScore >= 100 ? '#fff' : '#94A3B8', border:'none', borderRadius:13, cursor: completionScore >= 100 ? 'pointer' : 'not-allowed', fontFamily:'Cabinet Grotesk,sans-serif', fontWeight:800, fontSize:'.85rem', boxShadow: completionScore >= 100 ? '0 4px 16px rgba(0,21,61,0.25)' : 'none', transition:'all .2s', whiteSpace:'nowrap', display:'flex', alignItems:'center', gap:8 }}
+                  title={completionScore < 100 ? "Complétez d'abord tous les champs requis" : "Soumettre votre profil pour validation"}>
+                  {soumettreLoading ? <><div style={{ width:14,height:14,border:'2px solid rgba(255,255,255,.3)',borderTopColor:'#fff',borderRadius:'50%',animation:'spin2 .8s linear infinite' }}/>Envoi...</> : '🚀 Soumettre pour validation'}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Statut en_attente */}
+          {form.statut_validation === 'en_attente' && (
+            <div style={{ marginBottom:20, padding:'16px 22px', background:'linear-gradient(135deg,#FFFBEB,#FEF3C7)', border:'1.5px solid #FCD34D', borderRadius:18, display:'flex', alignItems:'center', gap:14, animation:'fadeUp .4s ease both' }}>
+              <div style={{ width:38,height:38,borderRadius:11,background:'#FEF3C7',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'1.2rem',flexShrink:0 }}>⏳</div>
+              <div style={{ flex:1 }}>
+                <div style={{ fontFamily:'Cabinet Grotesk,sans-serif', fontWeight:900, color:'#B45309', fontSize:'.9rem' }}>Profil soumis — En attente de validation</div>
+                <div style={{ fontSize:'.75rem', color:'#92400E', marginTop:2 }}>L'administrateur examinera votre profil sous peu. Vous serez notifié.</div>
+              </div>
+              {soumettre && <span style={{ fontSize:'.72rem', fontWeight:700, color:'#065F46', background:'#ECFDF5', padding:'4px 12px', borderRadius:20, border:'1px solid #6EE7B7' }}>✅ Envoyé !</span>}
+            </div>
+          )}
+
+          {/* Statut validé */}
+          {form.statut_validation === 'validé' && (
+            <div style={{ marginBottom:20, padding:'14px 22px', background:'linear-gradient(135deg,#ECFDF5,#D1FAE5)', border:'1.5px solid #6EE7B7', borderRadius:18, display:'flex', alignItems:'center', gap:12, animation:'fadeUp .4s ease both' }}>
+              <div style={{ width:36,height:36,borderRadius:11,background:'#A7F3D0',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'1.1rem',flexShrink:0 }}>✅</div>
+              <div>
+                <div style={{ fontFamily:'Cabinet Grotesk,sans-serif', fontWeight:900, color:'#065F46', fontSize:'.9rem' }}>Profil validé — Visible sur la plateforme</div>
+                <div style={{ fontSize:'.75rem', color:'#047857', marginTop:2 }}>Votre profil est approuvé. Les étudiants peuvent vous contacter.</div>
+              </div>
+            </div>
+          )}
+
+          {/* Statut refusé */}
+          {form.statut_validation === 'refusé' && (
+            <div style={{ marginBottom:20, padding:'16px 22px', background:'#FEF2F2', border:'1.5px solid #FCA5A5', borderRadius:18, display:'flex', alignItems:'center', justifyContent:'space-between', gap:14, animation:'fadeUp .4s ease both', flexWrap:'wrap' }}>
+              <div style={{ display:'flex', alignItems:'center', gap:12 }}>
+                <div style={{ width:38,height:38,borderRadius:11,background:'#FEE2E2',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'1.2rem',flexShrink:0 }}>❌</div>
+                <div>
+                  <div style={{ fontFamily:'Cabinet Grotesk,sans-serif', fontWeight:900, color:'#DC2626', fontSize:'.9rem' }}>Profil refusé</div>
+                  <div style={{ fontSize:'.75rem', color:'#991B1B', marginTop:2 }}>Mettez à jour vos informations puis resoumettez votre profil.</div>
+                </div>
+              </div>
+              <button onClick={handleSoumettre} disabled={completionScore < 100 || soumettreLoading}
+                style={{ padding:'9px 18px', background:'#DC2626', color:'#fff', border:'none', borderRadius:11, cursor:'pointer', fontFamily:'Cabinet Grotesk,sans-serif', fontWeight:800, fontSize:'.82rem', boxShadow:'0 4px 12px rgba(220,38,38,0.3)', transition:'all .18s' }}>
+                🔄 Re-soumettre
+              </button>
+            </div>
+          )}
+        </>
+      )}
 
       {/* ════ HERO HEADER ════ */}
       <div style={{ background:'#fff', borderRadius:24, overflow:'hidden', marginBottom:28, border:'1.5px solid #f1f5f9', boxShadow:'0 2px 16px rgba(0,0,0,.05)', animation:'fadeUp .4s ease both' }}>
@@ -611,40 +784,190 @@ export default function Profile() {
                 </button>
               }
             >
-              {structure.map(dom => (
-                <div key={dom.id} style={{ marginBottom:22 }}>
-                  <div style={{ display:'flex', alignItems:'center', gap:8, padding:'8px 12px', background:'rgba(0,21,61,.04)', borderRadius:10, marginBottom:12, borderLeft:'3px solid #00153D' }}>
-                    <span style={{ fontSize:'.8rem' }}>📂</span>
-                    <span style={{ fontFamily:'Cabinet Grotesk, sans-serif', fontWeight:900, fontSize:'.78rem', color:'#00153D', textTransform:'uppercase', letterSpacing:'.06em' }}>{dom.nom}</span>
-                  </div>
-                  {dom.niveaux?.map(niv => (
-                    <div key={niv.id} style={{ marginBottom:12, background:'#f8fafc', borderRadius:16, padding:'14px 16px', border:'1.5px solid #f1f5f9' }}>
-                      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:10 }}>
-                        <div style={{ display:'flex', alignItems:'center', gap:6 }}>
-                          <span style={{ fontSize:'.85rem' }}>🎓</span>
-                          <span style={{ fontFamily:'Cabinet Grotesk, sans-serif', fontWeight:800, fontSize:'.83rem', color:'#0F172A' }}>{niv.nom}</span>
-                        </div>
-                        <button onClick={()=>{setNewDemande({nom_matiere:'',niveau_id:niv.id});setShowDemandeModal(true);}} style={{ background:'none', border:'1.5px dashed #cbd5e1', color:'#94a3b8', padding:'3px 9px', borderRadius:8, cursor:'pointer', fontSize:'.68rem', fontWeight:700, transition:'all .15s' }}
-                          onMouseEnter={e=>{e.currentTarget.style.borderColor='#3b82f6';e.currentTarget.style.color='#3b82f6';}}
-                          onMouseLeave={e=>{e.currentTarget.style.borderColor='#cbd5e1';e.currentTarget.style.color='#94a3b8';}}>
-                          + matière
-                        </button>
-                      </div>
-                      <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(130px,1fr))', gap:7 }}>
-                        {niv.matieres?.map(mat => {
-                          const active = isSelected(mat.id, niv.id);
-                          return (
-                            <label key={mat.id} className="mat-label" style={{ display:'flex', alignItems:'center', gap:8, padding:'8px 11px', borderRadius:10, cursor:'pointer', background: active ? 'rgba(59,130,246,.1)' : '#fff', border: active ? '1.5px solid rgba(59,130,246,.35)' : '1.5px solid #e2e8f0', boxShadow: active ? '0 2px 8px rgba(59,130,246,.15)' : 'none' }}>
-                              <input type="checkbox" checked={active} onChange={()=>handleToggle(mat.id,niv.id)} style={{ accentColor:'#3b82f6', width:14, height:14, flexShrink:0 }} />
-                              <span style={{ fontSize:'.78rem', fontWeight: active?700:400, color: active?'#3b82f6':'#374151' }}>{mat.nom}</span>
-                            </label>
-                          );
-                        })}
-                      </div>
+              {/* ── Domaines du référentiel ── */}
+              {(()=>{
+                const toggleGroupe = (key) => setOpenGroupe(p => ({...p, [key]: !p[key]}));
+
+                // Map niveauNom → {id, matieres}
+                const niveauMap = {};
+                structure.forEach(dom => {
+                  dom.niveaux?.forEach(niv => {
+                    niveauMap[niv.nom] = { id: niv.id, matieres: niv.matieres || [] };
+                  });
+                });
+
+                // Niveaux du domaine Académique qui NE sont PAS dans GROUPES_NIVEAUX
+                const domAcademique = structure.find(d => d.nom === 'Académique');
+                const autresAcademiques = (domAcademique?.niveaux || []).filter(niv =>
+                  !GROUPES_NIVEAUX.some(g => NIVEAUX_HIERARCHIE[g.key]?.includes(niv.nom))
+                );
+
+                // Tous les domaines sauf Académique → Professionnel etc.
+                const autresDomaines = structure.filter(d => d.nom !== 'Académique');
+
+                return (
+                  <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
+
+                    {/* Header Domaine Académique */}
+                    <div style={{ display:'flex', alignItems:'center', gap:8, padding:'8px 12px', background:'rgba(59,130,246,.06)', borderRadius:10, borderLeft:'3px solid #3b82f6' }}>
+                      <span style={{ fontSize:'.85rem' }}>🎓</span>
+                      <span style={{ fontFamily:'Cabinet Grotesk,sans-serif', fontWeight:900, fontSize:'.78rem', color:'#1D4ED8', textTransform:'uppercase', letterSpacing:'.06em' }}>Domaine Académique</span>
                     </div>
-                  ))}
-                </div>
-              ))}
+
+                    {/* Groupes Primaire / Collège / Lycée */}
+                    {GROUPES_NIVEAUX.map(groupe => {
+                      const isOpen = openGroupe[groupe.key] === true; // ouvert par défaut
+                      const sousNiveaux = NIVEAUX_HIERARCHIE[groupe.key] || [];
+
+                      // Compter les matières cochées dans ce groupe
+                      let totalCochees = 0;
+                      sousNiveaux.forEach(sousNom => {
+                        const niv = niveauMap[sousNom];
+                        if (niv) niv.matieres.forEach(mat => { if (isSelected(mat.id, niv.id)) totalCochees++; });
+                      });
+
+                      return (
+                        <div key={groupe.key} style={{ border:`1.5px solid ${groupe.border}`, borderRadius:18, overflow:'hidden', transition:'all .2s' }}>
+                          {/* Header groupe */}
+                          <div onClick={() => toggleGroupe(groupe.key)}
+                            style={{ display:'flex', alignItems:'center', gap:12, padding:'14px 18px', background:`linear-gradient(135deg,${groupe.bg},#fff)`, cursor:'pointer', transition:'background .18s' }}
+                            onMouseEnter={e => e.currentTarget.style.background=groupe.bg}
+                            onMouseLeave={e => e.currentTarget.style.background=`linear-gradient(135deg,${groupe.bg},#fff)`}>
+                            <div style={{ width:40, height:40, borderRadius:12, background:groupe.bg, border:`1.5px solid ${groupe.border}`, display:'flex', alignItems:'center', justifyContent:'center', fontSize:'1.2rem', flexShrink:0 }}>
+                              {groupe.icon}
+                            </div>
+                            <div style={{ flex:1 }}>
+                              <div style={{ fontFamily:'Cabinet Grotesk,sans-serif', fontWeight:900, fontSize:'1rem', color:groupe.color, letterSpacing:'-.01em' }}>{groupe.key}</div>
+                              <div style={{ fontSize:'.7rem', color:'#94a3b8', marginTop:2 }}>{groupe.desc}</div>
+                            </div>
+                            {totalCochees > 0 && (
+                              <div style={{ fontSize:'.68rem', fontWeight:800, padding:'3px 10px', borderRadius:20, background:groupe.bg, color:groupe.color, border:`1px solid ${groupe.border}` }}>
+                                {totalCochees} matière{totalCochees>1?'s':''} choisie{totalCochees>1?'s':''}
+                              </div>
+                            )}
+                            <div style={{ fontSize:12, color:'#94a3b8', transition:'transform .2s', transform:isOpen?'rotate(180deg)':'rotate(0deg)', marginLeft:4 }}>▾</div>
+                          </div>
+
+                          {/* Sous-niveaux */}
+                          {isOpen && (
+                            <div style={{ padding:'12px 16px 16px', background:'#fff', display:'flex', flexDirection:'column', gap:10 }}>
+                              {sousNiveaux.map(sousNom => {
+                                const niv = niveauMap[sousNom];
+                                if (!niv) return null;
+                                const nbCochees = niv.matieres.filter(mat => isSelected(mat.id, niv.id)).length;
+                                return (
+                                  <div key={sousNom} style={{ background:'#f8fafc', borderRadius:14, padding:'12px 14px', border:`1.5px solid ${nbCochees>0?groupe.border:'#f1f5f9'}` }}>
+                                    <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:10 }}>
+                                      <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+                                        <div style={{ width:6, height:6, borderRadius:'50%', background:nbCochees>0?groupe.color:'#CBD5E1', flexShrink:0 }}/>
+                                        <span style={{ fontFamily:'Cabinet Grotesk,sans-serif', fontWeight:800, fontSize:'.82rem', color:'#0F172A' }}>{sousNom}</span>
+                                      </div>
+                                      <button onClick={()=>{setNewDemande({nom_matiere:'',niveau_id:niv.id});setShowDemandeModal(true);}}
+                                        style={{ background:'none', border:'1.5px dashed #cbd5e1', color:'#94a3b8', padding:'3px 9px', borderRadius:8, cursor:'pointer', fontSize:'.65rem', fontWeight:700, transition:'all .15s' }}
+                                        onMouseEnter={e=>{e.currentTarget.style.borderColor=groupe.color;e.currentTarget.style.color=groupe.color;}}
+                                        onMouseLeave={e=>{e.currentTarget.style.borderColor='#cbd5e1';e.currentTarget.style.color='#94a3b8';}}>
+                                        + matière
+                                      </button>
+                                    </div>
+                                    {niv.matieres.length === 0 ? (
+                                      <div style={{ fontSize:'.72rem', color:'#94a3b8', fontStyle:'italic', padding:'4px 0' }}>Aucune matière dans ce niveau</div>
+                                    ) : (
+                                      <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(130px,1fr))', gap:7 }}>
+                                        {niv.matieres.map(mat => {
+                                          const active = isSelected(mat.id, niv.id);
+                                          return (
+                                            <label key={mat.id} className="mat-label" style={{ display:'flex', alignItems:'center', gap:8, padding:'8px 11px', borderRadius:10, cursor:'pointer', background: active ? `${groupe.bg}` : '#fff', border: active ? `1.5px solid ${groupe.border}` : '1.5px solid #e2e8f0', boxShadow: active ? `0 2px 8px ${groupe.border}44` : 'none' }}>
+                                              <input type="checkbox" checked={active} onChange={()=>handleToggle(mat.id,niv.id)} style={{ accentColor:groupe.color, width:14, height:14, flexShrink:0 }} />
+                                              <span style={{ fontSize:'.78rem', fontWeight: active?700:400, color: active?groupe.color:'#374151' }}>{mat.nom}</span>
+                                            </label>
+                                          );
+                                        })}
+                                      </div>
+                                    )}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+
+                    {/* ── Domaines Professionnels ── */}
+                    {autresDomaines.map(dom => {
+                      const domKey = `dom_${dom.id}`;
+                      const isOpen = openGroupe[domKey] === true;
+                      const PROF_CFG = {
+                        color:'#B45309', bg:'#FFFBEB', border:'#FCD34D', icon:'💼'
+                      };
+                      // Compter matières cochées dans ce domaine
+                      let cochees = 0;
+                      dom.niveaux?.forEach(niv => niv.matieres?.forEach(mat => { if(isSelected(mat.id,niv.id)) cochees++; }));
+                      return (
+                        <div key={dom.id} style={{ marginTop:8 }}>
+                          {/* Séparateur domaine */}
+                          <div style={{ display:'flex', alignItems:'center', gap:8, padding:'8px 12px', background:'rgba(245,158,11,.06)', borderRadius:10, borderLeft:'3px solid #F59E0B', marginBottom:10 }}>
+                            <span style={{ fontSize:'.85rem' }}>💼</span>
+                            <span style={{ fontFamily:'Cabinet Grotesk,sans-serif', fontWeight:900, fontSize:'.78rem', color:'#B45309', textTransform:'uppercase', letterSpacing:'.06em' }}>Domaine {dom.nom}</span>
+                          </div>
+                          <div style={{ border:`1.5px solid ${PROF_CFG.border}`, borderRadius:18, overflow:'hidden' }}>
+                            <div onClick={() => toggleGroupe(domKey)}
+                              style={{ display:'flex', alignItems:'center', gap:12, padding:'14px 18px', background:`linear-gradient(135deg,${PROF_CFG.bg},#fff)`, cursor:'pointer' }}
+                              onMouseEnter={e=>e.currentTarget.style.background=PROF_CFG.bg}
+                              onMouseLeave={e=>e.currentTarget.style.background=`linear-gradient(135deg,${PROF_CFG.bg},#fff)`}>
+                              <div style={{ width:40, height:40, borderRadius:12, background:PROF_CFG.bg, border:`1.5px solid ${PROF_CFG.border}`, display:'flex', alignItems:'center', justifyContent:'center', fontSize:'1.2rem', flexShrink:0 }}>{PROF_CFG.icon}</div>
+                              <div style={{ flex:1 }}>
+                                <div style={{ fontFamily:'Cabinet Grotesk,sans-serif', fontWeight:900, fontSize:'1rem', color:PROF_CFG.color }}>{dom.nom}</div>
+                                <div style={{ fontSize:'.7rem', color:'#94a3b8', marginTop:2 }}>{dom.niveaux?.length || 0} niveaux disponibles</div>
+                              </div>
+                              {cochees > 0 && (
+                                <div style={{ fontSize:'.68rem', fontWeight:800, padding:'3px 10px', borderRadius:20, background:PROF_CFG.bg, color:PROF_CFG.color, border:`1px solid ${PROF_CFG.border}` }}>
+                                  {cochees} matière{cochees>1?'s':''} choisie{cochees>1?'s':''}
+                                </div>
+                              )}
+                              <div style={{ fontSize:12, color:'#94a3b8', transition:'transform .2s', transform:isOpen?'rotate(180deg)':'rotate(0deg)', marginLeft:4 }}>▾</div>
+                            </div>
+                            {isOpen && (
+                              <div style={{ padding:'12px 16px 16px', background:'#fff', display:'flex', flexDirection:'column', gap:10 }}>
+                                {dom.niveaux?.map(niv => {
+                                  const nbC = niv.matieres?.filter(mat => isSelected(mat.id,niv.id)).length || 0;
+                                  return (
+                                    <div key={niv.id} style={{ background:'#f8fafc', borderRadius:14, padding:'12px 14px', border:`1.5px solid ${nbC>0?PROF_CFG.border:'#f1f5f9'}` }}>
+                                      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:10 }}>
+                                        <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+                                          <div style={{ width:6, height:6, borderRadius:'50%', background:nbC>0?PROF_CFG.color:'#CBD5E1' }}/>
+                                          <span style={{ fontFamily:'Cabinet Grotesk,sans-serif', fontWeight:800, fontSize:'.82rem', color:'#0F172A' }}>{niv.nom}</span>
+                                        </div>
+                                        <button onClick={()=>{setNewDemande({nom_matiere:'',niveau_id:niv.id});setShowDemandeModal(true);}}
+                                          style={{ background:'none', border:'1.5px dashed #cbd5e1', color:'#94a3b8', padding:'3px 9px', borderRadius:8, cursor:'pointer', fontSize:'.65rem', fontWeight:700, transition:'all .15s' }}
+                                          onMouseEnter={e=>{e.currentTarget.style.borderColor=PROF_CFG.color;e.currentTarget.style.color=PROF_CFG.color;}}
+                                          onMouseLeave={e=>{e.currentTarget.style.borderColor='#cbd5e1';e.currentTarget.style.color='#94a3b8';}}>
+                                          + matière
+                                        </button>
+                                      </div>
+                                      <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(130px,1fr))', gap:7 }}>
+                                        {niv.matieres?.map(mat => {
+                                          const active = isSelected(mat.id, niv.id);
+                                          return (
+                                            <label key={mat.id} className="mat-label" style={{ display:'flex', alignItems:'center', gap:8, padding:'8px 11px', borderRadius:10, cursor:'pointer', background:active?PROF_CFG.bg:'#fff', border:active?`1.5px solid ${PROF_CFG.border}`:'1.5px solid #e2e8f0' }}>
+                                              <input type="checkbox" checked={active} onChange={()=>handleToggle(mat.id,niv.id)} style={{ accentColor:PROF_CFG.color, width:14, height:14, flexShrink:0 }} />
+                                              <span style={{ fontSize:'.78rem', fontWeight:active?700:400, color:active?PROF_CFG.color:'#374151' }}>{mat.nom}</span>
+                                            </label>
+                                          );
+                                        })}
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
               <button className="save-btn" onClick={handleSave} disabled={saving} style={{ width:'100%', border:'none', padding:13, borderRadius:14, fontFamily:'Cabinet Grotesk, sans-serif', fontWeight:800, cursor: saving?'not-allowed':'pointer', fontSize:'.88rem', background: saved ? '#10b981' : '#00153D', color:'#fff', boxShadow: saved ? '0 4px 16px rgba(16,185,129,.35)' : '0 4px 16px rgba(0,21,61,.2)', display:'flex', alignItems:'center', justifyContent:'center', gap:8 }}>
                 {saving ? <><div style={{ width:16,height:16,border:'2.5px solid rgba(255,255,255,.3)',borderTopColor:'#fff',borderRadius:'50%',animation:'spin2 .8s linear infinite'}}/>…</> : saved ? '✅ Enregistré !' : '💾 Sauvegarder mes enseignements'}
               </button>

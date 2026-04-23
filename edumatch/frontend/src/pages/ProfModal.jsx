@@ -257,8 +257,17 @@ export default function ProfModal({ prof, onClose }) {
     finally { setSendingAvis(false); }
   };
 
-  const disponibles = dispos.filter(d => d.nb_inscrits < d.nb_max_etudiants);
-  const complets    = dispos.filter(d => d.nb_inscrits >= d.nb_max_etudiants);
+  // Filtrer les disponibilités passées — invisibles côté étudiant
+  // Comparaison date + heure_fin avec maintenant
+  const now = new Date();
+  const futures = dispos.filter(d => {
+    if (!d.date_specifique) return true;
+    const heureFin = d.heure_fin ? d.heure_fin.slice(0, 5) : '23:59';
+    const fin = new Date(`${d.date_specifique}T${heureFin}:00`);
+    return fin > now;
+  });
+  const disponibles = futures.filter(d => d.nb_inscrits < d.nb_max_etudiants);
+  const complets    = futures.filter(d => d.nb_inscrits >= d.nb_max_etudiants);
 
   const TABS = [
     { key: 'profil',         icon: '👤', label: 'Profil'                         },

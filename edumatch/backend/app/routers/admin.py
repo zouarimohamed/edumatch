@@ -513,3 +513,47 @@ def refuser_demande(demande_id: int, db: Session = Depends(get_db), _=Depends(re
     d.statut = "refusé"
     db.commit()
     return {"message": "Demande refusée"}
+
+
+# ── TOUTES LES RÉSERVATIONS (pour le calendrier) ────────────────
+@router.get("/reservations/all")
+def get_all_reservations(db: Session = Depends(get_db), _=Depends(require_admin)):
+    try:
+        rows = db.execute(text("""
+            SELECT
+                r.id,
+                r.date_cours,
+                r.heure_debut::text       AS heure_debut,
+                r.heure_fin::text         AS heure_fin,
+                r.statut,
+                r.mode_seance,
+                r.statut_paiement,
+                CAST(COALESCE(r.tarif_applique, 0) AS FLOAT) AS tarif_applique,
+                pu.prenom || ' ' || pu.nom  AS prof_nom,
+                eu.prenom || ' ' || eu.nom  AS etudiant_nom
+            FROM reservations r
+            JOIN professeurs  p  ON p.id  = r.prof_id
+            JOIN users        pu ON pu.id = p.user_id
+            JOIN etudiants    e  ON e.id  = r.etudiant_id
+            JOIN users        eu ON eu.id = e.user_id
+            ORDER BY r.date_cours DESC, r.heure_debut
+        """)).fetchall()
+
+        return [
+            {
+                "id":              row.id,
+                "date_cours":      str(row.date_cours) if row.date_cours else None,
+                "heure_debut":     str(row.heure_debut)[:5] if row.heure_debut else None,
+                "heure_fin":       str(row.heure_fin)[:5]   if row.heure_fin   else None,
+                "statut":          row.statut,
+                "mode_seance":     row.mode_seance,
+                "statut_paiement": row.statut_paiement,
+                "tarif_applique":  round(row.tarif_applique, 2),
+                "prof_nom":        row.prof_nom,
+                "etudiant_nom":    row.etudiant_nom,
+            }
+            for row in rows
+        ]
+    except Exception as e:
+        print(f"[admin] reservations/all error: {e}")
+        return []

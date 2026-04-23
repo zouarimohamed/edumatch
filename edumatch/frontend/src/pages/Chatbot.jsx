@@ -252,20 +252,32 @@ const SUGGESTIONS = [
 function getEtapes(criteres) {
   const domaine = criteres?.domaine_type;
   if (!domaine) return [
-    { key:'domaine_type', label:'Domaine',  icon:'🏫' },
+    { key:'domaine_type', label:'Domaine', icon:'🏫' },
   ];
-  if (domaine === 'academique') return [
-    { key:'domaine_type', label:'Domaine',  icon:'🏫' },
-    { key:'matiere',      label:'Matière',  icon:'📚' },
-    { key:'niveau',       label:'Niveau',   icon:'🎓' },
-    { key:'budget_max',   label:'Budget',   icon:'💰' },
-    { key:'mode',         label:'Mode',     icon:'📡' },
-  ];
+  if (domaine === 'academique') {
+    const etapes = [
+      { key:'domaine_type', label:'Domaine',     icon:'🏫' },
+      { key:'matiere',      label:'Matière',     icon:'📚' },
+      { key:'niveau',       label:'Niveau',      icon:'🎓' },
+    ];
+    // Ajouter sous_niveau seulement si niveau est défini
+    if (criteres?.niveau) {
+      etapes.push({ key:'sous_niveau', label:'Sous-niveau', icon:'📋' });
+    }
+    etapes.push(
+      { key:'mode',         label:'Mode',        icon:'📡' },
+    );
+    if (criteres?.mode === 'presentiel') {
+      etapes.push({ key:'ville', label:'Ville', icon:'📍' });
+    }
+    etapes.push({ key:'budget_max', label:'Budget', icon:'💰' });
+    return etapes;
+  }
   return [
-    { key:'domaine_type', label:'Domaine',  icon:'💼' },
-    { key:'matiere',      label:'Domaine pro', icon:'🛠' },
-    { key:'budget_max',   label:'Budget',   icon:'💰' },
-    { key:'mode',         label:'Mode',     icon:'📡' },
+    { key:'domaine_type', label:'Domaine',    icon:'💼' },
+    { key:'matiere',      label:'Spécialité', icon:'🛠' },
+    { key:'mode',         label:'Mode',       icon:'📡' },
+    { key:'budget_max',   label:'Budget',     icon:'💰' },
   ];
 }
 
@@ -400,8 +412,29 @@ export default function Chatbot() {
   const now = () => new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
 
   const handleView = async (prof) => {
-    try { const r = await api.get(`/api/chatbot/prof-detail/${prof.id}`); setSelectedProf(r.data); }
-    catch { setSelectedProf(prof); }
+    // Récupérer sous_niveau et mode depuis le dernier message assistant qui a des critères
+    let sous_niveau = null;
+    let mode = null;
+    // Chercher dans les messages le dernier critère connu
+    for (let i = msgs.length - 1; i >= 0; i--) {
+      const m = msgs[i];
+      if (m.criteres) {
+        sous_niveau = m.criteres.sous_niveau || null;
+        mode        = m.criteres.mode        || null;
+        break;
+      }
+    }
+    // Construire les query params
+    const params = new URLSearchParams();
+    if (sous_niveau) params.append('sous_niveau', sous_niveau);
+    if (mode)        params.append('mode', mode);
+    const qs = params.toString() ? `?${params.toString()}` : '';
+    try {
+      const r = await api.get(`/api/chatbot/prof-detail/${prof.id}${qs}`);
+      setSelectedProf(r.data);
+    } catch {
+      setSelectedProf(prof);
+    }
   };
 
   // ── Envoyer un message ──

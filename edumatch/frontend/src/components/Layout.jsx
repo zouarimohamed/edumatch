@@ -296,7 +296,7 @@ function useNotifications(user) {
             body:`${nm} souhaite rejoindre la plateforme`,
             detail:`📍 ${p.ville||'Ville non renseignée'} · ${p.mode_enseignement||''}`,
             color:'#B45309', bg:'#FFFBEB', border:'#FCD34D',
-            time: p.created_at, path:'/admin', read:readIds.current.has(id),
+            time: p.created_at, path:'/admin?tab=profs', read:readIds.current.has(id),
           });
         });
         demandes.filter(d=>d.statut==='en_attente').forEach(d => {
@@ -307,7 +307,7 @@ function useNotifications(user) {
             body:`${d.prof_nom||'Un formateur'} propose "${d.nom_matiere}"`,
             detail:`🎓 Niveau : ${d.nom_niveau||'—'}`,
             color:'#1D4ED8', bg:'#EFF6FF', border:'#BFDBFE',
-            time: d.created_at, path:'/admin', read:readIds.current.has(id),
+            time: d.created_at, path:'/admin?tab=demandes', read:readIds.current.has(id),
           });
         });
       }
@@ -372,7 +372,7 @@ function NotifItem({ n, isLast, onNavigate, onClose, onOpenChat, onOpenResa, onM
   const isMsg = n.type==='message';
   return (
     <div className="notif-item"
-      onClick={()=>{ onMarkRead(n.id); if(isMsg&&onOpenChat) onOpenChat(n.resa_id); else if(n.type==='pending'&&onOpenResa) onOpenResa(n.resa_id); else onNavigate(n.path); onClose(); }}
+      onClick={()=>{ onMarkRead(n.id); if(isMsg&&onOpenChat) onOpenChat(n.resa_id); else if(n.type==='pending'&&onOpenResa) onOpenResa(n.resa_id); else { const [p,q]=n.path.split('?'); onNavigate(q?`${p}?${q}`:p); } onClose(); }}
       style={{ borderBottom:isLast?'none':`1px solid var(--border)`, background:!n.read?`${n.bg}55`:'transparent', position:'relative' }}>
       {!n.read&&<div style={{ position:'absolute',left:6,top:'50%',transform:'translateY(-50%)',width:6,height:6,borderRadius:'50%',background:n.color }}/>}
       <div style={{ width:42,height:42,borderRadius:12,flexShrink:0,background:n.bg,border:`1.5px solid ${n.border}`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:'1.05rem' }}>{n.icon}</div>

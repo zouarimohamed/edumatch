@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useMemo, useRef, useCallback } from 'react';
+import { useLocation } from 'react-router-dom';
 import api from '../services/api';
 import FinancesTab from './FinancesTab';
 import { exportAdminProfs, exportAdminAnalytiques } from '../services/exportPDF';
@@ -1616,106 +1617,1135 @@ function DemandesTab({ demandes, onApprouver, onRefuser }) {
 }
 
 function ReferentielTab({ structure, villes, onReload }) {
-  const [expanded,setExpanded]=useState({});
-  const [modal,setModal]=useState(null);
-  const [formVal,setFormVal]=useState('');
-  const [saving,setSaving]=useState(false);
-  const [delConf,setDelConf]=useState(null);
-  const [search,setSearch]=useState('');
-  const totalMats=structure.reduce((s,d)=>s+(d.niveaux?.reduce((s2,n)=>s2+(n.matieres?.length||0),0)||0),0);
-  const totalNivs=structure.reduce((s,d)=>s+(d.niveaux?.length||0),0);
-  const domCols=[{accent:'#3b82f6',bg:'rgba(59,130,246,.05)',border:'rgba(59,130,246,.2)',light:'rgba(59,130,246,.08)'},{accent:'#10b981',bg:'rgba(16,185,129,.05)',border:'rgba(16,185,129,.2)',light:'rgba(16,185,129,.1)'},{accent:'#8b5cf6',bg:'rgba(139,92,246,.05)',border:'rgba(139,92,246,.2)',light:'rgba(139,92,246,.1)'},{accent:'#f59e0b',bg:'rgba(245,158,11,.05)',border:'rgba(245,158,11,.2)',light:'rgba(245,158,11,.1)'},{accent:'#ef4444',bg:'rgba(239,68,68,.05)',border:'rgba(239,68,68,.2)',light:'rgba(239,68,68,.1)'}];
-  const filteredStruct=useMemo(()=>{if(!search)return structure;const q=search.toLowerCase();return structure.map(d=>({...d,niveaux:d.niveaux?.map(n=>({...n,matieres:n.matieres?.filter(m=>m.nom.toLowerCase().includes(q))||[]})).filter(n=>n.matieres.length>0||n.nom.toLowerCase().includes(q))})).filter(d=>d.niveaux?.length>0||d.nom.toLowerCase().includes(q));},[structure,search]);
-  const openModal=(type,payload={})=>{setFormVal('');setModal({type,payload});};
-  const handleSave=async()=>{if(!formVal.trim())return;setSaving(true);try{const{type,payload}=modal;if(type==='ville')await api.post('/api/admin/referentiel/villes',{nom:formVal.trim()});if(type==='domaine')await api.post('/api/admin/referentiel/domaines',{nom:formVal.trim()});if(type==='niveau')await api.post('/api/admin/referentiel/niveaux',{nom:formVal.trim(),domaine_id:payload.domaineId});if(type==='matiere')await api.post('/api/admin/referentiel/matieres',{nom:formVal.trim(),niveau_id:payload.niveauId});setModal(null);onReload();}catch(e){alert(e.response?.data?.detail||'Erreur');}finally{setSaving(false);}};
-  const handleDelete=async()=>{if(!delConf)return;try{if(delConf.type==='matiere')await api.delete(`/api/admin/referentiel/matieres/${delConf.id}`);if(delConf.type==='ville')await api.delete(`/api/admin/referentiel/villes/${delConf.id}`);if(delConf.type==='niveau')await api.delete(`/api/admin/referentiel/niveaux/${delConf.id}`);if(delConf.type==='domaine')await api.delete(`/api/admin/referentiel/domaines/${delConf.id}`);setDelConf(null);onReload();}catch(e){alert(e.response?.data?.detail||'Erreur suppression');}};
-  return(
-    <div style={{display:'flex',flexDirection:'column',gap:20}}>
-      <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:12}}>
-        {[{icon:'V',val:villes.length,label:'Villes',color:'#3b82f6'},{icon:'D',val:structure.length,label:'Domaines',color:'#8b5cf6'},{icon:'N',val:totalNivs,label:'Niveaux',color:'#f59e0b'},{icon:'M',val:totalMats,label:'Matieres',color:'#10b981'}].map((s,i)=><div key={s.label} className="adm-stat adm-scaleIn" style={{animationDelay:`${i*40}ms`}}><div className="adm-stat-accent" style={{background:s.color}}/><div style={{fontFamily:'Cabinet Grotesk,sans-serif',fontSize:28,fontWeight:900,color:s.color,marginBottom:5,lineHeight:1}}>{s.val}</div><div style={{fontSize:12,color:'#94a3b8'}}>{s.icon} {s.label}</div></div>)}
-      </div>
-      <div className="adm-card" style={{padding:'18px 20px'}}>
-        <SectionTitle title="Villes actives" sub={`${villes.length} configuree${villes.length>1?'s':''}`} action={<button className="adm-btn adm-btn-primary adm-btn-sm" onClick={()=>openModal('ville')}>+ Ajouter</button>}/>
-        <div style={{display:'flex',flexWrap:'wrap',gap:7}}>
-          {villes.map(v=><div key={v.id} className="adm-chip" style={{color:'#1d4ed8',borderColor:'#bfdbfe'}}>P {v.nom}<span onClick={()=>setDelConf({type:'ville',id:v.id,nom:v.nom})} style={{width:14,height:14,borderRadius:'50%',background:'#fef2f2',border:'1px solid #fca5a5',display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',fontSize:9,color:'#dc2626',fontWeight:800,flexShrink:0}}>x</span></div>)}
-          {villes.length===0&&<span style={{fontSize:13,color:'#94a3b8',fontStyle:'italic'}}>Aucune ville configuree</span>}
+  const [expanded,    setExpanded]    = useState({});
+  const [openGroupe,  setOpenGroupe]  = useState({});
+  const [modal,       setModal]       = useState(null);
+  const [formVal,     setFormVal]     = useState('');
+  const [saving,      setSaving]      = useState(false);
+  const [delConf,     setDelConf]     = useState(null);
+  const [search,      setSearch]      = useState('');
+
+  const DOMAINE_CFG = {
+    'Académique':    { icon:'🎓', color:'#1D4ED8', bg:'#EFF6FF', border:'#BFDBFE', light:'rgba(59,130,246,.06)' },
+    'Professionnel': { icon:'💼', color:'#B45309', bg:'#FFFBEB', border:'#FCD34D', light:'rgba(245,158,11,.06)' },
+  };
+  const DEFAULT_CFG = { icon:'📂', color:'#6D28D9', bg:'#F5F3FF', border:'#DDD6FE', light:'rgba(139,92,246,.06)' };
+
+  const GROUPES_ACAD = {
+    Primaire: { icon:'📚', color:'#059669', bg:'#ECFDF5', border:'#6EE7B7',
+      niveaux:['1ère année primaire','2ème année primaire','3ème année primaire','4ème année primaire','5ème année primaire','6ème année primaire'] },
+    Collège:  { icon:'📖', color:'#2563EB', bg:'#EFF6FF', border:'#BFDBFE',
+      niveaux:['7ème année','8ème année','9ème année'] },
+    Lycée:    { icon:'🎒', color:'#7C3AED', bg:'#F5F3FF', border:'#DDD6FE',
+      niveaux:['1ère année Lycée','2ème année Lycée','3ème année Lycée','Baccalauréat'] },
+  };
+
+  const totalMats = structure.reduce((s,d)=>s+(d.niveaux?.reduce((s2,n)=>s2+(n.matieres?.length||0),0)||0),0);
+  const totalNivs = structure.reduce((s,d)=>s+(d.niveaux?.length||0),0);
+
+  const filteredStruct = useMemo(()=>{
+    if(!search) return structure;
+    const q=search.toLowerCase();
+    return structure.map(d=>({
+      ...d,
+      niveaux: d.niveaux?.map(n=>({
+        ...n,
+        matieres: n.matieres?.filter(m=>m.nom.toLowerCase().includes(q))||[]
+      })).filter(n=>n.matieres.length>0||n.nom.toLowerCase().includes(q))
+    })).filter(d=>d.niveaux?.length>0||d.nom.toLowerCase().includes(q));
+  },[structure,search]);
+
+  const openModal = (type,payload={}) => { setFormVal(''); setModal({type,payload}); };
+
+  const handleSave = async () => {
+    if(!formVal.trim()) return;
+    setSaving(true);
+    try {
+      const { type, payload } = modal;
+      if(type==='ville')   await api.post('/api/admin/referentiel/villes',  { nom:formVal.trim() });
+      if(type==='domaine') await api.post('/api/admin/referentiel/domaines', { nom:formVal.trim() });
+      if(type==='niveau')  await api.post('/api/admin/referentiel/niveaux',  { nom:formVal.trim(), domaine_id:payload.domaineId });
+      if(type==='matiere') await api.post('/api/admin/referentiel/matieres', { nom:formVal.trim(), niveau_id:payload.niveauId });
+      setModal(null); onReload();
+    } catch(e) { alert(e.response?.data?.detail||'Erreur'); }
+    finally { setSaving(false); }
+  };
+
+  const handleDelete = async () => {
+    if(!delConf) return;
+    try {
+      if(delConf.type==='matiere') await api.delete(`/api/admin/referentiel/matieres/${delConf.id}`);
+      if(delConf.type==='ville')   await api.delete(`/api/admin/referentiel/villes/${delConf.id}`);
+      if(delConf.type==='niveau')  await api.delete(`/api/admin/referentiel/niveaux/${delConf.id}`);
+      if(delConf.type==='domaine') await api.delete(`/api/admin/referentiel/domaines/${delConf.id}`);
+      setDelConf(null); onReload();
+    } catch(e) { alert(e.response?.data?.detail||'Erreur suppression'); }
+  };
+
+  // Composant chip matière
+  const MatChip = ({ m, col }) => (
+    <div style={{ display:'inline-flex', alignItems:'center', gap:6, padding:'5px 10px 5px 8px', borderRadius:20,
+      background:'#fff', border:`1.5px solid ${col.border}`, fontSize:12, fontWeight:600, color:col.color,
+      transition:'all .15s' }}
+      onMouseEnter={e=>e.currentTarget.style.background=col.bg}
+      onMouseLeave={e=>e.currentTarget.style.background='#fff'}>
+      <span style={{ width:6, height:6, borderRadius:'50%', background:col.color, flexShrink:0 }}/>
+      {m.nom}
+      <span onClick={()=>setDelConf({type:'matiere',id:m.id,nom:m.nom})}
+        style={{ width:16, height:16, borderRadius:'50%', background:'#fef2f2', border:'1px solid #fca5a5',
+          display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', fontSize:9,
+          color:'#dc2626', fontWeight:900, flexShrink:0, marginLeft:2, transition:'all .15s' }}
+        onMouseEnter={e=>e.currentTarget.style.background='#fee2e2'}
+        onMouseLeave={e=>e.currentTarget.style.background='#fef2f2'}>✕</span>
+    </div>
+  );
+
+  // Bloc d'un niveau (générique)
+  const NiveauBloc = ({ niv, col, domNom }) => (
+    <div style={{ background:'#fff', borderRadius:14, border:`1.5px solid ${col.border}`,
+      padding:'14px 16px', transition:'box-shadow .15s' }}
+      onMouseEnter={e=>e.currentTarget.style.boxShadow=`0 4px 16px ${col.border}66`}
+      onMouseLeave={e=>e.currentTarget.style.boxShadow='none'}>
+      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:10 }}>
+        <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+          <div style={{ width:8, height:8, borderRadius:'50%', background:col.color, flexShrink:0 }}/>
+          <span style={{ fontFamily:"'Cabinet Grotesk',sans-serif", fontWeight:800, fontSize:13, color:'#0F172A' }}>{niv.nom}</span>
+          <span style={{ fontSize:10, fontWeight:800, padding:'2px 8px', borderRadius:20,
+            background:col.bg, color:col.color, border:`1px solid ${col.border}` }}>
+            {niv.matieres?.length||0} matière{(niv.matieres?.length||0)!==1?'s':''}
+          </span>
+        </div>
+        <div style={{ display:'flex', gap:6 }}>
+          <button onClick={()=>openModal('matiere',{niveauId:niv.id,niveauName:niv.nom,domaineName:domNom})}
+            style={{ display:'flex', alignItems:'center', gap:5, padding:'5px 12px', borderRadius:8,
+              background:col.bg, color:col.color, border:`1.5px solid ${col.border}`, cursor:'pointer',
+              fontSize:11, fontWeight:700, transition:'all .15s' }}
+            onMouseEnter={e=>e.currentTarget.style.opacity='.8'}
+            onMouseLeave={e=>e.currentTarget.style.opacity='1'}>
+            + Matière
+          </button>
+          <button onClick={()=>setDelConf({type:'niveau',id:niv.id,nom:niv.nom})}
+            style={{ width:28, height:28, borderRadius:8, background:'#fef2f2', border:'1.5px solid #fca5a5',
+              color:'#dc2626', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center',
+              fontSize:12, transition:'all .15s' }}
+            onMouseEnter={e=>e.currentTarget.style.background='#fee2e2'}
+            onMouseLeave={e=>e.currentTarget.style.background='#fef2f2'}>🗑</button>
         </div>
       </div>
-      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:4}}>
-        <div className="adm-section-title" style={{marginBottom:0}}><div className="adm-section-title-bar"/><h3>Structure pedagogique</h3></div>
-        <div style={{display:'flex',gap:8}}><div className="adm-search-wrap" style={{width:220}}><span className="adm-search-icon">?</span><input className="adm-input" style={{fontSize:12,padding:'7px 12px 7px 30px'}} placeholder="Rechercher..." value={search} onChange={e=>setSearch(e.target.value)}/></div><button className="adm-btn adm-btn-primary adm-btn-sm" onClick={()=>openModal('domaine')}>+ Domaine</button></div>
-      </div>
-      {filteredStruct.map((dom,di)=>{
-        const col=domCols[di%domCols.length];
-        const open=expanded[dom.id]!==false;
-        const nbM=dom.niveaux?.reduce((s,n)=>s+(n.matieres?.length||0),0)||0;
-        return(
-          <div key={dom.id} className="adm-dom" style={{borderColor:col.border}}>
-            <div className={`adm-dom-header${open?' open':''}`} style={{background:open?col.bg:'#fff'}} onClick={()=>setExpanded(p=>({...p,[dom.id]:!open}))}>
-              <div style={{width:36,height:36,borderRadius:10,background:col.light,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,fontSize:16}}>D</div>
-              <div style={{flex:1}}><div style={{fontFamily:'Cabinet Grotesk,sans-serif',fontWeight:800,fontSize:14,color:col.accent}}>{dom.nom}</div><div style={{fontSize:11,color:'#94a3b8',marginTop:1}}>{dom.niveaux?.length||0} niveau{(dom.niveaux?.length||0)>1?'x':''} / {nbM} matiere{nbM>1?'s':''}</div></div>
-              <div style={{display:'flex',gap:7}} onClick={e=>e.stopPropagation()}>
-                <button className="adm-btn adm-btn-ghost adm-btn-sm" style={{borderColor:col.border,color:col.accent,background:col.light}} onClick={()=>openModal('niveau',{domaineId:dom.id,domaineName:dom.nom})}>+ Niveau</button>
-                <button className="adm-btn adm-btn-danger adm-btn-sm" onClick={()=>setDelConf({type:'domaine',id:dom.id,nom:dom.nom})}>X</button>
-              </div>
-              <span style={{color:col.accent,fontSize:12,transition:'transform .2s',transform:open?'rotate(0)':'rotate(-90deg)',display:'inline-block',marginLeft:4}}>v</span>
+      {!niv.matieres?.length
+        ? <div style={{ fontSize:12, color:'#94a3b8', fontStyle:'italic', padding:'4px 0' }}>Aucune matière —
+            <span onClick={()=>openModal('matiere',{niveauId:niv.id,niveauName:niv.nom,domaineName:domNom})}
+              style={{ color:col.color, cursor:'pointer', fontWeight:600, marginLeft:4 }}>Ajouter</span>
+          </div>
+        : <div style={{ display:'flex', flexWrap:'wrap', gap:6 }}>
+            {niv.matieres.map(m => <MatChip key={m.id} m={m} col={col}/>)}
+          </div>
+      }
+    </div>
+  );
+
+  // Rendu du domaine Académique avec hiérarchie
+  const AcademiqueSection = ({ dom }) => {
+    const cfg = DOMAINE_CFG['Académique'];
+    const isOpen = expanded[dom.id] !== false;
+    const nbM = dom.niveaux?.reduce((s,n)=>s+(n.matieres?.length||0),0)||0;
+    const niveauMap = {};
+    dom.niveaux?.forEach(niv => { niveauMap[niv.nom] = niv; });
+    const autresNiveaux = dom.niveaux?.filter(niv =>
+      !Object.values(GROUPES_ACAD).some(g => g.niveaux.includes(niv.nom))
+    ) || [];
+
+    return (
+      <div style={{ background:'#fff', borderRadius:22, border:`2px solid ${cfg.border}`,
+        overflow:'hidden', boxShadow:'0 4px 20px rgba(59,130,246,.08)' }}>
+        {/* Header domaine */}
+        <div onClick={()=>setExpanded(p=>({...p,[dom.id]:!isOpen}))}
+          style={{ display:'flex', alignItems:'center', gap:14, padding:'18px 22px', cursor:'pointer',
+            background: isOpen ? 'linear-gradient(135deg,#1e40af,#3b82f6)' : '#fff',
+            transition:'all .2s' }}>
+          <div style={{ width:46, height:46, borderRadius:14, background: isOpen?'rgba(255,255,255,.15)':'#EFF6FF',
+            border: isOpen?'1.5px solid rgba(255,255,255,.25)':'1.5px solid #BFDBFE',
+            display:'flex', alignItems:'center', justifyContent:'center', fontSize:'1.4rem', flexShrink:0 }}>
+            {cfg.icon}
+          </div>
+          <div style={{ flex:1 }}>
+            <div style={{ fontFamily:"'Cabinet Grotesk',sans-serif", fontWeight:900, fontSize:16,
+              color: isOpen?'#fff':'#1D4ED8', letterSpacing:'-.01em' }}>{dom.nom}</div>
+            <div style={{ fontSize:12, color: isOpen?'rgba(255,255,255,.7)':'#94a3b8', marginTop:3 }}>
+              {dom.niveaux?.length||0} niveaux · {nbM} matières
             </div>
-            {open&&(
-              <div className="adm-dom-body" style={{background:`${col.bg}`}}>
-                {(!dom.niveaux||dom.niveaux.length===0)&&<div style={{textAlign:'center',padding:16,color:'#94a3b8',fontSize:13,fontStyle:'italic'}}>Aucun niveau -- <span style={{color:col.accent,cursor:'pointer',fontWeight:600}} onClick={()=>openModal('niveau',{domaineId:dom.id,domaineName:dom.nom})}>Ajouter</span></div>}
-                <div style={{display:'flex',flexDirection:'column',gap:10}}>
-                  {dom.niveaux?.map(niv=>(
-                    <div key={niv.id} className="adm-niveau-block">
-                      <div className="adm-niveau-header">
-                        <div style={{display:'flex',alignItems:'center',gap:9}}><span>N</span><span style={{fontFamily:'Cabinet Grotesk,sans-serif',fontWeight:700,fontSize:13,color:'#0F172A'}}>{niv.nom}</span><span style={{fontSize:10,fontWeight:700,padding:'2px 8px',borderRadius:12,background:col.light,color:col.accent,border:`1px solid ${col.border}`}}>{niv.matieres?.length||0}</span></div>
-                        <div style={{display:'flex',gap:6}}><button className="adm-btn adm-btn-ghost adm-btn-sm" style={{borderColor:col.border,color:col.accent,background:col.light}} onClick={()=>openModal('matiere',{niveauId:niv.id,niveauName:niv.nom,domaineName:dom.nom})}>+ Matiere</button><button className="adm-btn adm-btn-danger adm-btn-sm" onClick={()=>setDelConf({type:'niveau',id:niv.id,nom:niv.nom})}>X</button></div>
-                      </div>
-                      <div className="adm-niveau-body">
-                        {!niv.matieres?.length?<span style={{fontSize:12,color:'#94a3b8',fontStyle:'italic'}}>Aucune matiere</span>:(
-                          <div style={{display:'flex',flexWrap:'wrap',gap:6}}>
-                            {niv.matieres.map(m=><div key={m.id} className="adm-chip" style={{color:col.accent,borderColor:col.border}}><span style={{width:6,height:6,borderRadius:'50%',background:col.accent,flexShrink:0}}/>{m.nom}<span onClick={()=>setDelConf({type:'matiere',id:m.id,nom:m.nom})} style={{width:14,height:14,borderRadius:'50%',background:'#fef2f2',border:'1px solid #fca5a5',display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',fontSize:9,color:'#dc2626',fontWeight:800,flexShrink:0}}>x</span></div>)}
-                          </div>
-                        )}
+          </div>
+          <div style={{ display:'flex', gap:8 }} onClick={e=>e.stopPropagation()}>
+            <button onClick={()=>openModal('niveau',{domaineId:dom.id,domaineName:dom.nom})}
+              style={{ padding:'7px 14px', borderRadius:10, fontSize:12, fontWeight:700, cursor:'pointer',
+                background: isOpen?'rgba(255,255,255,.15)':'#EFF6FF',
+                color: isOpen?'#fff':'#1D4ED8',
+                border: isOpen?'1.5px solid rgba(255,255,255,.3)':'1.5px solid #BFDBFE',
+                transition:'all .15s' }}>
+              + Niveau
+            </button>
+            <button onClick={()=>setDelConf({type:'domaine',id:dom.id,nom:dom.nom})}
+              style={{ width:32, height:32, borderRadius:9, background:'rgba(220,38,38,.15)',
+                border:'1.5px solid rgba(220,38,38,.3)', color: isOpen?'#fca5a5':'#dc2626',
+                cursor:'pointer', fontSize:14, display:'flex', alignItems:'center', justifyContent:'center' }}>🗑</button>
+          </div>
+          <div style={{ fontSize:14, color: isOpen?'rgba(255,255,255,.7)':'#94a3b8',
+            transition:'transform .2s', transform:isOpen?'rotate(180deg)':'rotate(0deg)' }}>▾</div>
+        </div>
+
+        {/* Corps avec groupes hiérarchiques */}
+        {isOpen && (
+          <div style={{ padding:'20px 22px', background:'#fafbff', display:'flex', flexDirection:'column', gap:16 }}>
+
+            {/* Groupes Primaire / Collège / Lycée */}
+            {Object.entries(GROUPES_ACAD).map(([groupeKey, groupe]) => {
+              const gKey = `acad_${groupeKey}`;
+              const gOpen = openGroupe[gKey] !== false;
+              const niveauxDuGroupe = groupe.niveaux.map(nom => niveauMap[nom]).filter(Boolean);
+              const totalCochees = niveauxDuGroupe.reduce((s,n)=>s+(n.matieres?.length||0),0);
+
+              return (
+                <div key={groupeKey} style={{ border:`1.5px solid ${groupe.border}`, borderRadius:16, overflow:'hidden' }}>
+                  <div onClick={()=>setOpenGroupe(p=>({...p,[gKey]:!gOpen}))}
+                    style={{ display:'flex', alignItems:'center', gap:12, padding:'13px 16px',
+                      background: gOpen ? groupe.bg : '#fff', cursor:'pointer', transition:'background .15s' }}
+                    onMouseEnter={e=>{ if(!gOpen) e.currentTarget.style.background=groupe.bg+'44'; }}
+                    onMouseLeave={e=>{ if(!gOpen) e.currentTarget.style.background='#fff'; }}>
+                    <div style={{ width:36, height:36, borderRadius:10, background:groupe.bg,
+                      border:`1.5px solid ${groupe.border}`, display:'flex', alignItems:'center',
+                      justifyContent:'center', fontSize:'1.1rem', flexShrink:0 }}>{groupe.icon}</div>
+                    <div style={{ flex:1 }}>
+                      <div style={{ fontFamily:"'Cabinet Grotesk',sans-serif", fontWeight:900, fontSize:14, color:groupe.color }}>{groupeKey}</div>
+                      <div style={{ fontSize:11, color:'#94a3b8', marginTop:1 }}>
+                        {niveauxDuGroupe.length} niveau{niveauxDuGroupe.length!==1?'x':''} · {totalCochees} matière{totalCochees!==1?'s':''}
                       </div>
                     </div>
+                    <div style={{ fontSize:12, color:'#94a3b8', transition:'transform .2s',
+                      transform:gOpen?'rotate(180deg)':'rotate(0deg)' }}>▾</div>
+                  </div>
+
+                  {gOpen && (
+                    <div style={{ padding:'12px 16px 16px', background:'#fff', display:'flex', flexDirection:'column', gap:10 }}>
+                      {niveauxDuGroupe.length === 0
+                        ? <div style={{ textAlign:'center', padding:'16px', color:'#94a3b8', fontSize:13, fontStyle:'italic' }}>
+                            Aucun niveau configuré pour {groupeKey}
+                          </div>
+                        : niveauxDuGroupe.map(niv => (
+                            <NiveauBloc key={niv.id} niv={niv} col={groupe} domNom={dom.nom}/>
+                          ))
+                      }
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+
+            {/* Autres niveaux académiques non hiérarchisés */}
+            {autresNiveaux.length > 0 && (
+              <div style={{ border:'1.5px solid #e2e8f0', borderRadius:16, overflow:'hidden' }}>
+                <div style={{ padding:'12px 16px', background:'#f8fafc', borderBottom:'1px solid #f1f5f9' }}>
+                  <span style={{ fontSize:12, fontWeight:700, color:'#64748b' }}>Autres niveaux</span>
+                </div>
+                <div style={{ padding:'12px 16px', display:'flex', flexDirection:'column', gap:8 }}>
+                  {autresNiveaux.map(niv => (
+                    <NiveauBloc key={niv.id} niv={niv} col={{color:'#6D28D9',bg:'#F5F3FF',border:'#DDD6FE'}} domNom={dom.nom}/>
                   ))}
                 </div>
               </div>
             )}
           </div>
-        );
-      })}
-      {modal&&(
+        )}
+      </div>
+    );
+  };
+
+  // Rendu d'un domaine générique (Professionnel, etc.)
+  const DomaineSection = ({ dom, di }) => {
+    const cfg = DOMAINE_CFG[dom.nom] || DEFAULT_CFG;
+    const isOpen = expanded[dom.id] !== false;
+    const nbM = dom.niveaux?.reduce((s,n)=>s+(n.matieres?.length||0),0)||0;
+
+    return (
+      <div style={{ background:'#fff', borderRadius:22, border:`2px solid ${cfg.border}`,
+        overflow:'hidden', boxShadow:`0 4px 20px ${cfg.border}44` }}>
+        {/* Header domaine */}
+        <div onClick={()=>setExpanded(p=>({...p,[dom.id]:!isOpen}))}
+          style={{ display:'flex', alignItems:'center', gap:14, padding:'18px 22px', cursor:'pointer',
+            background: isOpen ? `linear-gradient(135deg,${cfg.color},${cfg.border})` : '#fff',
+            transition:'all .2s' }}>
+          <div style={{ width:46, height:46, borderRadius:14,
+            background: isOpen?'rgba(255,255,255,.15)':cfg.bg,
+            border: isOpen?'1.5px solid rgba(255,255,255,.25)':`1.5px solid ${cfg.border}`,
+            display:'flex', alignItems:'center', justifyContent:'center', fontSize:'1.4rem', flexShrink:0 }}>
+            {cfg.icon}
+          </div>
+          <div style={{ flex:1 }}>
+            <div style={{ fontFamily:"'Cabinet Grotesk',sans-serif", fontWeight:900, fontSize:16,
+              color: isOpen?'#fff':cfg.color, letterSpacing:'-.01em' }}>{dom.nom}</div>
+            <div style={{ fontSize:12, color: isOpen?'rgba(255,255,255,.7)':'#94a3b8', marginTop:3 }}>
+              {dom.niveaux?.length||0} niveaux · {nbM} matières
+            </div>
+          </div>
+          <div style={{ display:'flex', gap:8 }} onClick={e=>e.stopPropagation()}>
+            <button onClick={()=>openModal('niveau',{domaineId:dom.id,domaineName:dom.nom})}
+              style={{ padding:'7px 14px', borderRadius:10, fontSize:12, fontWeight:700, cursor:'pointer',
+                background: isOpen?'rgba(255,255,255,.15)':cfg.bg,
+                color: isOpen?'#fff':cfg.color,
+                border: isOpen?`1.5px solid rgba(255,255,255,.3)`:`1.5px solid ${cfg.border}`,
+                transition:'all .15s' }}>
+              + Niveau
+            </button>
+            <button onClick={()=>setDelConf({type:'domaine',id:dom.id,nom:dom.nom})}
+              style={{ width:32, height:32, borderRadius:9, background:'rgba(220,38,38,.15)',
+                border:'1.5px solid rgba(220,38,38,.3)', color: isOpen?'#fca5a5':'#dc2626',
+                cursor:'pointer', fontSize:14, display:'flex', alignItems:'center', justifyContent:'center' }}>🗑</button>
+          </div>
+          <div style={{ fontSize:14, color: isOpen?'rgba(255,255,255,.7)':'#94a3b8',
+            transition:'transform .2s', transform:isOpen?'rotate(180deg)':'rotate(0deg)' }}>▾</div>
+        </div>
+
+        {isOpen && (
+          <div style={{ padding:'20px 22px', background:'#fffdf5', display:'flex', flexDirection:'column', gap:10 }}>
+            {(!dom.niveaux||dom.niveaux.length===0) && (
+              <div style={{ textAlign:'center', padding:'24px', color:'#94a3b8', fontSize:13, fontStyle:'italic',
+                background:'#fff', borderRadius:14, border:'1.5px dashed #e2e8f0' }}>
+                Aucun niveau —
+                <span onClick={()=>openModal('niveau',{domaineId:dom.id,domaineName:dom.nom})}
+                  style={{ color:cfg.color, cursor:'pointer', fontWeight:700, marginLeft:4 }}>Ajouter</span>
+              </div>
+            )}
+            {dom.niveaux?.map(niv => (
+              <NiveauBloc key={niv.id} niv={niv} col={cfg} domNom={dom.nom}/>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  return (
+    <div style={{ display:'flex', flexDirection:'column', gap:22 }}>
+
+      {/* ── KPIs ── */}
+      <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:14 }}>
+        {[
+          { icon:'📍', val:villes.length,     label:'Villes',    color:'#3b82f6', bg:'#EFF6FF', border:'#BFDBFE' },
+          { icon:'🗂',  val:structure.length,  label:'Domaines',  color:'#8b5cf6', bg:'#F5F3FF', border:'#DDD6FE' },
+          { icon:'🎓', val:totalNivs,          label:'Niveaux',   color:'#f59e0b', bg:'#FFFBEB', border:'#FCD34D' },
+          { icon:'📚', val:totalMats,          label:'Matières',  color:'#10b981', bg:'#ECFDF5', border:'#6EE7B7' },
+        ].map((s,i) => (
+          <div key={s.label} className="adm-stat adm-scaleIn" style={{ animationDelay:`${i*50}ms`, borderColor:s.border }}>
+            <div className="adm-stat-accent" style={{ background:s.color }}/>
+            <div style={{ width:42, height:42, borderRadius:12, background:s.bg,
+              display:'flex', alignItems:'center', justifyContent:'center', fontSize:'1.2rem', marginBottom:14 }}>{s.icon}</div>
+            <div style={{ fontFamily:"'Cabinet Grotesk',sans-serif", fontSize:30, fontWeight:900, color:s.color, lineHeight:1, marginBottom:5 }}>{s.val}</div>
+            <div style={{ fontSize:12, color:'#94a3b8', fontWeight:600 }}>{s.label}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* ── Villes ── */}
+      <div className="adm-card" style={{ padding:'20px 24px' }}>
+        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16 }}>
+          <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+            <div style={{ width:4, height:20, background:'linear-gradient(180deg,#3b82f6,#60a5fa)', borderRadius:2 }}/>
+            <span style={{ fontFamily:"'Cabinet Grotesk',sans-serif", fontWeight:900, fontSize:15, color:'#0F172A' }}>
+              📍 Villes actives
+            </span>
+            <span style={{ fontSize:12, color:'#94a3b8' }}>{villes.length} configurée{villes.length>1?'s':''}</span>
+          </div>
+          <button className="adm-btn adm-btn-primary adm-btn-sm" onClick={()=>openModal('ville')}>+ Ajouter une ville</button>
+        </div>
+        <div style={{ display:'flex', flexWrap:'wrap', gap:8 }}>
+          {villes.map(v => (
+            <div key={v.id} style={{ display:'inline-flex', alignItems:'center', gap:6, padding:'6px 12px',
+              borderRadius:20, background:'#EFF6FF', border:'1.5px solid #BFDBFE',
+              fontSize:13, fontWeight:600, color:'#1D4ED8', transition:'all .15s' }}
+              onMouseEnter={e=>e.currentTarget.style.background='#DBEAFE'}
+              onMouseLeave={e=>e.currentTarget.style.background='#EFF6FF'}>
+              📍 {v.nom}
+              <span onClick={()=>setDelConf({type:'ville',id:v.id,nom:v.nom})}
+                style={{ width:16, height:16, borderRadius:'50%', background:'#fef2f2',
+                  border:'1px solid #fca5a5', display:'flex', alignItems:'center', justifyContent:'center',
+                  cursor:'pointer', fontSize:9, color:'#dc2626', fontWeight:900, flexShrink:0,
+                  transition:'background .15s' }}
+                onMouseEnter={e=>e.currentTarget.style.background='#fee2e2'}
+                onMouseLeave={e=>e.currentTarget.style.background='#fef2f2'}>✕</span>
+            </div>
+          ))}
+          {villes.length===0 && <span style={{ fontSize:13, color:'#94a3b8', fontStyle:'italic' }}>Aucune ville configurée</span>}
+        </div>
+      </div>
+
+      {/* ── Header Structure ── */}
+      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+        <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+          <div style={{ width:4, height:20, background:'linear-gradient(180deg,#8b5cf6,#6d28d9)', borderRadius:2 }}/>
+          <span style={{ fontFamily:"'Cabinet Grotesk',sans-serif", fontWeight:900, fontSize:15, color:'#0F172A' }}>
+            Structure pédagogique
+          </span>
+          <span style={{ fontSize:12, color:'#94a3b8' }}>{structure.length} domaine{structure.length>1?'s':''}</span>
+        </div>
+        <div style={{ display:'flex', gap:8 }}>
+          <div style={{ position:'relative' }}>
+            <input className="adm-input" style={{ width:220, fontSize:12, paddingLeft:30 }}
+              placeholder="Rechercher matière, niveau..."
+              value={search} onChange={e=>setSearch(e.target.value)}/>
+            <span style={{ position:'absolute', left:10, top:'50%', transform:'translateY(-50%)', fontSize:12, color:'#94a3b8' }}>🔍</span>
+          </div>
+          <button className="adm-btn adm-btn-primary adm-btn-sm" onClick={()=>openModal('domaine')}>+ Domaine</button>
+        </div>
+      </div>
+
+      {/* ── Domaines ── */}
+      <div style={{ display:'flex', flexDirection:'column', gap:16 }}>
+        {filteredStruct.map((dom, di) =>
+          dom.nom === 'Académique'
+            ? <AcademiqueSection key={dom.id} dom={dom}/>
+            : <DomaineSection key={dom.id} dom={dom} di={di}/>
+        )}
+        {filteredStruct.length === 0 && (
+          <div style={{ textAlign:'center', padding:'48px', color:'#94a3b8' }}>
+            <div style={{ fontSize:40, marginBottom:12 }}>🔍</div>
+            <div style={{ fontFamily:"'Cabinet Grotesk',sans-serif", fontWeight:800, fontSize:15, color:'#0F172A', marginBottom:5 }}>
+              Aucun résultat
+            </div>
+            <div style={{ fontSize:13 }}>Modifiez votre recherche</div>
+          </div>
+        )}
+      </div>
+
+      {/* ── Modal ajout ── */}
+      {modal && (
         <div className="adm-modal-overlay" onClick={e=>{if(e.target===e.currentTarget)setModal(null);}}>
-          <div className="adm-modal">
-            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:18}}><h3 style={{fontFamily:'Cabinet Grotesk,sans-serif',fontWeight:900,fontSize:16,color:'#0F172A',margin:0}}>{modal.type==='ville'?'Nouvelle ville':modal.type==='domaine'?'Nouveau domaine':modal.type==='niveau'?'Nouveau niveau':'Nouvelle matiere'}</h3><button className="adm-btn adm-btn-ghost adm-btn-sm" style={{width:30,height:30,padding:0,display:'flex',alignItems:'center',justifyContent:'center'}} onClick={()=>setModal(null)}>x</button></div>
-            {(modal.payload?.domaineName||modal.payload?.niveauName)&&<div style={{fontSize:12,color:'#64748b',marginBottom:14,padding:'7px 12px',background:'#f8fafc',borderRadius:10,border:'1px solid #e2e8f0'}}>{modal.type==='niveau'&&`D ${modal.payload.domaineName}`}{modal.type==='matiere'&&`N ${modal.payload.niveauName} -- ${modal.payload.domaineName}`}</div>}
-            <input autoFocus className="adm-input" style={{marginBottom:16}} placeholder={modal.type==='ville'?'Ex: Zaghouan...':modal.type==='domaine'?'Ex: Arts...':modal.type==='niveau'?'Ex: BTS...':'Ex: Algorithmes...'} value={formVal} onChange={e=>setFormVal(e.target.value)} onKeyDown={e=>e.key==='Enter'&&handleSave()}/>
-            <div style={{display:'flex',gap:9}}>
-              <button className="adm-btn adm-btn-primary" style={{flex:2,justifyContent:'center',opacity:(!formVal.trim()||saving)?0.6:1}} disabled={!formVal.trim()||saving} onClick={handleSave}>{saving?'Enregistrement...':'Enregistrer'}</button>
-              <button className="adm-btn adm-btn-ghost" style={{flex:1,justifyContent:'center'}} onClick={()=>setModal(null)}>Annuler</button>
+          <div className="adm-modal" style={{ maxWidth:420 }}>
+            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:20 }}>
+              <div>
+                <h3 style={{ fontFamily:"'Cabinet Grotesk',sans-serif", fontWeight:900, fontSize:16, color:'#0F172A', margin:'0 0 4px' }}>
+                  {modal.type==='ville'?'📍 Nouvelle ville':modal.type==='domaine'?'🗂 Nouveau domaine':modal.type==='niveau'?'🎓 Nouveau niveau':'📚 Nouvelle matière'}
+                </h3>
+                {(modal.payload?.domaineName||modal.payload?.niveauName) && (
+                  <div style={{ fontSize:12, color:'#94a3b8' }}>
+                    {modal.type==='niveau' && `Dans : ${modal.payload.domaineName}`}
+                    {modal.type==='matiere' && `${modal.payload.niveauName} · ${modal.payload.domaineName}`}
+                  </div>
+                )}
+              </div>
+              <button onClick={()=>setModal(null)}
+                style={{ width:32, height:32, borderRadius:9, background:'#f8fafc', border:'1.5px solid #e2e8f0',
+                  cursor:'pointer', color:'#64748b', display:'flex', alignItems:'center', justifyContent:'center',
+                  fontSize:13, transition:'all .15s' }}
+                onMouseEnter={e=>{e.currentTarget.style.background='#fee2e2';e.currentTarget.style.color='#dc2626';}}
+                onMouseLeave={e=>{e.currentTarget.style.background='#f8fafc';e.currentTarget.style.color='#64748b';}}>✕</button>
+            </div>
+            <input autoFocus className="adm-input" style={{ marginBottom:16 }}
+              placeholder={modal.type==='ville'?'Ex: Zaghouan…':modal.type==='domaine'?'Ex: Arts…':modal.type==='niveau'?'Ex: BTS…':'Ex: Algorithmes…'}
+              value={formVal} onChange={e=>setFormVal(e.target.value)} onKeyDown={e=>e.key==='Enter'&&handleSave()}/>
+            <div style={{ display:'flex', gap:10 }}>
+              <button className="adm-btn adm-btn-primary" style={{ flex:2, justifyContent:'center', opacity:(!formVal.trim()||saving)?.6:1 }}
+                disabled={!formVal.trim()||saving} onClick={handleSave}>
+                {saving ? 'Enregistrement…' : '✓ Enregistrer'}
+              </button>
+              <button className="adm-btn adm-btn-ghost" style={{ flex:1, justifyContent:'center' }} onClick={()=>setModal(null)}>Annuler</button>
             </div>
           </div>
         </div>
       )}
-      {delConf&&(
+
+      {/* ── Modal suppression ── */}
+      {delConf && (
         <div className="adm-modal-overlay" onClick={e=>{if(e.target===e.currentTarget)setDelConf(null);}}>
-          <div className="adm-modal" style={{textAlign:'center',maxWidth:360,borderColor:'#fca5a5'}}>
-            <div style={{width:52,height:52,borderRadius:'50%',background:'#fef2f2',border:'1px solid #fca5a5',display:'flex',alignItems:'center',justifyContent:'center',fontSize:22,margin:'0 auto 16px'}}>X</div>
-            <h3 style={{fontFamily:'Cabinet Grotesk,sans-serif',fontWeight:900,fontSize:16,color:'#0F172A',margin:'0 0 8px'}}>Confirmer la suppression</h3>
-            <p style={{fontSize:13,color:'#64748b',margin:'0 0 20px',lineHeight:1.6}}>Supprimer <strong>"{delConf.nom}"</strong> ?<br/><span style={{color:'#ef4444',fontSize:12}}>Cette action est irreversible.</span></p>
-            <div style={{display:'flex',gap:9}}><button className="adm-btn adm-btn-danger" style={{flex:1,justifyContent:'center'}} onClick={handleDelete}>Supprimer</button><button className="adm-btn adm-btn-ghost" style={{flex:1,justifyContent:'center'}} onClick={()=>setDelConf(null)}>Annuler</button></div>
+          <div className="adm-modal" style={{ textAlign:'center', maxWidth:360, borderColor:'#fca5a5' }}>
+            <div style={{ width:52, height:52, borderRadius:'50%', background:'#fef2f2', border:'1px solid #fca5a5',
+              display:'flex', alignItems:'center', justifyContent:'center', fontSize:24, margin:'0 auto 16px' }}>🗑</div>
+            <h3 style={{ fontFamily:"'Cabinet Grotesk',sans-serif", fontWeight:900, fontSize:16, color:'#0F172A', margin:'0 0 8px' }}>
+              Confirmer la suppression
+            </h3>
+            <p style={{ fontSize:13, color:'#64748b', margin:'0 0 20px', lineHeight:1.6 }}>
+              Supprimer <strong>"{delConf.nom}"</strong> ?<br/>
+              <span style={{ color:'#ef4444', fontSize:12 }}>Cette action est irréversible.</span>
+            </p>
+            <div style={{ display:'flex', gap:10 }}>
+              <button className="adm-btn adm-btn-danger" style={{ flex:1, justifyContent:'center' }} onClick={handleDelete}>🗑 Supprimer</button>
+              <button className="adm-btn adm-btn-ghost" style={{ flex:1, justifyContent:'center' }} onClick={()=>setDelConf(null)}>Annuler</button>
+            </div>
           </div>
         </div>
       )}
     </div>
   );
 }
+/* ════════════════════════════════════════════════
+   CALENDRIER ADMIN — Réservations confirmées
+════════════════════════════════════════════════ */
 
-const TABS = [{k:'overview',l:"Vue d'ensemble"},{k:'analytiques',l:'Analytiques'},{k:'profs',l:'Formateurs'},{k:'demandes',l:'Demandes'},{k:'referentiel',l:'Referentiel'},{k:'finances',l:'💳 Finances'}];
+const CAL_CSS3 = `
+@keyframes c3-in  { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:none} }
+@keyframes c3-pop { from{opacity:0;transform:scale(.95)translateY(4px)} to{opacity:1;transform:none} }
+
+.c3 {
+  font-family:'Instrument Sans',system-ui,sans-serif;
+  color:#0f172a; background:#f8fafc; min-height:100vh; padding:28px;
+  animation:c3-in .35s ease both;
+}
+
+/* ─── Header ─── */
+.c3-header {
+  background:#fff; border:1.5px solid #e2e8f0; border-radius:20px;
+  padding:20px 26px; margin-bottom:22px;
+  box-shadow:0 2px 12px rgba(0,0,0,.04);
+}
+.c3-hicon {
+  width:50px; height:50px; border-radius:14px; flex-shrink:0;
+  background:linear-gradient(135deg,#1e40af,#7c3aed);
+  display:flex; align-items:center; justify-content:center;
+  font-size:24px; box-shadow:0 4px 16px rgba(59,130,246,.28);
+}
+.c3-htitle { font-family:'Cabinet Grotesk',sans-serif; font-weight:900; font-size:20px; color:#0f172a; margin:0 0 2px; }
+.c3-hsub   { font-size:13px; color:#64748b; margin:0; font-weight:500; }
+
+/* ─── Contrôles ─── */
+.c3-nav { display:flex; align-items:center; gap:4px; background:#f8fafc; border:1.5px solid #e2e8f0; border-radius:12px; padding:4px; }
+.c3-nbtn { width:34px; height:34px; border-radius:9px; border:none; background:transparent; color:#64748b; cursor:pointer; display:flex; align-items:center; justify-content:center; font-size:18px; transition:all .14s; }
+.c3-nbtn:hover { background:#fff; color:#3b82f6; box-shadow:0 2px 8px rgba(0,0,0,.07); }
+.c3-period { font-family:'Cabinet Grotesk',sans-serif; font-weight:800; font-size:14px; color:#0f172a; padding:0 14px; min-width:160px; text-align:center; }
+.c3-today { padding:8px 16px; border-radius:10px; border:1.5px solid #e2e8f0; background:#fff; color:#64748b; font-size:13px; font-weight:700; cursor:pointer; transition:all .14s; font-family:'Cabinet Grotesk',sans-serif; }
+.c3-today:hover { border-color:#3b82f6; color:#3b82f6; background:#eff6ff; }
+.c3-toggle { display:flex; gap:3px; background:#f8fafc; border:1.5px solid #e2e8f0; border-radius:12px; padding:4px; }
+.c3-tvbtn { padding:7px 16px; border-radius:9px; border:none; background:transparent; color:#64748b; font-size:13px; font-weight:700; cursor:pointer; transition:all .16s; font-family:'Cabinet Grotesk',sans-serif; display:flex; align-items:center; gap:6px; }
+.c3-tvbtn.on { background:#fff; color:#1d4ed8; box-shadow:0 2px 8px rgba(59,130,246,.13); border:1.5px solid rgba(59,130,246,.2); }
+
+/* ─── KPIs ─── */
+.c3-kpis { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-bottom:22px; }
+.c3-kpi  { background:#fff; border:1.5px solid #f1f5f9; border-radius:16px; padding:18px 20px; position:relative; overflow:hidden; transition:all .18s; }
+.c3-kpi::before { content:''; position:absolute; top:0; left:0; right:0; height:3px; background:var(--kc,#3b82f6); border-radius:16px 16px 0 0; }
+.c3-kpi:hover { transform:translateY(-2px); box-shadow:0 8px 24px rgba(0,0,0,.07); }
+.c3-kico { font-size:22px; margin-bottom:11px; }
+.c3-kval { font-family:'Cabinet Grotesk',sans-serif; font-size:28px; font-weight:900; color:var(--kc,#3b82f6); line-height:1; margin-bottom:4px; }
+.c3-klbl { font-size:12px; color:#64748b; font-weight:600; }
+
+/* ─── Légende occupation ─── */
+.c3-legend {
+  display:flex; align-items:center; gap:10px; flex-wrap:wrap;
+  padding:12px 18px; background:#fff; border:1.5px solid #f1f5f9;
+  border-radius:13px; margin-top:14px;
+}
+.c3-leg { display:flex; align-items:center; gap:7px; font-size:12px; font-weight:700; padding:4px 12px; border-radius:20px; border:1.5px solid; }
+
+/* ─── Grille mensuelle ─── */
+.c3-grid { background:#fff; border:1.5px solid #e2e8f0; border-radius:20px; overflow:hidden; box-shadow:0 2px 14px rgba(0,0,0,.05); }
+.c3-wdays { display:grid; grid-template-columns:repeat(7,1fr); background:linear-gradient(135deg,#00153d,#1e3a8a); }
+.c3-wday  { padding:13px 6px; text-align:center; font-family:'Cabinet Grotesk',sans-serif; font-weight:900; font-size:11px; color:rgba(255,255,255,.82); text-transform:uppercase; letter-spacing:.08em; }
+.c3-days  { display:grid; grid-template-columns:repeat(7,1fr); }
+.c3-day   { min-height:122px; border-right:1px solid #f1f5f9; border-bottom:1px solid #f1f5f9; padding:9px 7px 7px; background:#fff; cursor:pointer; position:relative; transition:background .12s; }
+.c3-day:nth-child(7n) { border-right:none; }
+.c3-day:hover { background:#f8faff; }
+.c3-day.other  { background:#fafbfc; }
+.c3-day.other .c3-dnum { color:#cbd5e1; }
+.c3-day.today  { background:linear-gradient(135deg,#eff6ff,#f0fdf4); }
+.c3-day.today::after { content:''; position:absolute; inset:0; border:2px solid #3b82f6; pointer-events:none; }
+.c3-dnum { width:28px; height:28px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-family:'Cabinet Grotesk',sans-serif; font-weight:700; font-size:13px; color:#0f172a; }
+.c3-day.today .c3-dnum { background:#3b82f6; color:#fff; }
+.c3-dbadge { font-size:10px; font-weight:900; color:#fff; padding:2px 7px; border-radius:8px; background:#3b82f6; font-family:'Cabinet Grotesk',sans-serif; }
+
+/* ─── Pill séance ─── */
+.c3-pill {
+  display:flex; align-items:center; gap:5px; padding:5px 8px;
+  border-radius:9px; margin-bottom:3px; cursor:pointer;
+  transition:transform .12s,filter .12s; border:1.5px solid transparent;
+  white-space:nowrap; overflow:hidden; position:relative;
+}
+.c3-pill:hover { transform:translateX(2px); filter:brightness(.94); }
+.c3-pill-dot  { width:7px; height:7px; border-radius:50%; flex-shrink:0; }
+.c3-pill-info { display:flex; flex-direction:column; gap:1px; overflow:hidden; flex:1; min-width:0; }
+.c3-pill-top  { display:flex; align-items:center; gap:4px; }
+.c3-pill-time { font-size:9px; font-weight:800; opacity:.8; flex-shrink:0; }
+.c3-pill-mat  { font-size:10px; font-weight:800; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.c3-pill-prof { font-size:9px; opacity:.75; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.c3-pill-cap  { display:flex; align-items:center; gap:4px; margin-top:2px; }
+.c3-pill-bar  { flex:1; height:3px; border-radius:2px; background:rgba(0,0,0,.12); overflow:hidden; }
+.c3-pill-fill { height:100%; border-radius:2px; }
+.c3-pill-cnt  { font-size:8px; font-weight:900; flex-shrink:0; }
+.c3-more { font-size:10px; font-weight:700; color:#94a3b8; padding:2px 7px; background:#f1f5f9; border-radius:6px; display:inline-block; cursor:pointer; margin-top:1px; transition:all .12s; }
+.c3-more:hover { color:#3b82f6; background:#eff6ff; }
+
+/* ─── Grille semaine ─── */
+.c3-week { background:#fff; border:1.5px solid #e2e8f0; border-radius:20px; overflow:hidden; box-shadow:0 2px 14px rgba(0,0,0,.05); }
+.c3-wk-head { display:grid; grid-template-columns:58px repeat(7,1fr); background:linear-gradient(135deg,#00153d,#1e3a8a); }
+.c3-wk-ch   { padding:12px 6px; text-align:center; border-right:1px solid rgba(255,255,255,.08); }
+.c3-wk-ch .wd { font-family:'Cabinet Grotesk',sans-serif; font-weight:900; font-size:10px; color:rgba(255,255,255,.65); text-transform:uppercase; letter-spacing:.08em; margin-bottom:4px; }
+.c3-wk-ch .dm { font-family:'Cabinet Grotesk',sans-serif; font-weight:900; font-size:20px; color:#fff; line-height:1; }
+.c3-wk-ch .wn { font-size:10px; color:rgba(255,255,255,.5); font-weight:700; margin-top:3px; }
+.c3-wk-ch.tc .dm { background:#3b82f6; width:32px; height:32px; border-radius:50%; display:flex; align-items:center; justify-content:center; margin:0 auto; font-size:14px; }
+.c3-wk-body { display:grid; grid-template-columns:58px repeat(7,1fr); }
+.c3-tcol { border-right:1.5px solid #f1f5f9; background:#fafbfc; }
+.c3-tcell { height:84px; display:flex; align-items:flex-start; justify-content:flex-end; padding:6px 8px 0; border-bottom:1px solid #f1f5f9; }
+.c3-tlbl  { font-size:10px; font-weight:700; color:#94a3b8; }
+.c3-wk-day { border-right:1px solid #f1f5f9; }
+.c3-wk-day:last-child { border-right:none; }
+.c3-wk-slot { height:84px; border-bottom:1px solid #f1f5f9; padding:4px 5px; }
+
+/* Event semaine */
+.c3-ev {
+  border-radius:10px; padding:7px 9px; cursor:pointer; transition:all .15s;
+  border:1.5px solid transparent; margin-bottom:3px; overflow:hidden;
+}
+.c3-ev:hover { transform:scale(1.02); box-shadow:0 3px 12px rgba(0,0,0,.1); z-index:5; position:relative; }
+.c3-ev-time { font-size:9px; font-weight:800; opacity:.8; margin-bottom:2px; }
+.c3-ev-mat  { font-size:11px; font-weight:800; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.c3-ev-prof { font-size:10px; opacity:.8; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.c3-ev-bar  { margin-top:4px; height:4px; border-radius:2px; background:rgba(0,0,0,.1); overflow:hidden; }
+.c3-ev-fill { height:100%; border-radius:2px; }
+
+/* ─── Tooltip ─── */
+.c3-tt {
+  position:fixed; z-index:9999; pointer-events:none;
+  background:#fff; border:1.5px solid #e2e8f0; border-radius:14px;
+  min-width:270px; max-width:310px;
+  box-shadow:0 6px 28px rgba(0,0,0,.13);
+  animation:c3-pop .14s ease both; overflow:hidden;
+}
+.c3-tt-head { padding:11px 15px; display:flex; align-items:center; gap:9px; border-bottom:1px solid #f1f5f9; }
+.c3-tt-ico  { width:34px; height:34px; border-radius:9px; display:flex; align-items:center; justify-content:center; font-size:16px; flex-shrink:0; }
+.c3-tt-name { font-family:'Cabinet Grotesk',sans-serif; font-weight:900; font-size:13px; color:#0f172a; }
+.c3-tt-sub2 { font-size:10px; font-weight:700; margin-top:2px; padding:2px 8px; border-radius:20px; display:inline-block; }
+.c3-tt-body { padding:10px 15px; display:flex; flex-direction:column; gap:6px; }
+.c3-tt-row  { display:flex; align-items:flex-start; gap:8px; }
+.c3-tt-ico2 { width:24px; height:24px; border-radius:7px; background:#f8fafc; display:flex; align-items:center; justify-content:center; font-size:11px; flex-shrink:0; margin-top:1px; }
+.c3-tt-info label { display:block; font-size:9px; color:#94a3b8; font-weight:700; text-transform:uppercase; letter-spacing:.05em; line-height:1; }
+.c3-tt-info value { display:block; font-size:12px; color:#0f172a; font-weight:700; line-height:1.3; }
+.c3-tt-caprow { margin-top:2px; }
+.c3-tt-capbar { height:6px; background:#e2e8f0; border-radius:3px; overflow:hidden; margin-top:4px; }
+.c3-tt-capfill { height:100%; border-radius:3px; }
+
+/* ─── Modal jour ─── */
+.c3-mo { position:fixed; inset:0; background:rgba(15,23,42,.42); backdrop-filter:blur(4px); z-index:2000; display:flex; align-items:center; justify-content:center; padding:20px; animation:c3-in .16s ease; }
+.c3-mbox { background:#fff; border-radius:22px; border:1.5px solid #e2e8f0; width:100%; max-width:520px; max-height:82vh; overflow:hidden; box-shadow:0 32px 80px rgba(0,0,0,.16); animation:c3-pop .2s ease; display:flex; flex-direction:column; }
+.c3-mhead { padding:20px 24px; border-bottom:1.5px solid #f1f5f9; display:flex; justify-content:space-between; align-items:center; }
+.c3-mhead h2 { font-family:'Cabinet Grotesk',sans-serif; font-weight:900; font-size:17px; color:#0f172a; margin:0; text-transform:capitalize; }
+.c3-mbody { padding:14px 22px 20px; overflow-y:auto; display:flex; flex-direction:column; gap:10px; }
+.c3-mcard { display:flex; gap:14px; padding:16px; border-radius:14px; border:1.5px solid; transition:transform .12s; }
+.c3-mcard:hover { transform:translateX(3px); }
+.c3-mc-time { width:54px; text-align:center; flex-shrink:0; padding-top:2px; }
+.c3-mc-start { font-family:'Cabinet Grotesk',sans-serif; font-weight:900; font-size:17px; color:#0f172a; display:block; line-height:1; }
+.c3-mc-end   { font-size:11px; color:#64748b; display:block; margin-top:2px; }
+.c3-mc-sep   { width:1px; background:#f1f5f9; flex-shrink:0; }
+.c3-mc-data  { flex:1; min-width:0; }
+.c3-mc-mat   { font-family:'Cabinet Grotesk',sans-serif; font-weight:900; font-size:14px; color:#0f172a; margin-bottom:5px; }
+.c3-mc-prof  { font-size:12px; color:#64748b; margin-bottom:8px; }
+.c3-mc-tags  { display:flex; gap:6px; flex-wrap:wrap; align-items:center; }
+.c3-mc-tag   { font-size:11px; font-weight:700; padding:3px 9px; border-radius:8px; background:#f8fafc; color:#64748b; border:1px solid #f1f5f9; }
+.c3-mc-caprow { margin-top:8px; }
+.c3-mc-caplbl { display:flex; justify-content:space-between; margin-bottom:4px; }
+.c3-mc-capbar { height:6px; background:#e2e8f0; border-radius:3px; overflow:hidden; }
+.c3-mc-capfill { height:100%; border-radius:3px; transition:width .4s; }
+
+/* Empty */
+.c3-empty { text-align:center; padding:56px 20px; background:#fff; border-radius:20px; border:1.5px solid #f1f5f9; margin-top:4px; }
+`;
+
+function injectCalCSS3() {
+  if (!document.getElementById('c3-css')) {
+    const s = document.createElement('style'); s.id='c3-css'; s.textContent=CAL_CSS3;
+    document.head.appendChild(s);
+  }
+}
+
+/* ── helpers ── */
+function occClass(nb, max) {
+  if (!max || max <= 0) return 'libre';
+  const r = nb / max;
+  if (r >= 1)    return 'full';
+  if (r >= 0.75) return 'warn';
+  return 'libre';
+}
+function occColor(cls) {
+  if (cls === 'full') return '#ef4444';
+  if (cls === 'warn') return '#f97316';
+  return '#10b981';
+}
+function occBg(cls) {
+  if (cls === 'full') return { bg:'#fef2f2', border:'#fca5a5', text:'#991b1b' };
+  if (cls === 'warn') return { bg:'#fff7ed', border:'#fed7aa', text:'#9a3412' };
+  return { bg:'#ecfdf5', border:'#6ee7b7', text:'#065f46' };
+}
+function occLabel(cls) {
+  if (cls === 'full') return '🔴 Complet';
+  if (cls === 'warn') return '🟠 Presque complet';
+  return '🟢 Disponible';
+}
+
+const DAYS_W   = ['Lun','Mar','Mer','Jeu','Ven','Sam','Dim'];
+const MOIS_FR  = ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
+const MOIS_S   = ['jan.','fév.','mars','avr.','mai','juin','juil.','août','sept.','oct.','nov.','déc.'];
+const HOURS    = ['08h','09h','10h','11h','12h','13h','14h','15h','16h','17h','18h','19h','20h'];
+const HOUR_N   = [8,9,10,11,12,13,14,15,16,17,18,19,20];
+
+function CalendrierTab({ reservations, allProfs }) {
+  const today = new Date();
+  const [year,  setYear]  = useState(today.getFullYear());
+  const [month, setMonth] = useState(today.getMonth());
+  const [view,  setView]  = useState('month');
+  const [tt,    setTT]    = useState(null);   // { ev, x, y }
+  const [modal, setModal] = useState(null);   // { day } ou { weekDay }
+  const [ws, setWs] = useState(()=>{
+    const d=new Date(today); const dow=(d.getDay()+6)%7;
+    d.setDate(d.getDate()-dow); d.setHours(0,0,0,0); return d;
+  });
+
+  useEffect(()=>{ injectCalCSS3(); },[]);
+
+  /* ─── Construire les événements enrichis ───
+     On prend UNIQUEMENT les réservations confirmées
+     et on les enrichit via allProfs (matière principale du prof, dispos correspondantes)
+  */
+  const events = useMemo(()=>{
+    if(!reservations||!allProfs) return [];
+
+    // Index des profs par nom pour retrouver matières et dispos
+    const profIndex = {};
+    (allProfs||[]).forEach(p=>{
+      const nm = `${p.user_prenom||''} ${p.user_nom||''}`.trim().toLowerCase();
+      profIndex[nm] = p;
+    });
+
+    return reservations
+      .filter(r => r.statut === 'confirmé')
+      .map(r => {
+        // Retrouver le prof correspondant
+        const profNmKey = (r.prof_nom||'').toLowerCase().trim();
+        const prof = profIndex[profNmKey] || null;
+
+        // Matière principale du prof (1ère matière de tarifs_matieres)
+        const mats = prof?.tarifs_matieres
+          ? [...new Set(prof.tarifs_matieres.map(t=>t.nom_matiere))].slice(0,2).join(' / ')
+          : '—';
+
+        // Trouver la dispo correspondante (même date + heure_debut)
+        const dispo = (prof?.disponibilites||[]).find(d=>{
+          const ds = d.date_specifique;
+          const hd = (d.heure_debut||'').slice(0,5);
+          const rh = (r.heure_debut||'').slice(0,5);
+          return ds===r.date_cours && hd===rh;
+        }) || null;
+
+        const nb  = dispo?.nb_inscrits  ?? 1;
+        const max = dispo?.nb_max_etudiants ?? 0;
+        const cls = occClass(nb, max);
+        const pal = occBg(cls);
+
+        return {
+          id:       r.id,
+          date:     r.date_cours,
+          hDebut:   (r.heure_debut||'').slice(0,5),
+          hFin:     (r.heure_fin||'').slice(0,5),
+          prof:     r.prof_nom||'—',
+          etudiant: r.etudiant_nom||'—',
+          matieres: mats,
+          mode:     r.mode_seance||'presentiel',
+          tarif:    r.tarif_applique||0,
+          nb, max, cls, pal,
+        };
+      })
+      .sort((a,b)=>(a.hDebut).localeCompare(b.hDebut));
+  },[reservations, allProfs]);
+
+  /* ─── Mois ─── */
+  const evsMois = useMemo(()=>events.filter(e=>{
+    if(!e.date) return false;
+    const d=new Date(e.date+'T00:00:00');
+    return d.getFullYear()===year && d.getMonth()===month;
+  }),[events,year,month]);
+
+  /* ─── Semaine ─── */
+  const weDays = useMemo(()=>Array.from({length:7},(_,i)=>{
+    const d=new Date(ws); d.setDate(d.getDate()+i); return d;
+  }),[ws]);
+
+  const evsSemaine = useMemo(()=>{
+    const end=new Date(ws); end.setDate(end.getDate()+7);
+    return events.filter(e=>{
+      if(!e.date) return false;
+      const d=new Date(e.date+'T00:00:00');
+      return d>=ws && d<end;
+    });
+  },[events,ws]);
+
+  /* ─── KPIs ─── */
+  const src = view==='week'?evsSemaine:evsMois;
+  const kpis = useMemo(()=>({
+    total:   src.length,
+    libres:  src.filter(e=>e.cls==='libre').length,
+    warn:    src.filter(e=>e.cls==='warn').length,
+    full:    src.filter(e=>e.cls==='full').length,
+  }),[src]);
+
+  /* ─── Grille mensuelle : byDay ─── */
+  const byDay = useMemo(()=>{
+    const m={};
+    evsMois.forEach(e=>{
+      const d=new Date(e.date+'T00:00:00').getDate();
+      if(!m[d]) m[d]=[];
+      m[d].push(e);
+    });
+    return m;
+  },[evsMois]);
+
+  /* ─── Semaine : byWeekDay ─── */
+  const byWD = useMemo(()=>{
+    const m={};
+    weDays.forEach((wd,i)=>{
+      const key=wd.toISOString().slice(0,10);
+      m[i]=evsSemaine.filter(e=>e.date===key);
+    });
+    return m;
+  },[evsSemaine,weDays]);
+
+  /* ─── Navigation ─── */
+  const prevM=()=>{ if(month===0){setMonth(11);setYear(y=>y-1);}else setMonth(m=>m-1); };
+  const nextM=()=>{ if(month===11){setMonth(0);setYear(y=>y+1);}else setMonth(m=>m+1); };
+  const prevW=()=>{ const d=new Date(ws); d.setDate(d.getDate()-7); setWs(d); };
+  const nextW=()=>{ const d=new Date(ws); d.setDate(d.getDate()+7); setWs(d); };
+  const goToday=()=>{
+    setYear(today.getFullYear()); setMonth(today.getMonth());
+    const d=new Date(today); const dow=(d.getDay()+6)%7; d.setDate(d.getDate()-dow); d.setHours(0,0,0,0); setWs(d);
+  };
+
+  /* ─── Tooltip : juste au-dessus/côté du curseur ─── */
+  const showTT=(e,ev)=>{
+    const rect=e.currentTarget.getBoundingClientRect();
+    const TW=290, TH=240;
+    // Positionner juste au-dessus de l'élément, centré
+    let x = rect.left + rect.width/2 - TW/2;
+    let y = rect.top - TH - 8;
+    // Si ça dépasse en haut, mettre en-dessous
+    if(y < 10) y = rect.bottom + 8;
+    // Ajustements horizontaux
+    if(x < 10) x = 10;
+    if(x+TW > window.innerWidth-10) x = window.innerWidth-TW-10;
+    if(y+TH > window.innerHeight-10) y = window.innerHeight-TH-10;
+    setTT({ev,x,y});
+  };
+  const hideTT=()=>setTT(null);
+
+  /* ─── Cells mensuel ─── */
+  const firstDay=new Date(year,month,1).getDay();
+  const offset=(firstDay+6)%7;
+  const dim=new Date(year,month+1,0).getDate();
+  const prevDim=new Date(year,month,0).getDate();
+  const cells=[];
+  for(let i=0;i<42;i++){
+    const d=i-offset+1;
+    if(d<1)     cells.push({day:prevDim+d,type:'prev'});
+    else if(d>dim) cells.push({day:d-dim,type:'next'});
+    else        cells.push({day:d,type:'cur'});
+  }
+  const isToday=d=>d===today.getDate()&&month===today.getMonth()&&year===today.getFullYear();
+
+  /* ─── Pill (vue mois) ─── */
+  const Pill=({ev})=>{
+    const col=occColor(ev.cls);
+    const {bg,border,text}=ev.pal;
+    const pct=ev.max>0?Math.min(100,Math.round(ev.nb/ev.max*100)):0;
+    return (
+      <div className="c3-pill" style={{background:bg,borderColor:border,color:text}}
+        onMouseEnter={e=>showTT(e,ev)} onMouseLeave={hideTT}
+        onClick={e=>e.stopPropagation()}>
+        <div className="c3-pill-dot" style={{background:col}}/>
+        <div className="c3-pill-info">
+          <div className="c3-pill-top">
+            {ev.hDebut&&<span className="c3-pill-time">{ev.hDebut}</span>}
+            <span className="c3-pill-mat">{ev.matieres}</span>
+          </div>
+          <span className="c3-pill-prof">👨‍🏫 {ev.prof.split(' ')[0]}</span>
+          {ev.max>0&&(
+            <div className="c3-pill-cap">
+              <div className="c3-pill-bar"><div className="c3-pill-fill" style={{width:`${pct}%`,background:col}}/></div>
+              <span className="c3-pill-cnt" style={{color:col}}>{ev.nb}/{ev.max}</span>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
+
+  /* ─── Tooltip ─── */
+  const TTComp=()=>{
+    if(!tt) return null;
+    const {ev,x,y}=tt;
+    const col=occColor(ev.cls);
+    const {bg,border,text}=ev.pal;
+    const pct=ev.max>0?Math.min(100,Math.round(ev.nb/ev.max*100)):0;
+    return (
+      <div className="c3-tt" style={{left:x,top:y}}>
+        <div className="c3-tt-head" style={{background:bg}}>
+          <div className="c3-tt-ico" style={{background:'rgba(255,255,255,.7)',color:col,fontSize:18}}>📚</div>
+          <div>
+            <div className="c3-tt-name">{ev.matieres}</div>
+            <span className="c3-tt-sub2" style={{background:border+'55',color:text}}>{occLabel(ev.cls)}</span>
+          </div>
+        </div>
+        <div className="c3-tt-body">
+          {[
+            ['🕐','Horaire',  `${ev.hDebut} → ${ev.hFin}`],
+            ['👨‍🏫','Formateur', ev.prof],
+            ['👤','Étudiant',  ev.etudiant],
+            ['📡','Mode',      ev.mode==='en_ligne'?'🌐 En ligne':'🏫 Présentiel'],
+            ...(ev.tarif>0?[['💰','Prix',`${ev.tarif} DT/h`]]:[]),
+          ].map(([ic,lb,vl])=>(
+            <div key={lb} className="c3-tt-row">
+              <div className="c3-tt-ico2">{ic}</div>
+              <div className="c3-tt-info"><label>{lb}</label><value>{vl}</value></div>
+            </div>
+          ))}
+          {ev.max>0&&(
+            <div className="c3-tt-caprow">
+              <div className="c3-tt-row" style={{marginBottom:4}}>
+                <div className="c3-tt-ico2">👥</div>
+                <div className="c3-tt-info">
+                  <label>Inscrits / Capacité</label>
+                  <value style={{color:col}}>{ev.nb} / {ev.max} places ({pct}%)</value>
+                </div>
+              </div>
+              <div className="c3-tt-capbar" style={{marginLeft:32}}>
+                <div className="c3-tt-capfill" style={{width:`${pct}%`,background:col}}/>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
+
+  /* ─── Modal jour ─── */
+  const ModalJour=()=>{
+    if(!modal) return null;
+    const list=(byDay[modal.day]||[]).slice().sort((a,b)=>a.hDebut.localeCompare(b.hDebut));
+    const lbl=new Date(year,month,modal.day).toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+    return (
+      <div className="c3-mo" onClick={e=>e.target===e.currentTarget&&setModal(null)}>
+        <div className="c3-mbox">
+          <div className="c3-mhead">
+            <h2>{lbl}</h2>
+            <div style={{display:'flex',alignItems:'center',gap:10}}>
+              <span style={{fontSize:12,color:'#64748b',fontWeight:700}}>{list.length} séance{list.length>1?'s':''}</span>
+              <button onClick={()=>setModal(null)} style={{width:32,height:32,borderRadius:9,border:'1.5px solid #e2e8f0',background:'#f8fafc',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',fontSize:15,color:'#64748b',transition:'all .15s'}}
+                onMouseEnter={e=>{e.currentTarget.style.background='#fef2f2';e.currentTarget.style.color='#ef4444';}}
+                onMouseLeave={e=>{e.currentTarget.style.background='#f8fafc';e.currentTarget.style.color='#64748b';}}>✕</button>
+            </div>
+          </div>
+          <div className="c3-mbody">
+            {list.map(ev=>{
+              const col=occColor(ev.cls);
+              const {bg,border}=ev.pal;
+              const pct=ev.max>0?Math.min(100,Math.round(ev.nb/ev.max*100)):0;
+              return (
+                <div key={ev.id} className="c3-mcard" style={{background:bg,borderColor:border}}>
+                  <div className="c3-mc-time">
+                    <span className="c3-mc-start">{ev.hDebut}</span>
+                    <span className="c3-mc-end">→ {ev.hFin}</span>
+                  </div>
+                  <div className="c3-mc-sep"/>
+                  <div className="c3-mc-data">
+                    <div className="c3-mc-mat">{ev.matieres}</div>
+                    <div className="c3-mc-prof">👨‍🏫 {ev.prof} &nbsp;·&nbsp; 👤 {ev.etudiant}</div>
+                    <div className="c3-mc-tags">
+                      <span className="c3-mc-tag">{ev.mode==='en_ligne'?'🌐 En ligne':'🏫 Présentiel'}</span>
+                      {ev.tarif>0&&<span className="c3-mc-tag" style={{color:'#059669',fontWeight:800}}>💰 {ev.tarif} DT/h</span>}
+                    </div>
+                    {ev.max>0&&(
+                      <div className="c3-mc-caprow">
+                        <div className="c3-mc-caplbl">
+                          <span style={{fontSize:11,fontWeight:700,color:'#94a3b8'}}>Inscrits / Capacité</span>
+                          <span style={{fontSize:11,fontWeight:900,color:col}}>{ev.nb}/{ev.max} · {pct}%</span>
+                        </div>
+                        <div className="c3-mc-capbar"><div className="c3-mc-capfill" style={{width:`${pct}%`,background:col}}/></div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  /* ─── Période label ─── */
+  const weEnd=new Date(ws); weEnd.setDate(weEnd.getDate()+6);
+  const periodLabel = view==='month'
+    ? `${MOIS_FR[month]} ${year}`
+    : `${ws.getDate()} ${MOIS_S[ws.getMonth()]} – ${weEnd.getDate()} ${MOIS_S[weEnd.getMonth()]} ${weEnd.getFullYear()}`;
+
+  return (
+    <div className="c3">
+
+      {/* ── HEADER ── */}
+      <div className="c3-header">
+        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:14,marginBottom:14}}>
+          <div style={{display:'flex',alignItems:'center',gap:14}}>
+            <div className="c3-hicon">🗓</div>
+            <div>
+              <div className="c3-htitle">Calendrier des réservations confirmées</div>
+              <div className="c3-hsub">Matière · Formateur · Mode · Inscrits/Capacité · Prix — par mois ou par semaine</div>
+            </div>
+          </div>
+          <div style={{display:'flex',alignItems:'center',gap:10,flexWrap:'wrap'}}>
+            <div className="c3-toggle">
+              <button className={`c3-tvbtn${view==='month'?' on':''}`} onClick={()=>setView('month')}>📅 Mensuel</button>
+              <button className={`c3-tvbtn${view==='week'?' on':''}`}  onClick={()=>setView('week')}>📆 Semaine</button>
+            </div>
+            <div className="c3-nav">
+              <button className="c3-nbtn" onClick={view==='month'?prevM:prevW}>‹</button>
+              <span className="c3-period">{periodLabel}</span>
+              <button className="c3-nbtn" onClick={view==='month'?nextM:nextW}>›</button>
+            </div>
+            <button className="c3-today" onClick={goToday}>Aujourd'hui</button>
+          </div>
+        </div>
+
+        {/* Légende occupation */}
+        <div className="c3-legend">
+          <span style={{fontSize:11,fontWeight:700,color:'#94a3b8',marginRight:4}}>Occupation :</span>
+          {[
+            {col:'#10b981',bg:'#ecfdf5',border:'#6ee7b7',text:'#065f46',l:'Disponible (< 75%)'},
+            {col:'#f97316',bg:'#fff7ed',border:'#fed7aa',text:'#9a3412',l:'Presque complet (≥ 75%)'},
+            {col:'#ef4444',bg:'#fef2f2',border:'#fca5a5',text:'#991b1b',l:'Complet (100%)'},
+          ].map(s=>(
+            <div key={s.l} className="c3-leg" style={{background:s.bg,borderColor:s.border,color:s.text}}>
+              <div style={{width:8,height:8,borderRadius:2,background:s.col,flexShrink:0}}/>
+              <span style={{fontSize:12,fontWeight:700}}>{s.l}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* ── KPIs ── */}
+      <div className="c3-kpis">
+        {[
+          {ico:'📋',val:kpis.total, lbl:'Séances confirmées',  c:'#3b82f6'},
+          {ico:'🟢',val:kpis.libres,lbl:'Disponibles',          c:'#10b981'},
+          {ico:'🟠',val:kpis.warn,  lbl:'Presque complet',      c:'#f97316'},
+          {ico:'🔴',val:kpis.full,  lbl:'Complet',              c:'#ef4444'},
+        ].map((k,i)=>(
+          <div key={i} className="c3-kpi" style={{'--kc':k.c}}>
+            <div className="c3-kico">{k.ico}</div>
+            <div className="c3-kval">{k.val}</div>
+            <div className="c3-klbl">{k.lbl}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* ══ VUE MENSUELLE ══ */}
+      {view==='month'&&(
+        <div className="c3-grid">
+          <div className="c3-wdays">{DAYS_W.map(d=><div key={d} className="c3-wday">{d}</div>)}</div>
+          <div className="c3-days">
+            {cells.map((cell,i)=>{
+              const isCur=cell.type==='cur';
+              const isTod=isCur&&isToday(cell.day);
+              const list=isCur?(byDay[cell.day]||[]):[];
+              const MAX=3;
+              const vis=list.slice(0,MAX);
+              const hid=list.length-MAX;
+              return (
+                <div key={i} className={`c3-day${!isCur?' other':''}${isTod?' today':''}`}
+                  onClick={()=>isCur&&list.length>0&&setModal({day:cell.day})}>
+                  <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:5}}>
+                    <div className="c3-dnum">{cell.day}</div>
+                    {list.length>0&&<span className="c3-dbadge">{list.length}</span>}
+                  </div>
+                  {vis.map((ev,idx)=><Pill key={idx} ev={ev}/>)}
+                  {hid>0&&<span className="c3-more" onClick={e=>{e.stopPropagation();setModal({day:cell.day});}}> +{hid} de plus</span>}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* ══ VUE HEBDOMADAIRE ══ */}
+      {view==='week'&&(
+        <div className="c3-week">
+          <div className="c3-wk-head">
+            <div style={{padding:'12px 6px'}}/>
+            {weDays.map((wd,i)=>{
+              const isTodWd=wd.toDateString()===today.toDateString();
+              const nb=byWD[i]?.length||0;
+              return (
+                <div key={i} className={`c3-wk-ch${isTodWd?' tc':''}`}>
+                  <div className="wd">{DAYS_W[i]}</div>
+                  <div className="dm">{wd.getDate()}</div>
+                  {nb>0&&<div className="wn">{nb} séance{nb>1?'s':''}</div>}
+                </div>
+              );
+            })}
+          </div>
+          <div className="c3-wk-body">
+            <div className="c3-tcol">
+              {HOURS.map(h=><div key={h} className="c3-tcell"><span className="c3-tlbl">{h}</span></div>)}
+            </div>
+            {weDays.map((wd,di)=>(
+              <div key={di} className="c3-wk-day">
+                {HOUR_N.map(h=>{
+                  const inSlot=(byWD[di]||[]).filter(ev=>{
+                    const hh=parseInt((ev.hDebut||'00').split(':')[0],10);
+                    return hh===h;
+                  });
+                  return (
+                    <div key={h} className="c3-wk-slot">
+                      {inSlot.map((ev,si)=>{
+                        const col=occColor(ev.cls);
+                        const {bg,border,text}=ev.pal;
+                        const pct=ev.max>0?Math.min(100,Math.round(ev.nb/ev.max*100)):0;
+                        return (
+                          <div key={si} className="c3-ev"
+                            style={{background:bg,borderColor:border,color:text}}
+                            onMouseEnter={e=>showTT(e,ev)} onMouseLeave={hideTT}>
+                            <div className="c3-ev-time">{ev.hDebut} – {ev.hFin}</div>
+                            <div className="c3-ev-mat">{ev.matieres}</div>
+                            <div className="c3-ev-prof">👨‍🏫 {ev.prof.split(' ')[0]}</div>
+                            {ev.max>0&&(
+                              <div className="c3-ev-bar">
+                                <div className="c3-ev-fill" style={{width:`${pct}%`,background:col}}/>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  );
+                })}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ── EMPTY ── */}
+      {src.length===0&&(
+        <div className="c3-empty">
+          <div style={{width:68,height:68,borderRadius:18,background:'#f8fafc',display:'flex',alignItems:'center',justifyContent:'center',fontSize:30,margin:'0 auto 14px',border:'1.5px solid #e2e8f0'}}>📅</div>
+          <div style={{fontFamily:'Cabinet Grotesk,sans-serif',fontWeight:900,fontSize:15,color:'#0f172a',marginBottom:5}}>Aucune séance confirmée</div>
+          <div style={{fontSize:13,color:'#94a3b8'}}>Aucune réservation confirmée pour cette période.</div>
+        </div>
+      )}
+
+      <TTComp/>
+      <ModalJour/>
+    </div>
+  );
+}
+
+const TABS = [{k:'overview',l:"Vue d'ensemble"},{k:'analytiques',l:'Analytiques'},{k:'profs',l:'Formateurs'},{k:'demandes',l:'Demandes'},{k:'referentiel',l:'Referentiel'},{k:'calendrier',l:'📆 Calendrier'},{k:'finances',l:'💳 Finances'}];
 
 export default function Admin() {
-  const [tab,setTab]=useState('overview');
+  const location = useLocation();
+  const [tab,setTab]=useState(()=>{
+    const p = new URLSearchParams(window.location.search);
+    return p.get('tab')||'overview';
+  });
   const [stats,setStats]=useState({});
   const [allProfs,setAllProfs]=useState([]);
   const [structure,setStructure]=useState([]);
@@ -1724,7 +2754,13 @@ export default function Admin() {
   const [chartData,setChartData]=useState({});
   const [loading,setLoading]=useState(true);
   const [selectedProf,setSelectedProf]=useState(null);
+  const [reservations,setReservations]=useState([]);
   useEffect(()=>{injectCSS();loadAll();},[]);
+  useEffect(()=>{
+    const p = new URLSearchParams(location.search);
+    const t = p.get('tab');
+    if(t) setTab(t);
+  },[location.search]);
   const loadAll=async()=>{
     setLoading(true);
     const safe = (promise, fallback) => promise.catch(err => {
@@ -1735,13 +2771,14 @@ export default function Admin() {
       return { data: fallback };
     });
     try{
-      const[s,allP,struct,v,dem,cd]=await Promise.all([
+      const[s,allP,struct,v,dem,cd,resa]=await Promise.all([
         safe(api.get('/api/admin/stats'),             {}),
         safe(api.get('/api/admin/professeurs/all'),   []),
         safe(api.get('/api/admin/referentiel/structure'), []),
         safe(api.get('/api/admin/referentiel/villes'), []),
         safe(api.get('/api/admin/demandes-matieres'), []),
         safe(api.get('/api/admin/stats/charts'),      {}),
+        safe(api.get('/api/admin/reservations/all'),   []),
       ]);
       setStats(s.data||{});
       setAllProfs(Array.isArray(allP.data)?allP.data:[]);
@@ -1749,6 +2786,7 @@ export default function Admin() {
       setVilles(Array.isArray(v.data)?v.data:[]);
       setDemandes(Array.isArray(dem.data)?dem.data:[]);
       setChartData(cd.data||{});
+      setReservations(Array.isArray(resa.data)?resa.data:[]);
     }catch(e){console.error('loadAll fatal error:',e);}finally{setLoading(false);}
   };
   const handleValider=async(id)=>{await api.put(`/api/admin/professeurs/${id}/valider`);alert('Professeur valide');loadAll();};
@@ -1779,6 +2817,7 @@ export default function Admin() {
       {tab==='profs'       &&<ProfsTab       allProfs={allProfs} structure={structure} onView={setSelectedProf} onValider={handleValider} onRefuser={handleRefuser}/>}
       {tab==='demandes'    &&<DemandesTab    demandes={demandes} onApprouver={handleApprouverDemande} onRefuser={handleRefuserDemande}/>}
       {tab==='referentiel' &&<ReferentielTab structure={structure} villes={villes} onReload={loadAll}/>}
+      {tab==='calendrier'  &&<CalendrierTab reservations={reservations} allProfs={allProfs}/>}
       {tab==='finances'    &&<FinancesTab/>}
       <ProfDrawer prof={selectedProf} onClose={()=>setSelectedProf(null)} onValider={handleValider} onRefuser={handleRefuser}/>
     </div>
