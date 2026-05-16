@@ -18,6 +18,7 @@ from app.utils.dependencies import get_current_user, require_professeur
 router = APIRouter()
 
 
+# ── prof_to_out : sérialise un prof (ajout raison_refus + user_statut) ───────
 def prof_to_out(p: Professeur) -> dict:
     tarif_en_ligne = None
     if p.tarif_en_ligne and float(p.tarif_en_ligne) > 0:
@@ -33,17 +34,21 @@ def prof_to_out(p: Professeur) -> dict:
         "user_prenom":      str(p.user.prenom) if p.user else "",
         "email":            str(p.user.email)  if p.user else "",
         "date_naissance":   p.user.date_naissance.strftime("%Y-%m-%d") if p.user and p.user.date_naissance else None,
-        "ville":            str(p.ville)      if p.ville      else "",
-        "bio":              str(p.bio)        if p.bio        else "",
+        "ville":            str(p.ville)       if p.ville      else "",
+        "bio":              str(p.bio)         if p.bio        else "",
         "description":      str(p.description) if p.description else "",
         "photo_url":        p.photo_url,
-        "telephone":        str(p.telephone)  if p.telephone  else "",
+        "telephone":        str(p.telephone)   if p.telephone  else "",
         "note_moyenne":     float(p.note_moyenne) if p.note_moyenne else 0,
-        "nb_avis":          int(p.nb_avis)    if p.nb_avis    else 0,
+        "nb_avis":          int(p.nb_avis)     if p.nb_avis    else 0,
         "statut_validation": str(p.statut_validation),
         "mode_enseignement": p.mode_enseignement or "presentiel",
         "tarif_en_ligne":   tarif_en_ligne,
         "tarif_presentiel": tarif_presentiel,
+        # ── NOUVEAU : raison du refus + statut user ──
+        "raison_refus":     getattr(p, "raison_refus", None),
+        "user_statut":      p.user.statut       if p.user else "actif",
+        "raison_blocage":   getattr(p.user, "raison_blocage", None) if p.user else None,
         "tarifs_matieres": [
             {
                 "matiere_id":  t.matiere_id,
@@ -65,6 +70,7 @@ def prof_to_out(p: Professeur) -> dict:
             }
             for c in p.certificats
         ],
+        "updated_at": str(p.soumis_le) if hasattr(p, 'soumis_le') and p.soumis_le else None,
         "disponibilites": [
             {
                 "id":               d.id,
@@ -82,11 +88,10 @@ def prof_to_out(p: Professeur) -> dict:
 
 
 def _is_future(d: Disponibilite) -> bool:
-    """Retourne True si la disponibilité n'est pas encore passée (comparaison date+heure_fin)."""
     try:
         if not d.date_specifique or not d.heure_fin:
             return True
-        date_str = d.date_specifique.strftime("%Y-%m-%d")
+        date_str  = d.date_specifique.strftime("%Y-%m-%d")
         heure_str = d.heure_fin.strftime("%H:%M")
         fin = datetime.strptime(f"{date_str} {heure_str}", "%Y-%m-%d %H:%M")
         return fin > datetime.now()
@@ -179,13 +184,11 @@ def get_my_disponibilites(
 
 
 # ── GET /me/niveaux ─────────────────────────────────────────────
-# IMPORTANT : doit être avant /{prof_id} pour ne pas être capturé
 @router.get("/me/niveaux")
 def get_my_niveaux(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    """Retourne les niveaux des matières enseignées par le prof connecté."""
     prof = db.query(Professeur).filter(Professeur.user_id == current_user.id).first()
     if not prof:
         return []
@@ -224,6 +227,85 @@ def get_mes_demandes(
     ]
 
 
+# ── GET /notifications ───────────────────────────────────────────
+# NOUVEAU : notifications pour le prof connecté
+@router.get("/notifications")
+def get_notifications(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_professeur)
+):
+    prof = db.query(Professeur).filter(Professeur.user_id == current_user.id).first()
+    if not prof:
+        raise HTTPException(404, "Profil introuvable")
+    try:
+        rows = db.execute(text("""
+            SELECT id, type, message, lu, created_at
+            FROM notifications
+            WHERE prof_id = :prof_id
+            ORDER BY created_at DESC
+            LIMIT 50
+        """), {"prof_id": prof.id}).fetchall()
+        return [
+            {
+                "id":         r.id,
+                "type":       r.type,
+                "message":    r.message,
+                "lu":         r.lu,
+                "created_at": str(r.created_at),
+            }
+            for r in rows
+        ]
+    except Exception as e:
+        print(f"[notif] get_notifications error: {e}")
+        return []
+
+
+# ── PUT /notifications/lire ──────────────────────────────────────
+# NOUVEAU : marquer toutes les notifications comme lues
+@router.put("/notifications/lire")
+def mark_notifications_read(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_professeur)
+):
+    prof = db.query(Professeur).filter(Professeur.user_id == current_user.id).first()
+    if not prof:
+        raise HTTPException(404, "Profil introuvable")
+    try:
+        db.execute(text("""
+            UPDATE notifications SET lu = true
+            WHERE prof_id = :prof_id AND lu = false
+        """), {"prof_id": prof.id})
+        db.commit()
+        return {"message": "Notifications marquées comme lues"}
+    except Exception as e:
+        print(f"[notif] mark_read error: {e}")
+        return {"message": "ok"}
+
+
+# ── PUT /resoumettre ─────────────────────────────────────────────
+# NOUVEAU : prof resoumet sa candidature après refus
+@router.put("/resoumettre")
+def resoumettre_candidature(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_professeur)
+):
+    prof = db.query(Professeur).filter(Professeur.user_id == current_user.id).first()
+    if not prof:
+        raise HTTPException(404, "Profil professeur introuvable")
+    if prof.statut_validation != "refusé":
+        raise HTTPException(400, "Vous ne pouvez resoumettre que si votre profil est refusé")
+    prof.statut_validation = "en_attente"
+    prof.raison_refus      = None
+    db.commit()
+    # Mettre à jour soumis_le séparément (colonne optionnelle — pas bloquant)
+    try:
+        db.execute(text("UPDATE professeurs SET soumis_le = NOW() WHERE id = :id"), {"id": prof.id})
+        db.commit()
+    except Exception:
+        db.rollback()
+    return {"message": "Candidature resoumise avec succès — l'équipe va l'examiner."}
+
+
 # ── POST /me/disponibilites ──────────────────────────────────────
 @router.post("/me/disponibilites", response_model=DisponibiliteOut)
 def add_disponibilite(
@@ -250,7 +332,7 @@ def add_disponibilite(
     return new_dispo
 
 
-# ── PUT /me/disponibilites/{dispo_id} — modifier une séance ────
+# ── PUT /me/disponibilites/{dispo_id} ───────────────────────────
 @router.put("/me/disponibilites/{dispo_id}")
 def update_disponibilite(
     dispo_id: int,
@@ -442,7 +524,6 @@ def get_prof_disponibilites(prof_id: int, db: Session = Depends(get_db)):
         Disponibilite.actif == True,
     ).order_by(Disponibilite.date_specifique).all()
 
-    # Filtrer côté backend : ne retourner que les créneaux futurs
     now = datetime.now()
     result = []
     for d in dispos:
@@ -452,9 +533,9 @@ def get_prof_disponibilites(prof_id: int, db: Session = Depends(get_db)):
                 heure_str = d.heure_fin.strftime("%H:%M")
                 fin = datetime.strptime(f"{date_str} {heure_str}", "%Y-%m-%d %H:%M")
                 if fin <= now:
-                    continue  # créneau passé → on le saute
+                    continue
         except Exception:
-            pass  # en cas d'erreur de parsing, on inclut le créneau
+            pass
 
         result.append({
             "id":               d.id,

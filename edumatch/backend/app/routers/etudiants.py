@@ -3,6 +3,7 @@ import shutil
 from datetime import date, datetime, timedelta
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from sqlalchemy.orm import Session
+from sqlalchemy import text
 from app.database import get_db
 from app.models import Etudiant, User, Reservation, Professeur
 from app.utils.dependencies import get_current_user, require_etudiant
@@ -109,12 +110,6 @@ def get_rappels(
     """
     Retourne les cours confirmés dans les 24h à venir.
     Utilisé pour les notifications de rappel dans le dashboard étudiant.
-
-    Chaque rappel contient :
-    - is_imminent : cours dans moins de 1h
-    - is_today    : cours aujourd'hui
-    - hours_left  : heures restantes (float)
-    - minutes_left: minutes restantes (int)
     """
     etudiant = db.query(Etudiant).filter(Etudiant.user_id == current_user.id).first()
     if not etudiant:
@@ -124,7 +119,6 @@ def get_rappels(
     tomorrow = today + timedelta(days=1)
     now      = datetime.now()
 
-    # Réservations confirmées pour aujourd'hui et demain
     reservations = (
         db.query(Reservation)
         .filter(
@@ -140,23 +134,21 @@ def get_rappels(
     rappels = []
 
     for r in reservations:
-        # Nom du professeur
         prof     = r.professeur
         prof_nom = "Professeur"
         if prof and prof.user:
             prof_nom = f"{prof.user.prenom or ''} {prof.user.nom or ''}".strip()
 
-        # Calcul du temps restant
         hours_left   = None
         minutes_left = None
         is_today     = (r.date_cours == today)
-        is_imminent  = False   # dans moins de 1h
-        is_soon      = False   # dans moins de 24h
-        is_past      = False   # déjà passé
+        is_imminent  = False
+        is_soon      = False
+        is_past      = False
 
         if r.heure_debut:
             try:
-                heure_str = str(r.heure_debut)[:5]   # format "HH:MM"
+                heure_str = str(r.heure_debut)[:5]
                 h, m      = map(int, heure_str.split(':'))
                 cours_dt  = datetime.combine(r.date_cours, datetime.min.time().replace(hour=h, minute=m))
                 diff_sec  = (cours_dt - now).total_seconds()
@@ -164,14 +156,13 @@ def get_rappels(
                 if diff_sec > 0:
                     hours_left   = round(diff_sec / 3600, 1)
                     minutes_left = int(diff_sec / 60)
-                    is_soon      = diff_sec <= 86400   # 24h
-                    is_imminent  = diff_sec <= 3600    # 1h
+                    is_soon      = diff_sec <= 86400
+                    is_imminent  = diff_sec <= 3600
                 else:
                     is_past = True
             except Exception:
                 pass
 
-        # Ne pas retourner les cours déjà passés
         if is_past:
             continue
 
@@ -191,11 +182,60 @@ def get_rappels(
             "is_soon":        is_soon,
         })
 
-    # Tri : imminents en premier, puis par heure
     rappels.sort(key=lambda x: (
-        not x["is_imminent"],   # imminents en tête
-        not x["is_today"],      # aujourd'hui avant demain
+        not x["is_imminent"],
+        not x["is_today"],
         x["heure_debut"] or "99:99",
     ))
 
     return rappels
+
+
+# ── GET /notifications ───────────────────────────────────────────
+# Retourne les notifications de blocage/déblocage pour l'étudiant connecté
+@router.get("/notifications")
+def get_notifications(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    try:
+        rows = db.execute(text("""
+            SELECT id, type, message, lu, created_at
+            FROM notifications_users
+            WHERE user_id = :user_id
+            ORDER BY created_at DESC
+            LIMIT 30
+        """), {"user_id": current_user.id}).fetchall()
+        return [
+            {
+                "id":         r.id,
+                "type":       r.type,
+                "message":    r.message,
+                "lu":         r.lu,
+                "created_at": str(r.created_at),
+            }
+            for r in rows
+        ]
+    except Exception as e:
+        print(f"[etudiants] notifications error: {e}")
+        return []
+
+
+# ── PUT /notifications/lire ──────────────────────────────────────
+# Marque toutes les notifications de l'étudiant comme lues
+@router.put("/notifications/lire")
+def mark_notifications_read(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    try:
+        db.execute(text("""
+            UPDATE notifications_users
+            SET lu = true
+            WHERE user_id = :user_id AND lu = false
+        """), {"user_id": current_user.id})
+        db.commit()
+        return {"message": "Notifications marquées comme lues"}
+    except Exception as e:
+        print(f"[etudiants] mark_read error: {e}")
+        return {"message": "ok"}
