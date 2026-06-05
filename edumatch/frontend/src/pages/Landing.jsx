@@ -4,12 +4,12 @@ import {
   Search, User, ArrowUpRight, LayoutGrid, Phone, Clock,
   MapPin, Mail, Send, Globe, ExternalLink,
   Play, Sparkles, LineChart, TrendingUp, CheckCircle2, Star,
-  X, GraduationCap, BookOpen, Lightbulb, Target, Calendar, ChevronRight
+  X, GraduationCap, BookOpen, Lightbulb, Target, Calendar, ChevronRight,
+  MessageCircle, Bot, Award, Users
 } from 'lucide-react';
-import { useNavigate } from 'react-router-dom'; // ← AJOUTÉ
+import { useNavigate } from 'react-router-dom';
 import StudentModal from './StudentModal';
 import TeacherModal from './TeacherModal';
-import EntrepreneurModal from './EntrepreneurModal';
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -21,7 +21,7 @@ const itemVariants = {
 };
 
 /* ═══════════════════════════════════════════════════════════════
-   MASCOTTES SVG (inchangées)
+   MASCOTTES SVG (conservées telles quelles)
 ═══════════════════════════════════════════════════════════════ */
 
 const HeroMascot = () => (
@@ -283,14 +283,13 @@ const IconBusiness = () => (
 );
 
 /* ═══════════════════════════════════════════════════════════════
-   COMPOSANT PRINCIPAL
+   COMPOSANT PRINCIPAL — EDUMATCH / ONYONO
 ═══════════════════════════════════════════════════════════════ */
 const Landing = () => {
-  const navigate = useNavigate(); // ← AJOUTÉ
+  const navigate = useNavigate();
   const [isScrolled, setIsScrolled] = useState(false);
   const [isStudentModalOpen, setIsStudentModalOpen] = useState(false);
   const [isTeacherModalOpen, setIsTeacherModalOpen] = useState(false);
-  const [isEntrepreneurModalOpen, setIsEntrepreneurModalOpen] = useState(false);
 
   useEffect(() => {
     const handleScroll = () => setIsScrolled(window.scrollY > 50);
@@ -298,6 +297,7 @@ const Landing = () => {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
+  // Villes tunisiennes réelles pour EduMatch
   const centers = [
     { city: 'Tunis',    addr: 'Centre Urbain Nord, Immeuble Horizon', color: 'from-blue-600 to-indigo-500',   map: 'https://maps.google.com/?q=Tunis'    },
     { city: 'Sfax',     addr: 'Route de Gremda, Km 0.5',              color: 'from-orange-500 to-red-500',    map: 'https://maps.google.com/?q=Sfax'     },
@@ -305,24 +305,31 @@ const Landing = () => {
     { city: 'Monastir', addr: 'Avenue de la République',              color: 'from-emerald-500 to-teal-500',  map: 'https://maps.google.com/?q=Monastir' }
   ];
 
-  const expertises = ['IA & Big Data', 'Développement Web', 'UI/UX Design', 'Marketing Digital', 'Cybersécurité', 'Cloud Computing', 'Finance', 'Management'];
+  // Matières alignées avec le référentiel EduMatch (Académique + Professionnel)
+  const expertises = [
+    'Mathématiques', 'Physique-Chimie', 'Sciences de la Vie', 
+    'Informatique', 'Programmation', 'Développement Web',
+    'IA & Big Data', 'UI/UX Design', 'Marketing Digital', 
+    'Cybersécurité', 'Cloud Computing', 'Finance', 
+    'Management', 'Langues', 'Préparation Bac/Brevet'
+  ];
 
   const whyItems = [
     {
-      title: 'Une expérience unique et sur mesure',
-      desc: "Onyono ne se contente pas de former, il crée un écosystème d'excellence où les compétences se rencontrent dans un cadre irréprochable."
+      title: 'Matching intelligent multi-critères',
+      desc: "Notre algorithme analyse 6 dimensions (matière, niveau, ville, budget, mode, réputation) pour vous proposer les 3 meilleurs formateurs avec un score de compatibilité sur 100."
     },
     {
-      title: 'Un processus de Learning 1-to-1',
-      desc: "Cet accompagnement individuel est exigé pour garantir une transmission directe du savoir et une attention totale portée à votre progression."
+      title: 'Chatbot IA EduBot',
+      desc: "EduBot comprend vos besoins en langage naturel, extrait automatiquement vos critères et vous guide vers la réservation en moins de 5 secondes."
     },
     {
-      title: 'Une garantie de résolution à 100 %',
-      desc: "Onyono s'engage à ce que 100 % des problématiques rencontrées trouvent une solution concrète et efficace."
+      title: 'Formateurs certifiés et validés',
+      desc: "Tous nos professeurs passent par un workflow de validation en 4 étapes : profil complet, documents vérifiés, séance test, approbation administrative."
     },
     {
-      title: 'Des formateurs experts et pédagogues',
-      desc: 'Vous apprenez auprès de spécialistes de haut niveau qui surpassent vos attentes par leur maîtrise et leur capacité à rendre les concepts complexes accessibles.'
+      title: 'Cours en ligne ou présentiel',
+      desc: "Choisissez votre mode d'apprentissage : séances en direct par Google Meet ou rencontres physiques dans nos centres partenaires en Tunisie."
     }
   ];
 
@@ -332,7 +339,6 @@ const Landing = () => {
       {/* MODALES */}
       <StudentModal isOpen={isStudentModalOpen} onClose={() => setIsStudentModalOpen(false)} />
       <TeacherModal isOpen={isTeacherModalOpen} onClose={() => setIsTeacherModalOpen(false)} />
-      <EntrepreneurModal isOpen={isEntrepreneurModalOpen} onClose={() => setIsEntrepreneurModalOpen(false)} />
 
       {/* BACKGROUND BLOBS */}
       <div className="fixed inset-0 -z-10 opacity-30 pointer-events-none">
@@ -344,7 +350,12 @@ const Landing = () => {
       <nav className={`fixed top-0 w-full z-[100] transition-all duration-500 ${isScrolled ? 'py-3 bg-white/70 backdrop-blur-2xl shadow-xl' : 'py-6 bg-transparent'}`}>
         <div className="max-w-7xl mx-auto px-6 flex items-center justify-between">
           <div className="flex items-center gap-12">
-            <span className="text-3xl font-black tracking-tighter text-blue-600 cursor-pointer hover:scale-105 transition-transform select-none">ONYONO</span>
+            <span 
+              onClick={() => navigate('/')}
+              className="text-3xl font-black tracking-tighter text-blue-600 cursor-pointer hover:scale-105 transition-transform select-none"
+            >
+              EDUMATCH
+            </span>
             <div className="hidden lg:flex gap-8 font-bold text-sm uppercase tracking-[0.2em] text-gray-500">
               {['Accueil', 'Propos', 'Pourquoi', 'Ecosystème', 'Centres'].map(link => (
                 <a key={link} href={`#${link.toLowerCase()}`} className="hover:text-blue-600 transition-colors relative group">
@@ -356,13 +367,20 @@ const Landing = () => {
           </div>
           <div className="flex items-center gap-5">
             <div className="relative hidden md:block group">
-              <input type="text" placeholder="Rechercher une formation..."
-                className="bg-gray-100/50 border border-transparent rounded-full py-2.5 px-6 w-72 focus:bg-white focus:ring-4 focus:ring-blue-100 outline-none transition-all font-medium text-sm"/>
-              <button className="absolute right-2 top-1.5 bg-[#00153D] p-2 rounded-full text-white group-hover:bg-blue-600 transition-colors">
+              <input 
+                type="text" 
+                placeholder="Rechercher une matière..."
+                onClick={() => navigate('/formateurs')}
+                className="bg-gray-100/50 border border-transparent rounded-full py-2.5 px-6 w-72 focus:bg-white focus:ring-4 focus:ring-blue-100 outline-none transition-all font-medium text-sm cursor-pointer"
+              />
+              <button 
+                onClick={() => navigate('/formateurs')}
+                className="absolute right-2 top-1.5 bg-[#00153D] p-2 rounded-full text-white group-hover:bg-blue-600 transition-colors"
+              >
                 <Search size={16}/>
               </button>
             </div>
-            {/* ← MODIFIÉ : Bouton utilisateur redirige vers login */}
+            {/* Bouton utilisateur redirige vers login */}
             <button 
               onClick={() => navigate('/login')}
               className="p-2.5 border-2 border-gray-100 rounded-full hover:bg-white hover:shadow-md cursor-pointer text-gray-400 transition-all hover:text-blue-600 hover:border-blue-200"
@@ -378,25 +396,31 @@ const Landing = () => {
         <motion.div initial="hidden" animate="visible" variants={containerVariants} className="lg:w-1/2 space-y-10 z-10">
           <motion.div variants={itemVariants} className="inline-flex items-center gap-3 bg-white/80 border border-white px-5 py-2.5 rounded-full shadow-sm backdrop-blur-sm">
             <Sparkles className="text-orange-500 animate-bounce" size={18}/>
-            <span className="text-[10px] font-black uppercase tracking-[0.3em] text-gray-600">Open Your Knowledge • Centre Class</span>
+            <span className="text-[10px] font-black uppercase tracking-[0.3em] text-gray-600">EduMatch Tunisia • IA & Matching Intelligent</span>
           </motion.div>
           <motion.h1 variants={itemVariants} className="text-6xl md:text-[88px] font-black leading-[0.85] tracking-tighter">
-            Apprenez de <br/>
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#F27438] to-[#E85D1C]">Nouvelles <br/> Compétences</span>
+            Trouvez votre <br/>
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#F27438] to-[#E85D1C]">Formateur <br/> Idéal</span>
           </motion.h1>
           <motion.p variants={itemVariants} className="text-gray-500 text-xl max-w-xl font-medium leading-relaxed italic">
-            Oubliez les vidéos génériques. Vivez une expérience <span className="text-blue-600 font-black">1-to-1</span> en direct avec les meilleurs experts certifiés.
+            Fini la recherche interminable. Notre <span className="text-blue-600 font-black">IA EduBot</span> analyse vos besoins et vous connecte aux meilleurs professeurs certifiés en Tunisie en temps réel.
           </motion.p>
           <motion.div variants={itemVariants} className="flex flex-wrap gap-6">
-            <button className="group bg-[#00153D] text-white px-12 py-6 rounded-[2rem] font-black text-xl shadow-2xl shadow-blue-200 hover:bg-blue-700 transition-all flex items-center gap-4 active:scale-95">
+            <button 
+              onClick={() => navigate('/formateurs')}
+              className="group bg-[#00153D] text-white px-12 py-6 rounded-[2rem] font-black text-xl shadow-2xl shadow-blue-200 hover:bg-blue-700 transition-all flex items-center gap-4 active:scale-95"
+            >
               Trouver Un Formateur <ArrowUpRight className="group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform"/>
             </button>
-            <div className="flex items-center gap-4 px-8 border-l-2 border-gray-100">
+            <button
+              onClick={() => setIsStudentModalOpen(true)}
+              className="flex items-center gap-4 px-8 border-l-2 border-gray-100 group"
+            >
               <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-lg text-orange-500 cursor-pointer hover:scale-110 transition-transform">
                 <Play fill="currentColor" size={16}/>
               </div>
-              <span className="font-bold text-gray-400 uppercase text-xs tracking-widest">Voir la démo</span>
-            </div>
+              <span className="font-bold text-gray-400 uppercase text-xs tracking-widest group-hover:text-blue-600 transition-colors">Comment ça marche</span>
+            </button>
           </motion.div>
         </motion.div>
 
@@ -415,7 +439,7 @@ const Landing = () => {
             </div>
             <div>
               <p className="text-xl font-black text-[#00153D] leading-none">+2k</p>
-              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Inscrits</p>
+              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Étudiants inscrits</p>
             </div>
           </motion.div>
         </div>
@@ -445,10 +469,10 @@ const Landing = () => {
             </motion.div>
             <motion.div whileHover={{ scale: 1.05 }}
               className="absolute bottom-16 -left-4 bg-[#FFF9F6] border-2 border-orange-100/50 p-6 rounded-[2.5rem] shadow-2xl z-30 flex items-center gap-5 min-w-[320px] backdrop-blur-sm">
-              <div className="bg-[#F27438] p-5 rounded-full text-white shadow-xl shadow-orange-200"><Clock size={30} strokeWidth={3}/></div>
+              <div className="bg-[#F27438] p-5 rounded-full text-white shadow-xl shadow-orange-200"><Bot size={30} strokeWidth={3}/></div>
               <div>
-                <p className="font-black text-[#1A2B49] text-lg italic tracking-tight">100 % de problèmes résolus</p>
-                <p className="text-[11px] text-gray-400 font-black uppercase tracking-[0.1em]">100 % de talents épanouis</p>
+                <p className="font-black text-[#1A2B49] text-lg italic tracking-tight">EduBot IA</p>
+                <p className="text-[11px] text-gray-400 font-black uppercase tracking-[0.1em]">Matching en &lt; 5 secondes</p>
               </div>
             </motion.div>
           </div>
@@ -456,27 +480,27 @@ const Landing = () => {
           <div className="lg:w-1/2 space-y-10">
             <div className="flex items-center gap-3 text-[#00153D] font-black text-xs uppercase tracking-[0.4em]">
               <div className="w-2.5 h-2.5 bg-blue-600 rounded-full shadow-[0_0_10px_rgba(37,99,235,0.5)]"/>
-              À propos d'Onyono
+              À propos d'EduMatch
             </div>
             <h2 className="text-6xl md:text-7xl font-black leading-[1] tracking-tighter italic text-[#1A2B49]">
               L'endroit où vous pouvez réussir
             </h2>
             <p className="text-gray-500 text-xl leading-relaxed font-medium italic border-l-4 border-blue-50 pl-6">
-              Bienvenue chez Onyono, là où l'apprentissage n'a pas de limites. Que vous soyez étudiant, professionnel ou curieux, nous transformons votre potentiel en expertise.
+              Bienvenue sur EduMatch, la plateforme intelligente de mise en relation apprenants-formateurs en Tunisie. Que vous prépariez le Bac, le Brevet ou que vous montiez en compétences professionnelles, nous trouvons le professeur parfait pour vous.
             </p>
             <div className="grid gap-12 pt-6">
               <motion.div whileHover={{ x: 10 }} className="flex items-start gap-8 group">
-                <div className="bg-blue-50 p-6 rounded-[2rem] text-blue-600 shadow-sm group-hover:bg-blue-600 group-hover:text-white transition-all"><LineChart size={40}/></div>
+                <div className="bg-blue-50 p-6 rounded-[2rem] text-blue-600 shadow-sm group-hover:bg-blue-600 group-hover:text-white transition-all"><Bot size={40}/></div>
                 <div className="space-y-2">
-                  <h3 className="text-3xl font-black text-[#1A2B49] tracking-tight">Notre Mission</h3>
-                  <p className="text-gray-400 text-lg font-medium italic">Nous créons un écosystème stimulant pour briser les barrières de l'apprentissage traditionnel.</p>
+                  <h3 className="text-3xl font-black text-[#1A2B49] tracking-tight">EduBot IA</h3>
+                  <p className="text-gray-400 text-lg font-medium italic">Assistant conversationnel qui comprend vos besoins en langage naturel et extrait automatiquement vos critères de recherche.</p>
                 </div>
               </motion.div>
               <motion.div whileHover={{ x: 10 }} className="flex items-start gap-8 group">
-                <div className="bg-blue-50 p-6 rounded-[2rem] text-blue-600 shadow-sm group-hover:bg-blue-600 group-hover:text-white transition-all"><TrendingUp size={40}/></div>
+                <div className="bg-blue-50 p-6 rounded-[2rem] text-blue-600 shadow-sm group-hover:bg-blue-600 group-hover:text-white transition-all"><Target size={40}/></div>
                 <div className="space-y-2">
-                  <h3 className="text-3xl font-black text-[#1A2B49] tracking-tight">Notre Vision</h3>
-                  <p className="text-gray-400 text-lg font-medium italic">Devenir le pont universel entre les experts passionnés et les talents de demain.</p>
+                  <h3 className="text-3xl font-black text-[#1A2B49] tracking-tight">Score de Compatibilité</h3>
+                  <p className="text-gray-400 text-lg font-medium italic">Algorithme de scoring multicritères sur 100 points prenant en compte la matière, le niveau, la ville, le budget, le mode et la réputation.</p>
                 </div>
               </motion.div>
             </div>
@@ -484,7 +508,7 @@ const Landing = () => {
         </div>
       </section>
 
-      {/* ── POURQUOI CHOISIR ONYONO ? ──────────────────────────── */}
+      {/* ── POURQUOI CHOISIR EDUMATCH ? ──────────────────────────── */}
       <section id="pourquoi" className="py-32 px-6 max-w-7xl mx-auto">
         <div className="flex flex-col lg:flex-row items-center gap-20">
 
@@ -493,14 +517,14 @@ const Landing = () => {
             className="lg:w-1/2 space-y-10">
             <div className="flex items-center gap-3 text-[#00153D] font-black text-xs uppercase tracking-[0.4em]">
               <div className="w-2.5 h-2.5 bg-blue-600 rounded-full shadow-[0_0_10px_rgba(37,99,235,0.5)]"/>
-              Découvrir Onyono
+              Découvrir EduMatch
             </div>
             <h2 className="text-5xl md:text-6xl font-black leading-[1.05] tracking-tighter text-[#00153D]">
               Pourquoi choisir <br/>
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-500">Onyono ?</span>
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-500">EduMatch ?</span>
             </h2>
             <p className="text-gray-500 text-lg font-medium leading-relaxed">
-              La plupart des plateformes de formation en ligne vous laissent seul face à des vidéos préenregistrées. <span className="font-black text-[#00153D]">Onyono remet l'humain au centre.</span>
+              La plupart des plateformes de soutien scolaire vous laissent seul face à des annonces désorganisées. <span className="font-black text-[#00153D]">EduMatch remet l'intelligence au centre.</span>
             </p>
 
             <div className="space-y-7 pt-2">
@@ -523,18 +547,11 @@ const Landing = () => {
 
           {/* MASCOTTE DROITE + BADGES */}
           <div className="lg:w-1/2 relative flex justify-center min-h-[500px]">
-            {/* Badge icône livre (coin haut gauche) */}
+            {/* Badge icône IA (coin haut gauche) */}
             <motion.div
               animate={{ y: [0, -10, 0] }} transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
               className="absolute top-4 left-4 z-20 w-16 h-16 bg-[#F27438] rounded-full flex items-center justify-center shadow-2xl shadow-orange-200">
-              <svg viewBox="0 0 40 40" className="w-9 h-9">
-                <rect x="5" y="4" width="30" height="32" rx="4" fill="white" opacity="0.9"/>
-                <rect x="5" y="4" width="30" height="32" rx="4" fill="none" stroke="white" strokeWidth="2"/>
-                <line x1="11" y1="13" x2="29" y2="13" stroke="#F27438" strokeWidth="2.5" strokeLinecap="round"/>
-                <line x1="11" y1="20" x2="29" y2="20" stroke="#F27438" strokeWidth="2.5" strokeLinecap="round"/>
-                <line x1="11" y1="27" x2="22" y2="27" stroke="#F27438" strokeWidth="2.5" strokeLinecap="round"/>
-                <circle cx="20" cy="8" r="3" fill="#F27438"/>
-              </svg>
+              <Bot size={28} className="text-white"/>
             </motion.div>
 
             {/* Badge avis (coin haut droite) */}
@@ -577,13 +594,17 @@ const Landing = () => {
       {/* ── EXPERTISES ─────────────────────────────────────────── */}
       <section className="py-24 px-6 max-w-7xl mx-auto text-center">
         <div className="inline-flex items-center gap-2 text-blue-600 font-black uppercase text-xs tracking-[0.5em] mb-8">
-          <LayoutGrid size={20}/> Nos Domaines
+          <LayoutGrid size={20}/> Nos Matières
         </div>
-        <h2 className="text-6xl font-black mb-16 tracking-tighter">Élargissez vos horizons</h2>
+        <h2 className="text-6xl font-black mb-16 tracking-tighter">Toutes les matières, tous les niveaux</h2>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
           {expertises.map((skill, i) => (
-            <motion.div key={i} whileHover={{ y: -5, scale: 1.02 }}
-              className="bg-white border-2 border-gray-50 p-8 rounded-[2.5rem] shadow-[0_10px_40px_rgba(0,0,0,0.02)] font-black text-xl hover:border-blue-100 hover:shadow-xl transition-all cursor-pointer">
+            <motion.div 
+              key={i} 
+              whileHover={{ y: -5, scale: 1.02 }}
+              onClick={() => navigate('/formateurs')}
+              className="bg-white border-2 border-gray-50 p-8 rounded-[2.5rem] shadow-[0_10px_40px_rgba(0,0,0,0.02)] font-black text-xl hover:border-blue-100 hover:shadow-xl transition-all cursor-pointer"
+            >
               {skill}
             </motion.div>
           ))}
@@ -595,13 +616,24 @@ const Landing = () => {
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-20">
             <h2 className="text-6xl font-black italic tracking-tighter">Un écosystème de réussite</h2>
-            <p className="text-gray-400 text-xl mt-4 font-medium italic">Une plateforme, trois opportunités illimitées.</p>
+            <p className="text-gray-400 text-xl mt-4 font-medium italic">Une plateforme, deux opportunités illimitées.</p>
           </div>
-          <div className="grid md:grid-cols-3 gap-12">
+          <div className="grid md:grid-cols-2 gap-12 max-w-4xl mx-auto">
             {[
-              { title: 'Apprenants',    Icon: IconStudent,  desc: "Formations personnalisées en direct avec des mentors d'exception." },
-              { title: 'Formateurs',    Icon: IconTeacher,  desc: 'Partagez votre expertise et développez votre carrière internationale.' },
-              { title: 'Entrepreneurs', Icon: IconBusiness, desc: 'Recrutez les meilleurs talents pour propulser vos projets innovants.' }
+              { 
+                title: 'Apprenants',    
+                Icon: IconStudent,  
+                desc: "Trouvez le formateur idéal grâce à notre IA. Réservez des séances en ligne ou présentiel, suivez votre progression et réussissez vos examens.",
+                action: () => setIsStudentModalOpen(true),
+                btnText: "Comment ça marche"
+              },
+              { 
+                title: 'Formateurs',    
+                Icon: IconTeacher,  
+                desc: 'Partagez votre expertise, gérez votre calendrier et vos revenus depuis un tableau de bord intuitif. Développez votre clientèle en Tunisie.',
+                action: () => setIsTeacherModalOpen(true),
+                btnText: "Devenir Formateur"
+              }
             ].map((item, idx) => (
               <motion.div key={idx} whileHover={{ y: -15 }}
                 className="bg-white p-12 rounded-[60px] shadow-2xl shadow-gray-100 border border-gray-50 text-center group transition-all">
@@ -611,17 +643,46 @@ const Landing = () => {
                 <h3 className="text-4xl font-black mb-6 italic tracking-tight">{item.title}</h3>
                 <p className="text-gray-400 mb-10 text-lg font-medium italic leading-relaxed">{item.desc}</p>
                 <button 
-                  onClick={() => {
-                    if (item.title === 'Apprenants') setIsStudentModalOpen(true);
-                    if (item.title === 'Formateurs') setIsTeacherModalOpen(true);
-                    if (item.title === 'Entrepreneurs') setIsEntrepreneurModalOpen(true);
-                  }}
+                  onClick={item.action}
                   className="font-black text-blue-600 uppercase tracking-widest text-[10px] flex items-center justify-center gap-3 mx-auto group-hover:scale-110 transition-transform"
                 >
-                  En savoir plus <ArrowUpRight size={18}/>
+                  {item.btnText} <ArrowUpRight size={18}/>
                 </button>
               </motion.div>
             ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── EDUBOT CTA ─────────────────────────────────────────── */}
+      <section className="py-24 px-6 bg-gradient-to-br from-blue-600 to-indigo-700">
+        <div className="max-w-7xl mx-auto flex flex-col lg:flex-row items-center gap-16">
+          <div className="lg:w-1/2 space-y-8 text-white">
+            <div className="inline-flex items-center gap-2 bg-white/20 backdrop-blur-sm px-4 py-2 rounded-full">
+              <MessageCircle size={16} />
+              <span className="text-sm font-bold uppercase tracking-wider">EduBot IA</span>
+            </div>
+            <h2 className="text-5xl md:text-6xl font-black leading-tight">
+              Discutez avec notre IA et trouvez votre formateur en 5 secondes
+            </h2>
+            <p className="text-blue-100 text-xl leading-relaxed">
+              Pas besoin de chercher manuellement. Dites simplement "Je cherche un prof de maths pour le bac à Sfax" et EduBot s'occupe du reste.
+            </p>
+            <button 
+              onClick={() => navigate('/edubot')}
+              className="bg-white text-blue-700 px-10 py-5 rounded-2xl font-black text-lg shadow-2xl hover:bg-blue-50 transition-all flex items-center gap-3"
+            >
+              <Bot size={24} />
+              Essayer EduBot
+            </button>
+          </div>
+          <div className="lg:w-1/2 flex justify-center">
+            <div className="relative w-80 h-80 bg-white/10 rounded-full flex items-center justify-center backdrop-blur-sm border border-white/20">
+              <Bot size={120} className="text-white animate-pulse" />
+              <div className="absolute -top-4 -right-4 bg-orange-500 text-white px-4 py-2 rounded-full font-black text-sm">
+                Nouveau !
+              </div>
+            </div>
           </div>
         </div>
       </section>
@@ -630,8 +691,8 @@ const Landing = () => {
       <section id="centres" className="py-32 px-6 max-w-7xl mx-auto">
         <div className="flex flex-col md:flex-row justify-between items-end mb-20 gap-8">
           <div className="max-w-2xl">
-            <h2 className="text-6xl font-black tracking-tighter mb-4 italic">Nos Hubs Physiques</h2>
-            <p className="text-gray-400 text-xl font-medium italic">Retrouvez l'infrastructure de pointe du Centre Class dans toute la Tunisie.</p>
+            <h2 className="text-6xl font-black tracking-tighter mb-4 italic">Nos Centres en Tunisie</h2>
+            <p className="text-gray-400 text-xl font-medium italic">Retrouvez nos hubs physiques pour des séances en présentiel dans toute la Tunisie.</p>
           </div>
           <div className="flex items-center gap-2 font-black text-blue-600 text-sm uppercase tracking-widest bg-blue-50 px-6 py-3 rounded-full italic">
             <Globe size={18}/> Présence Nationale
@@ -645,10 +706,12 @@ const Landing = () => {
                 <MapPin size={45} className="mb-6 opacity-80"/>
                 <h3 className="text-4xl font-black mb-2 tracking-tighter italic">{center.city}</h3>
                 <p className="text-[11px] font-bold opacity-70 mb-10 leading-tight uppercase tracking-widest italic">{center.addr}</p>
-                <a href={center.map} target="_blank" rel="noreferrer"
-                  className="bg-white text-black py-5 rounded-[2rem] font-black text-center flex items-center justify-center gap-3 hover:bg-black hover:text-white transition-all shadow-xl">
-                  GPS Maps <ExternalLink size={16}/>
-                </a>
+                <button
+                  onClick={() => navigate('/formateurs')}
+                  className="bg-white text-black py-5 rounded-[2rem] font-black text-center flex items-center justify-center gap-3 hover:bg-black hover:text-white transition-all shadow-xl"
+                >
+                  Voir les formateurs <ExternalLink size={16}/>
+                </button>
               </div>
             </motion.div>
           ))}
@@ -667,11 +730,11 @@ const Landing = () => {
             {/* Colonne marque */}
             <div className="lg:w-1/3 space-y-6">
               <div>
-                <span className="text-5xl font-black tracking-tighter text-white">ONYONO</span>
-                <p className="text-[10px] font-black uppercase opacity-30 italic tracking-[0.5em] mt-1">Experience Centre Class</p>
+                <span className="text-5xl font-black tracking-tighter text-white">EDUMATCH</span>
+                <p className="text-[10px] font-black uppercase opacity-30 italic tracking-[0.5em] mt-1">Plateforme Intelligente TN</p>
               </div>
               <p className="text-blue-200 text-base font-medium italic opacity-70 leading-relaxed max-w-xs">
-                La plateforme d'apprentissage 1-to-1 qui remet l'humain au centre de la formation.
+                La plateforme de mise en relation 1-to-1 entre apprenants et formateurs certifiés en Tunisie, propulsée par l'IA.
               </p>
               {/* Réseaux sociaux */}
               <div className="flex gap-3 pt-2">
@@ -690,7 +753,7 @@ const Landing = () => {
                 <p className="text-blue-200 opacity-60 text-base font-medium italic mt-2">Nos experts pédagogiques sont à votre disposition pour concevoir votre parcours de réussite.</p>
               </div>
 
-              <form className="space-y-5">
+              <form className="space-y-5" onSubmit={(e) => { e.preventDefault(); navigate('/contact'); }}>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                   <input type="text" placeholder="Prénom"
                     className="bg-white/8 border border-white/12 rounded-2xl py-4 px-6 text-white outline-none focus:bg-white/15 focus:border-blue-400 transition-all font-semibold placeholder:text-blue-300/30 text-sm"/>
@@ -708,7 +771,10 @@ const Landing = () => {
                 <textarea placeholder="Votre projet de formation…" rows={3}
                   className="w-full bg-white/8 border border-white/12 rounded-2xl py-4 px-6 text-white outline-none focus:bg-white/15 focus:border-blue-400 transition-all font-semibold placeholder:text-blue-300/30 text-sm resize-none"/>
                 <div className="flex flex-col sm:flex-row items-center gap-6">
-                  <button className="sm:w-auto w-full bg-[#F27438] hover:bg-[#E85D1C] text-white font-black py-5 px-10 rounded-2xl shadow-2xl shadow-orange-900/30 transition-all flex items-center justify-center gap-3 text-base italic active:scale-95">
+                  <button 
+                    type="submit"
+                    className="sm:w-auto w-full bg-[#F27438] hover:bg-[#E85D1C] text-white font-black py-5 px-10 rounded-2xl shadow-2xl shadow-orange-900/30 transition-all flex items-center justify-center gap-3 text-base italic active:scale-95"
+                  >
                     Envoyer ma demande <Send size={20}/>
                   </button>
                   <div className="flex items-center gap-6">
@@ -716,9 +782,9 @@ const Landing = () => {
                       <div className="bg-blue-600/30 p-3 rounded-xl group-hover:bg-blue-500 transition-all"><Phone size={18}/></div>
                       <span className="font-bold text-sm">+216 94 24 94 24</span>
                     </a>
-                    <a href="mailto:contact@onyono.com" className="flex items-center gap-3 text-blue-200 hover:text-white transition-colors group">
+                    <a href="mailto:contact@edumatch.tn" className="flex items-center gap-3 text-blue-200 hover:text-white transition-colors group">
                       <div className="bg-blue-600/30 p-3 rounded-xl group-hover:bg-blue-500 transition-all"><Mail size={18}/></div>
-                      <span className="font-bold text-sm">contact@onyono.com</span>
+                      <span className="font-bold text-sm">contact@edumatch.tn</span>
                     </a>
                   </div>
                 </div>
@@ -733,7 +799,7 @@ const Landing = () => {
         {/* Bas de footer */}
         <div className="max-w-7xl mx-auto px-6 py-8 flex flex-col md:flex-row justify-between items-center gap-6">
           <p className="text-[11px] font-black text-white/25 italic tracking-widest uppercase">
-            © {new Date().getFullYear()} Onyono Platform. Made in Tunisia.
+            © {new Date().getFullYear()} EduMatch Platform. Made in Tunisia.
           </p>
           <div className="flex gap-10 font-black text-xs uppercase tracking-[0.3em] text-white/30 italic">
             {['Privacy', 'Terms', 'Careers', 'Help'].map(f => (
@@ -742,8 +808,7 @@ const Landing = () => {
           </div>
           <div className="flex items-center gap-4">
             {centers.map(c => (
-              <a key={c.city} href={c.map} target="_blank" rel="noreferrer"
-                className="text-[10px] font-black text-white/25 hover:text-blue-400 uppercase tracking-wider transition-colors">{c.city}</a>
+              <span key={c.city} className="text-[10px] font-black text-white/25 uppercase tracking-wider">{c.city}</span>
             ))}
           </div>
         </div>

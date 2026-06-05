@@ -273,7 +273,6 @@ function ChatWindow({ reservation, currentUser, onClose }) {
 
   return (
     <div style={{ position:'fixed', bottom:24, right:24, width:390, height:570, background:'#fff', borderRadius:26, boxShadow:'0 40px 100px rgba(0,21,61,0.2), 0 0 0 1px rgba(0,0,0,0.05)', display:'flex', flexDirection:'column', zIndex:2000, overflow:'hidden', animation:'chatIn3 .32s cubic-bezier(.34,1.56,.64,1)', fontFamily:'Instrument Sans,sans-serif' }}>
-      {/* Header */}
       <div style={{ padding:'16px 18px', background:'linear-gradient(135deg,#00153D,#1E3A8A)', display:'flex', alignItems:'center', gap:13 }}>
         <Avatar nom={etudiantNom} size={42}/>
         <div style={{ flex:1, minWidth:0 }}>
@@ -285,7 +284,6 @@ function ChatWindow({ reservation, currentUser, onClose }) {
         </div>
         <button onClick={onClose} style={{ width:32, height:32, borderRadius:9, background:'rgba(255,255,255,0.12)', border:'none', cursor:'pointer', color:'#fff', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'.9rem' }}>✕</button>
       </div>
-      {/* Info compacte */}
       {(reservation.etudiant_email || reservation.etudiant_telephone) && (
         <div style={{ padding:'8px 16px', background:'#F8FAFC', borderBottom:'1.5px solid #F1F5F9', display:'flex', gap:14, fontSize:'.73rem' }}>
           {reservation.etudiant_email && <a href={`mailto:${reservation.etudiant_email}`} style={{ color:'#1D4ED8', textDecoration:'none', fontWeight:600 }}>✉️ {reservation.etudiant_email}</a>}
@@ -293,7 +291,6 @@ function ChatWindow({ reservation, currentUser, onClose }) {
           <span style={{ color:'#94A3B8' }}>🕒 {String(reservation.heure_debut||'').slice(0,5)}–{String(reservation.heure_fin||'').slice(0,5)}</span>
         </div>
       )}
-      {/* Messages */}
       <div style={{ flex:1, overflowY:'auto', padding:'14px 12px 4px', display:'flex', flexDirection:'column', gap:9, background:'#FAFAFA' }}>
         {messages.length === 0 && (
           <div style={{ textAlign:'center', padding:'40px 12px', color:'#94A3B8' }}>
@@ -321,7 +318,6 @@ function ChatWindow({ reservation, currentUser, onClose }) {
         })}
         <div ref={bottomRef}/>
       </div>
-      {/* Input */}
       <div style={{ padding:'10px 12px', borderTop:'1.5px solid #F1F5F9', display:'flex', alignItems:'flex-end', gap:8, background:'#fff' }}>
         <button onClick={() => fileRef.current?.click()} disabled={uploading} style={{ width:36, height:36, borderRadius:10, background:'#F8FAFC', border:'1.5px solid #E2E8F0', cursor:uploading?'not-allowed':'pointer', color:'#64748B', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
           {uploading ? <div style={{ width:14, height:14, border:'2px solid #E2E8F0', borderTopColor:'#94A3B8', borderRadius:'50%', animation:'spin3 .8s linear infinite' }}/> : '📎'}
@@ -347,7 +343,6 @@ function ReservationModal({ reservation, onClose, onAction, onChat }) {
     <div onClick={e => e.target===e.currentTarget && onClose()}
       style={{ position:'fixed', inset:0, background:'rgba(15,23,42,0.65)', backdropFilter:'blur(10px)', zIndex:1000, display:'flex', alignItems:'center', justifyContent:'center', padding:20 }}>
       <div style={{ background:'#fff', borderRadius:26, width:'100%', maxWidth:560, maxHeight:'92vh', overflowY:'auto', boxShadow:'0 48px 120px rgba(0,0,0,0.2)', animation:'scaleIn3 .25s cubic-bezier(.34,1.56,.64,1)', fontFamily:'Instrument Sans,sans-serif', border:'1.5px solid #F1F5F9' }}>
-        {/* Header */}
         <div style={{ padding:'22px 28px 18px', borderBottom:'1.5px solid #F1F5F9', display:'flex', justifyContent:'space-between', alignItems:'center', background:'#FDFEFF' }}>
           <div>
             <h3 style={{ fontFamily:'Cabinet Grotesk,sans-serif', margin:0, fontSize:'1.15rem', fontWeight:900, color:'#0F172A', letterSpacing:'-.02em' }}>Détails de la réservation</h3>
@@ -360,9 +355,7 @@ function ReservationModal({ reservation, onClose, onAction, onChat }) {
               onMouseLeave={e => { e.currentTarget.style.background='#F8FAFC'; e.currentTarget.style.color='#64748B'; }}>✕</button>
           </div>
         </div>
-
         <div style={{ padding:'24px 28px', display:'flex', flexDirection:'column', gap:18 }}>
-          {/* Profil étudiant */}
           <div style={{ background:'#F8FAFC', border:'1.5px solid #F1F5F9', borderRadius:18, padding:18 }}>
             <div style={{ fontSize:'.65rem', fontWeight:900, color:'#94A3B8', textTransform:'uppercase', letterSpacing:'.12em', marginBottom:14, fontFamily:'Cabinet Grotesk,sans-serif' }}>👨‍🎓 Étudiant</div>
             <div style={{ display:'flex', alignItems:'center', gap:14 }}>
@@ -378,15 +371,13 @@ function ReservationModal({ reservation, onClose, onAction, onChat }) {
               </div>
             </div>
           </div>
-
-          {/* Détails cours */}
           <div style={{ background:'#F8FAFC', border:'1.5px solid #F1F5F9', borderRadius:16, padding:16 }}>
             <div style={{ fontSize:'.65rem', fontWeight:900, color:'#94A3B8', textTransform:'uppercase', letterSpacing:'.12em', marginBottom:14, fontFamily:'Cabinet Grotesk,sans-serif' }}>📚 Détails du cours</div>
             <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
               {[
                 ['📅 Date',    r.date_cours ? new Date(r.date_cours+'T00:00:00').toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long',year:'numeric'}) : '—'],
                 ['🕒 Horaire', r.heure_debut && r.heure_fin ? `${String(r.heure_debut).slice(0,5)} → ${String(r.heure_fin).slice(0,5)}` : '—'],
-                ['💰 Tarif',   r.tarif_applique ? `${r.tarif_applique} DT/h` : 'Non renseigné'],
+                ['💰 Tarif',   r.tarif_applique ? `${r.tarif_applique} DT/séance` : 'Non renseigné'],
                 ['🎓 Mode',    null],
               ].map(([label, value]) => (
                 <div key={label} style={{ background:'#fff', padding:'10px 13px', borderRadius:12, border:'1.5px solid #F1F5F9' }}>
@@ -396,11 +387,7 @@ function ReservationModal({ reservation, onClose, onAction, onChat }) {
               ))}
             </div>
           </div>
-
-          {/* Meet */}
           {r.mode_seance==='en_ligne' && r.lien_meet && r.statut==='confirmé' && <ProfMeetBlock r={r}/>}
-
-          {/* Description séance */}
           {r.description_seance && (
             <div style={{ background:'#F0F4FF', borderRadius:14, padding:16, border:'1.5px solid #C7D2FE' }}>
               <div style={{ fontSize:'.65rem', fontWeight:900, color:'#4F46E5', textTransform:'uppercase', letterSpacing:'.12em', marginBottom:10, fontFamily:'Cabinet Grotesk,sans-serif' }}>📝 Description de la séance</div>
@@ -409,8 +396,6 @@ function ReservationModal({ reservation, onClose, onAction, onChat }) {
               </div>
             </div>
           )}
-
-          {/* Message étudiant */}
           {r.notes_etudiant && (
             <div style={{ background:'#F8FAFC', borderRadius:14, padding:16, border:'1.5px solid #F1F5F9' }}>
               <div style={{ fontSize:'.65rem', fontWeight:900, color:'#94A3B8', textTransform:'uppercase', letterSpacing:'.12em', marginBottom:10, fontFamily:'Cabinet Grotesk,sans-serif' }}>💬 Message de l'étudiant</div>
@@ -420,29 +405,6 @@ function ReservationModal({ reservation, onClose, onAction, onChat }) {
             </div>
           )}
 
-          {/* Description séance par le prof — éditable si confirmé */}
-          {r.statut==='confirmé' && (
-            <div style={{ background:'#F0F4FF', borderRadius:14, padding:16, border:'1.5px solid #C7D2FE' }}>
-              <div style={{ fontSize:'.65rem', fontWeight:900, color:'#4F46E5', textTransform:'uppercase', letterSpacing:'.12em', marginBottom:10, fontFamily:'Cabinet Grotesk,sans-serif' }}>📝 Description de la séance (optionnel)</div>
-              <textarea
-                defaultValue={r.description_seance || ''}
-                placeholder="Ex: Cours de révision sur les équations, apportez votre cahier..."
-                rows={3}
-                onBlur={async (e) => {
-                  const val = e.target.value.trim();
-                  if (val !== (r.description_seance || '').trim()) {
-                    try { await api.put(`/api/reservations/${r.id}`, { description_seance: val }); }
-                    catch {}
-                  }
-                }}
-                style={{ width:'100%', background:'#fff', border:'1.5px solid #C7D2FE', borderRadius:10, padding:'9px 12px', fontSize:'.84rem', resize:'vertical', outline:'none', fontFamily:'Instrument Sans,sans-serif', color:'#374151', boxSizing:'border-box', transition:'border-color .15s' }}
-                onFocus={e => e.target.style.borderColor='#4F46E5'}
-              />
-              <div style={{ fontSize:'.68rem', color:'#94A3B8', marginTop:5 }}>Sauvegardé automatiquement</div>
-            </div>
-          )}
-
-          {/* Actions */}
           <div style={{ display:'flex', gap:10, flexDirection:'column' }}>
             {r.statut==='en_attente' && (
               <div style={{ display:'flex', gap:10 }}>
@@ -476,7 +438,6 @@ function ReservationModal({ reservation, onClose, onAction, onChat }) {
 function ReservationCard({ r, onView, onAction, onChat, unreadCount, index }) {
   const dateStr = r.date_cours ? new Date(r.date_cours+'T00:00:00').toLocaleDateString('fr-FR',{day:'numeric',month:'short',year:'numeric'}) : '—';
   const topColor = r.statut==='confirmé' ? 'linear-gradient(90deg,#10B981,#34D399)' : r.statut==='en_attente' ? 'linear-gradient(90deg,#F59E0B,#FCD34D)' : r.statut==='refusé' ? 'linear-gradient(90deg,#EF4444,#F87171)' : 'linear-gradient(90deg,#3B82F6,#818CF8)';
-
   return (
     <div className="pdb-resa-card" style={{ animationDelay:`${index*55}ms`, animation:'slideCard3 .42s cubic-bezier(.22,1,.36,1) both', opacity:0, animationFillMode:'forwards' }}>
       <div style={{ height:3, background:topColor, margin:'-16px -20px 14px', borderRadius:'18px 18px 0 0' }}/>
@@ -535,7 +496,6 @@ function ReservationCard({ r, onView, onAction, onChat, unreadCount, index }) {
    PAGE PRINCIPALE
 ════════════════════════════════════════════════ */
 
-/* ─── Badge Paiement ───────────────────────── */
 function PaiementBadge({ statut }) {
   if (statut === 'payé') return (
     <span style={{ display:'inline-flex', alignItems:'center', gap:4, fontSize:'.68rem', fontWeight:800, padding:'3px 10px', borderRadius:20, background:'#ECFDF5', color:'#065F46', border:'1.5px solid #6EE7B7' }}>
@@ -551,7 +511,7 @@ function PaiementBadge({ statut }) {
 
 /* ─── Section Gestion des Gains ─────────────── */
 function GainsSection({ reservations }) {
-  // getDuree doit être défini AVANT calcTotal
+
   const getDuree = (r) => {
     if (!r.heure_debut || !r.heure_fin) return 1;
     const [hd, md] = String(r.heure_debut).slice(0,5).split(':').map(Number);
@@ -562,10 +522,10 @@ function GainsSection({ reservations }) {
 
   const seancesPayees    = reservations.filter(r => r.statut_paiement === 'payé');
   const seancesEnAttente = reservations.filter(r => (r.statut === 'confirmé' || r.statut === 'terminé') && r.statut_paiement !== 'payé');
-  const calcTotal = (r) => {
-    const duree = getDuree(r);
-    return (parseFloat(r.tarif_applique) || 0) * parseFloat(duree);
-  };
+
+  /* ── CORRECTION : tarif par séance (pas par heure) ── */
+  const calcTotal = (r) => parseFloat(r.tarif_applique) || 0;
+
   const totalGains     = seancesPayees.reduce((acc, r) => acc + calcTotal(r), 0);
   const totalEnAttente = seancesEnAttente.reduce((acc, r) => acc + calcTotal(r), 0);
   const totalSeances   = reservations.filter(r => r.statut === 'confirmé' || r.statut === 'terminé').length;
@@ -627,7 +587,7 @@ function GainsSection({ reservations }) {
             <table style={{ width:'100%', borderCollapse:'collapse', fontSize:'.83rem' }}>
               <thead>
                 <tr style={{ background:'#F8FAFC' }}>
-                  {['Étudiant','Date','Horaire','Durée','Tarif/h','Total','Mode','Paiement'].map((h, i) => (
+                  {['Étudiant','Date','Horaire','Durée','Tarif/séance','Mode','Paiement'].map((h, i) => (
                     <th key={i} style={{ padding:'10px 16px', textAlign:'left', fontSize:'.66rem', fontWeight:900, color:'#94A3B8', textTransform:'uppercase', letterSpacing:'.08em', borderBottom:'1.5px solid #F1F5F9', whiteSpace:'nowrap' }}>{h}</th>
                   ))}
                 </tr>
@@ -635,7 +595,6 @@ function GainsSection({ reservations }) {
               <tbody>
                 {seancesAll.map((r, i) => {
                   const duree = getDuree(r);
-                  const total = (parseFloat(r.tarif_applique) || 0) * parseFloat(duree);
                   return (
                     <tr key={r.id}
                       style={{ borderBottom: i < seancesAll.length-1 ? '1px solid #F8FAFC' : 'none', transition:'background .12s' }}
@@ -659,11 +618,7 @@ function GainsSection({ reservations }) {
                       <td style={{ padding:'12px 16px', textAlign:'center', color:'#64748B', fontWeight:600 }}>
                         {r.tarif_applique ? `${parseFloat(r.tarif_applique).toFixed(0)} DT` : '—'}
                       </td>
-                      <td style={{ padding:'12px 16px', textAlign:'center' }}>
-                        <span style={{ fontFamily:'Cabinet Grotesk,sans-serif', fontWeight:900, color: r.statut_paiement==='payé'?'#065F46':'#94A3B8' }}>
-                          {r.tarif_applique ? `${total.toFixed(2)} DT` : '—'}
-                        </span>
-                      </td>
+
                       <td style={{ padding:'12px 16px' }}><ModeBadge mode={r.mode_seance}/></td>
                       <td style={{ padding:'12px 16px' }}><PaiementBadge statut={r.statut_paiement}/></td>
                     </tr>
@@ -672,26 +627,13 @@ function GainsSection({ reservations }) {
               </tbody>
               <tfoot>
                 <tr style={{ background:'#F8FAFC', borderTop:'2px solid #F1F5F9' }}>
-                  <td colSpan={5} style={{ padding:'12px 16px', fontFamily:'Cabinet Grotesk,sans-serif', fontWeight:900, fontSize:'.88rem', color:'#0F172A' }}>
+                  <td colSpan={4} style={{ padding:'12px 16px', fontFamily:'Cabinet Grotesk,sans-serif', fontWeight:900, fontSize:'.88rem', color:'#0F172A' }}>
                     Total ({seancesAll.length} séance{seancesAll.length!==1?'s':''})
                   </td>
-                  <td style={{ padding:'12px 16px', textAlign:'center' }}>
-                    <span style={{ fontFamily:'Cabinet Grotesk,sans-serif', fontWeight:900, fontSize:'1rem', color:'#065F46' }}>
-                      {seancesAll.reduce((acc, r) => {
-                        const d = (() => {
-                          if (!r.heure_debut || !r.heure_fin) return 1;
-                          const [hd,md]=String(r.heure_debut).slice(0,5).split(':').map(Number);
-                          const [hf,mf]=String(r.heure_fin).slice(0,5).split(':').map(Number);
-                          const diff=(hf*60+mf)-(hd*60+md);
-                          return diff>0?diff/60:1;
-                        })();
-                        return acc + (parseFloat(r.tarif_applique)||0) * d;
-                      }, 0).toFixed(2)} DT
-                    </span>
-                  </td>
-                  <td colSpan={2} style={{ padding:'12px 16px', textAlign:'right' }}>
-                    <span style={{ fontSize:'.72rem', color:'#94A3B8', fontWeight:600 }}>
-                      dont <span style={{ color:'#065F46', fontWeight:800 }}>{totalGains.toFixed(2)} DT payés</span>
+                  <td colSpan={3} style={{ padding:'12px 16px', textAlign:'right' }}>
+                    <span style={{ fontSize:'.82rem', color:'#064e3b', fontWeight:800, fontFamily:'Cabinet Grotesk,sans-serif' }}>
+                      {seancesAll.reduce((acc, r) => acc + (parseFloat(r.tarif_applique) || 0), 0).toFixed(2)} DT
+                      <span style={{ color:'#94A3B8', fontWeight:600, fontSize:'.72rem', marginLeft:6 }}>dont {totalGains.toFixed(2)} DT payés</span>
                     </span>
                   </td>
                 </tr>
@@ -718,19 +660,30 @@ export default function ProfDashboard() {
   const [unreadMap, setUnreadMap]       = useState({});
   const [filterMode, setFilterMode]     = useState('');
   const [filterMonth, setFilterMonth]   = useState('');
+  const [resoumission, setResoumission] = useState({ loading: false, success: false, error: '' });
 
   useEffect(() => {
     injectCSS();
     Promise.all([
-      api.get('/api/reservations/mes-reservations').catch(() => ({ data:[] })),
-      api.get('/api/professeurs/me').catch(() => ({ data:null })),
-    ]).then(([r, p]) => {
+      api.get('/api/reservations/mes-reservations').catch(() => ({ data: [] })),
+      api.get('/api/professeurs/me').catch(() => ({ data: null })),
+      api.get('/api/professeurs/notifications').catch(() => ({ data: [] })),
+    ]).then(([r, p, notifs]) => {
+      const profData = p.data ?? null;
+      if (profData && profData.statut_validation === 'refusé' && !profData.raison_refus) {
+        const notifsBDD = Array.isArray(notifs.data) ? notifs.data : [];
+        const dernierRefus = notifsBDD.find(n => n.type === 'refus');
+        if (dernierRefus?.message) {
+          const match = dernierRefus.message.match(/Raison\s*:\s*(.+?)(?:\s+Vous pouvez|\.?\s*$)/);
+          if (match) profData.raison_refus = match[1].trim();
+        }
+      }
       setReservations(r.data ?? []);
-      setProfile(p.data ?? null);
+      setProfile(profData);
       setLoading(false);
     });
     loadUnread();
-    const iv = setInterval(loadUnread, 10000);
+    const iv = setInterval(loadUnread, 15000);
     return () => clearInterval(iv);
   }, []);
 
@@ -741,15 +694,10 @@ export default function ProfDashboard() {
     }
   }, [chatResaId, reservations]);
 
-  // Ouvrir la modal de réservation depuis une notification (clic sur notif pending)
   useEffect(() => {
     if (openResaId && reservations.length > 0) {
       const resa = reservations.find(r => r.id === openResaId);
-      if (resa) {
-        setSelectedResa(resa);
-        setActiveTab('en_attente');
-        setOpenResaId?.(null);
-      }
+      if (resa) { setSelectedResa(resa); setActiveTab('en_attente'); setOpenResaId?.(null); }
     }
   }, [openResaId, reservations]);
 
@@ -757,251 +705,336 @@ export default function ProfDashboard() {
     try {
       const res = await api.get('/api/messages/non-lus');
       const map = {};
-      (res.data.messages||[]).forEach(m => { map[m.reservation_id] = (map[m.reservation_id]||0)+1; });
+      (res.data.messages || []).forEach(m => { map[m.reservation_id] = (map[m.reservation_id] || 0) + 1; });
       setUnreadMap(map);
     } catch {}
+  };
+
+  const handleResoumettre = async () => {
+    setResoumission({ loading: true, success: false, error: '' });
+    try {
+      await api.put('/api/professeurs/resoumettre');
+      setProfile(prev => prev ? { ...prev, statut_validation: 'en_attente', raison_refus: null } : prev);
+      setResoumission({ loading: false, success: true, error: '' });
+    } catch (e) {
+      const msg = e.response?.data?.detail || 'Erreur lors de la resoumission';
+      setResoumission({ loading: false, success: false, error: msg });
+    }
   };
 
   async function updateReservation(id, statut) {
     try {
       await api.put(`/api/reservations/${id}`, { statut });
-      setReservations(prev => prev.map(r => r.id===id ? {...r,statut} : r));
+      setReservations(prev => prev.map(r => r.id === id ? { ...r, statut } : r));
     } catch { alert('Erreur lors de la mise à jour'); }
   }
 
   const tabs = [
-    { key:'en_attente', label:'En attente',  color:'#B45309', bg:'#FFFBEB', border:'#FCD34D' },
-    { key:'confirmé',   label:'Confirmées',  color:'#065F46', bg:'#ECFDF5', border:'#6EE7B7' },
-    { key:'refusé',     label:'Refusées',    color:'#991B1B', bg:'#FEF2F2', border:'#FCA5A5' },
-    { key:'all',        label:'Toutes',      color:'#1E40AF', bg:'#EFF6FF', border:'#93C5FD' },
-    { key:'gains',      label:'💰 Gains',    color:'#065F46', bg:'#ECFDF5', border:'#6EE7B7' },
+    { key: 'en_attente', label: 'En attente',  color: '#B45309', bg: '#FFFBEB', border: '#FCD34D' },
+    { key: 'confirmé',   label: 'Confirmées',  color: '#065F46', bg: '#ECFDF5', border: '#6EE7B7' },
+    { key: 'refusé',     label: 'Refusées',    color: '#991B1B', bg: '#FEF2F2', border: '#FCA5A5' },
+    { key: 'all',        label: 'Toutes',      color: '#1E40AF', bg: '#EFF6FF', border: '#93C5FD' },
+    { key: 'gains',      label: '💰 Gains',    color: '#065F46', bg: '#ECFDF5', border: '#6EE7B7' },
   ];
 
-  const MONTH_LABELS = ['Jan','Fév','Mar','Avr','Mai','Jun','Jul','Aoû','Sep','Oct','Nov','Déc'];
+  const MONTH_LABELS = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Jun', 'Jul', 'Aoû', 'Sep', 'Oct', 'Nov', 'Déc'];
   const availableMonths = useMemo(() => {
     const months = new Set();
-    reservations.forEach(r => { if (r.date_cours) months.add(r.date_cours.slice(0,7)); });
+    reservations.forEach(r => { if (r.date_cours) months.add(r.date_cours.slice(0, 7)); });
     return [...months].sort().reverse();
   }, [reservations]);
 
   const counts = {
-    en_attente: reservations.filter(r => r.statut==='en_attente').length,
-    confirmé:   reservations.filter(r => r.statut==='confirmé').length,
-    refusé:     reservations.filter(r => r.statut==='refusé').length,
+    en_attente: reservations.filter(r => r.statut === 'en_attente').length,
+    confirmé:   reservations.filter(r => r.statut === 'confirmé').length,
+    refusé:     reservations.filter(r => r.statut === 'refusé').length,
     all:        reservations.length,
-    gains:      reservations.filter(r => r.statut_paiement==='payé').length,
+    gains:      reservations.filter(r => r.statut_paiement === 'payé').length,
   };
 
   const filtered = reservations.filter(r => {
-    if (activeTab!=='all' && r.statut!==activeTab) return false;
-    if (filterMode  && r.mode_seance!==filterMode) return false;
+    if (activeTab !== 'all' && r.statut !== activeTab) return false;
+    if (filterMode  && r.mode_seance !== filterMode) return false;
     if (filterMonth && r.date_cours && !r.date_cours.startsWith(filterMonth)) return false;
     return true;
   });
 
-  const totalUnread = Object.values(unreadMap).reduce((a,b) => a+b, 0);
-  const getHour = () => { const h=new Date().getHours(); return h<12?'Bonjour':h<18?'Bon après-midi':'Bonsoir'; };
+  const totalUnread = Object.values(unreadMap).reduce((a, b) => a + b, 0);
+  const getHour = () => { const h = new Date().getHours(); return h < 12 ? 'Bonjour' : h < 18 ? 'Bon après-midi' : 'Bonsoir'; };
+
+  const statut   = profile?.statut_validation;
+  const isRefuse = statut === 'refusé';
+  const isBloque = profile?.user_statut === 'bloqué';
+  const isAttente= statut === 'en_attente';
 
   return (
-    <div className="pdb-root" style={{ padding:'36px 40px', maxWidth:1160, margin:'0 auto' }}>
+    <div className="pdb-root" style={{ padding: '36px 40px', maxWidth: 1160, margin: '0 auto' }}>
 
-      {/* ── HEADER ── */}
-      <div style={{ marginBottom:32, animation:'fadeUp3 .5s ease both' }}>
-        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', flexWrap:'wrap', gap:16 }}>
+      {/* HEADER */}
+      <div style={{ marginBottom: 28, animation: 'fadeUp3 .5s ease both' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 16 }}>
           <div>
-            <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:8 }}>
-              <div style={{ width:4, height:24, background:'linear-gradient(180deg,#00153D,#3B82F6)', borderRadius:2 }}/>
-              <span style={{ fontSize:'.65rem', fontWeight:900, color:'#94A3B8', textTransform:'uppercase', letterSpacing:'.14em', fontFamily:'Cabinet Grotesk,sans-serif' }}>Tableau de bord</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+              <div style={{ width: 4, height: 24, background: 'linear-gradient(180deg,#00153D,#3B82F6)', borderRadius: 2 }} />
+              <span style={{ fontSize: '.65rem', fontWeight: 900, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '.14em', fontFamily: 'Cabinet Grotesk,sans-serif' }}>Tableau de bord</span>
             </div>
-            <h1 style={{ fontFamily:'Cabinet Grotesk,sans-serif', fontSize:'2.1rem', fontWeight:900, margin:'0 0 5px', color:'#0F172A', letterSpacing:'-.03em', lineHeight:1 }}>
+            <h1 style={{ fontFamily: 'Cabinet Grotesk,sans-serif', fontSize: '2.1rem', fontWeight: 900, margin: '0 0 5px', color: '#0F172A', letterSpacing: '-.03em', lineHeight: 1 }}>
               {getHour()}, {user?.prenom} 👨‍🏫
             </h1>
-            <p style={{ color:'#94A3B8', margin:0, fontSize:'.88rem', fontWeight:500, fontStyle:'italic' }}>Voici un aperçu de votre activité</p>
+            <p style={{ color: '#94A3B8', margin: 0, fontSize: '.88rem', fontWeight: 500, fontStyle: 'italic' }}>Voici un aperçu de votre activité</p>
           </div>
-          <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             {profile && (
-              <div style={{ display:'flex', alignItems:'center', gap:10, padding:'10px 16px', background:'#fff', border:'1.5px solid #F1F5F9', borderRadius:16, boxShadow:'0 2px 10px rgba(0,0,0,0.04)' }}>
-                <div style={{ width:36, height:36, borderRadius:10, background:'#FEF3C7', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'1.1rem' }}>⭐</div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 16px', background: '#fff', border: '1.5px solid #F1F5F9', borderRadius: 16, boxShadow: '0 2px 10px rgba(0,0,0,0.04)' }}>
+                <div style={{ width: 36, height: 36, borderRadius: 10, background: '#FEF3C7', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.1rem' }}>⭐</div>
                 <div>
-                  <div style={{ fontFamily:'Cabinet Grotesk,sans-serif', fontWeight:900, fontSize:'1.2rem', color:'#B45309', lineHeight:1 }}>{parseFloat(profile?.note_moyenne||0).toFixed(1)}</div>
-                  <div style={{ fontSize:'.65rem', color:'#94A3B8', fontWeight:700, textTransform:'uppercase', letterSpacing:'.06em' }}>Note moy.</div>
+                  <div style={{ fontFamily: 'Cabinet Grotesk,sans-serif', fontWeight: 900, fontSize: '1.2rem', color: '#B45309', lineHeight: 1 }}>{parseFloat(profile?.note_moyenne || 0).toFixed(1)}</div>
+                  <div style={{ fontSize: '.65rem', color: '#94A3B8', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.06em' }}>Note moy.</div>
                 </div>
               </div>
             )}
             <button
               onClick={(e) => { e.preventDefault(); e.stopPropagation(); exportProfReservations(reservations, `${user?.prenom || ''} ${user?.nom || ''}`.trim()); }}
-              style={{ display:'flex', alignItems:'center', gap:7, padding:'9px 16px', background:'#00153D', color:'#fff', border:'none', borderRadius:12, cursor:'pointer', fontFamily:"'Cabinet Grotesk',sans-serif", fontWeight:800, fontSize:'.8rem', boxShadow:'0 4px 14px rgba(0,21,61,0.2)', transition:'all .18s' }}
-              onMouseEnter={e => { e.currentTarget.style.background='#1E3A8A'; e.currentTarget.style.transform='translateY(-1px)'; }}
-              onMouseLeave={e => { e.currentTarget.style.background='#00153D'; e.currentTarget.style.transform='none'; }}>
+              style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '9px 16px', background: '#00153D', color: '#fff', border: 'none', borderRadius: 12, cursor: 'pointer', fontFamily: "'Cabinet Grotesk',sans-serif", fontWeight: 800, fontSize: '.8rem', boxShadow: '0 4px 14px rgba(0,21,61,0.2)', transition: 'all .18s' }}
+              onMouseEnter={e => { e.currentTarget.style.background = '#1E3A8A'; e.currentTarget.style.transform = 'translateY(-1px)'; }}
+              onMouseLeave={e => { e.currentTarget.style.background = '#00153D'; e.currentTarget.style.transform = 'none'; }}>
               📄 Exporter PDF
             </button>
           </div>
         </div>
       </div>
 
-      {/* ── STATS ── */}
-      <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(185px,1fr))', gap:14, marginBottom:28 }}>
+      {/* BANNIÈRE STATUT */}
+      {profile && (isRefuse || isBloque || isAttente) && (
+        <div style={{ marginBottom: 24, animation: 'fadeUp3 .4s ease both' }}>
+          {isBloque && (
+            <div style={{ padding: '20px 24px', background: 'linear-gradient(135deg,#fdf4ff,#f5f3ff)', border: '2px solid #e9d5ff', borderRadius: 20, display: 'flex', gap: 18, alignItems: 'flex-start' }}>
+              <div style={{ width: 48, height: 48, borderRadius: 14, background: '#ede9fe', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.5rem', flexShrink: 0 }}>🚫</div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontFamily: 'Cabinet Grotesk,sans-serif', fontWeight: 900, fontSize: 16, color: '#6d28d9', marginBottom: 6 }}>Compte bloqué</div>
+                <div style={{ fontSize: 13, color: '#7c3aed', lineHeight: 1.6 }}>
+                  Votre compte a été suspendu par l'administration.
+                  {profile.raison_blocage && <><br /><strong>Raison :</strong> {profile.raison_blocage}</>}
+                </div>
+                <div style={{ fontSize: 12, color: '#a78bfa', marginTop: 8 }}>Contactez l'équipe EduMatch pour plus d'informations.</div>
+              </div>
+            </div>
+          )}
+          {isRefuse && !isBloque && (
+            <div style={{ padding: '20px 24px', background: 'linear-gradient(135deg,#fef2f2,#fff1f2)', border: '2px solid #fca5a5', borderRadius: 20 }}>
+              <div style={{ display: 'flex', gap: 18, alignItems: 'flex-start', marginBottom: 16 }}>
+                <div style={{ width: 48, height: 48, borderRadius: 14, background: '#fee2e2', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.5rem', flexShrink: 0 }}>❌</div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontFamily: 'Cabinet Grotesk,sans-serif', fontWeight: 900, fontSize: 16, color: '#991b1b', marginBottom: 6 }}>
+                    Candidature refusée
+                    <span style={{ fontSize: 11, fontWeight: 600, background: '#fef2f2', border: '1px solid #fca5a5', color: '#dc2626', padding: '2px 9px', borderRadius: 20, marginLeft: 10 }}>Action requise</span>
+                  </div>
+                  {profile.raison_refus ? (
+                    <div style={{ padding: '12px 16px', background: 'rgba(255,255,255,.7)', border: '1.5px solid #fca5a5', borderRadius: 12, fontSize: 13, color: '#7f1d1d', lineHeight: 1.6 }}>
+                      <strong>📋 Raison communiquée par l'administration :</strong><br /><br />
+                      <span style={{ fontStyle: 'italic' }}>{profile.raison_refus}</span>
+                    </div>
+                  ) : (
+                    <div style={{ padding: '10px 14px', background: 'rgba(255,255,255,.5)', border: '1.5px dashed #fca5a5', borderRadius: 10, fontSize: 13, color: '#9f1239', fontStyle: 'italic' }}>
+                      Aucune raison précisée par l'administration.
+                    </div>
+                  )}
+                </div>
+              </div>
+              <div style={{ background: 'rgba(255,255,255,.6)', border: '1px solid #fecaca', borderRadius: 14, padding: '14px 18px', marginBottom: 16 }}>
+                <div style={{ fontFamily: 'Cabinet Grotesk,sans-serif', fontWeight: 800, fontSize: 13, color: '#991b1b', marginBottom: 10 }}>✏️ Comment resoumettre votre candidature ?</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {[
+                    { num: 1, text: 'Lisez attentivement la raison du refus ci-dessus' },
+                    { num: 2, text: 'Complétez votre profil (bio, diplômes, tarifs, disponibilités)' },
+                    { num: 3, text: 'Cliquez sur "Resoumettre ma candidature" pour repasser en attente' },
+                  ].map(s => (
+                    <div key={s.num} style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+                      <div style={{ width: 24, height: 24, borderRadius: '50%', background: '#dc2626', color: '#fff', fontSize: 11, fontWeight: 900, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{s.num}</div>
+                      <div style={{ fontSize: 13, color: '#7f1d1d' }}>{s.text}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              {resoumission.success && (
+                <div style={{ padding: '12px 16px', background: '#ecfdf5', border: '1.5px solid #6ee7b7', borderRadius: 12, fontSize: 13, color: '#065f46', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <span style={{ fontSize: 18 }}>✅</span>
+                  <div><strong>Candidature resoumise avec succès !</strong><br /><span style={{ fontSize: 12, opacity: .85 }}>L'équipe EduMatch va examiner votre profil dans les plus brefs délais.</span></div>
+                </div>
+              )}
+              {resoumission.error && (
+                <div style={{ padding: '10px 16px', background: '#fef2f2', border: '1.5px solid #fca5a5', borderRadius: 12, fontSize: 13, color: '#991b1b', marginBottom: 12 }}>⚠️ {resoumission.error}</div>
+              )}
+              <button onClick={handleResoumettre} disabled={resoumission.loading || resoumission.success}
+                style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '12px 24px', background: resoumission.success ? '#10b981' : '#dc2626', color: '#fff', border: 'none', borderRadius: 13, cursor: resoumission.loading || resoumission.success ? 'not-allowed' : 'pointer', fontFamily: "'Cabinet Grotesk',sans-serif", fontWeight: 800, fontSize: 14, boxShadow: '0 4px 16px rgba(220,38,38,.3)', transition: 'all .2s', opacity: resoumission.loading ? .7 : 1 }}
+                onMouseEnter={e => { if (!resoumission.loading && !resoumission.success) { e.currentTarget.style.background = '#b91c1c'; e.currentTarget.style.transform = 'translateY(-1px)'; } }}
+                onMouseLeave={e => { e.currentTarget.style.background = resoumission.success ? '#10b981' : '#dc2626'; e.currentTarget.style.transform = 'none'; }}>
+                {resoumission.loading ? <><div style={{ width: 16, height: 16, border: '2px solid rgba(255,255,255,.4)', borderTopColor: '#fff', borderRadius: '50%', animation: 'spin3 1s linear infinite' }} /> Resoumission...</> : resoumission.success ? <><span>✅</span> Candidature resoumise !</> : <><span>🔄</span> Resoumettre ma candidature</>}
+              </button>
+            </div>
+          )}
+          {isAttente && !isBloque && (
+            <div style={{ padding: '16px 22px', background: 'linear-gradient(135deg,#fffbeb,#fef9c3)', border: '2px solid #fcd34d', borderRadius: 18, display: 'flex', gap: 16, alignItems: 'center' }}>
+              <div style={{ width: 44, height: 44, borderRadius: 12, background: '#fef3c7', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.4rem', flexShrink: 0 }}>⏳</div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontFamily: 'Cabinet Grotesk,sans-serif', fontWeight: 900, fontSize: 15, color: '#b45309' }}>Candidature en cours d'examen</div>
+                <div style={{ fontSize: 13, color: '#92400e', marginTop: 4 }}>Votre profil est en attente de validation par l'équipe EduMatch. Vous serez notifié dès qu'une décision sera prise.</div>
+              </div>
+              <div style={{ padding: '6px 14px', background: '#fef3c7', border: '1.5px solid #fcd34d', borderRadius: 20, fontSize: 12, fontWeight: 700, color: '#b45309', whiteSpace: 'nowrap' }}>⏳ En attente</div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* STATS */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(185px,1fr))', gap: 14, marginBottom: 28 }}>
         {[
-          { icon:'📅', val:reservations.length, lbl:'Total réservations', numColor:'#1E40AF', iconBg:'#BFDBFE', border:'#93C5FD', delay:0   },
-          { icon:'⏳', val:counts.en_attente,   lbl:'En attente',         numColor:'#B45309', iconBg:'#FDE68A', border:'#FCD34D', delay:55  },
-          { icon:'✅', val:counts.confirmé,      lbl:'Confirmées',         numColor:'#065F46', iconBg:'#A7F3D0', border:'#6EE7B7', delay:110 },
-          { icon:'💬', val:totalUnread,          lbl:'Msgs non lus',      numColor:'#9F1239', iconBg:'#FED7E2', border:'#FCA5A5', delay:165 },
+          { icon: '📅', val: reservations.length, lbl: 'Total réservations', numColor: '#1E40AF', iconBg: '#BFDBFE', border: '#93C5FD', delay: 0 },
+          { icon: '⏳', val: counts.en_attente,    lbl: 'En attente',         numColor: '#B45309', iconBg: '#FDE68A', border: '#FCD34D', delay: 55 },
+          { icon: '✅', val: counts.confirmé,       lbl: 'Confirmées',         numColor: '#065F46', iconBg: '#A7F3D0', border: '#6EE7B7', delay: 110 },
+          { icon: '💬', val: totalUnread,           lbl: 'Msgs non lus',       numColor: '#9F1239', iconBg: '#FED7E2', border: '#FCA5A5', delay: 165 },
         ].map(s => (
           <div key={s.lbl} className="pdb-stat-card"
-            style={{ animationDelay:`${s.delay}ms`, animation:'scaleIn3 .45s cubic-bezier(.22,1,.36,1) both', opacity:0, animationFillMode:'forwards', borderColor:s.border }}>
-            <div style={{ width:44, height:44, borderRadius:13, background:s.iconBg, display:'flex', alignItems:'center', justifyContent:'center', fontSize:'1.15rem', marginBottom:12 }}>{s.icon}</div>
-            <div style={{ fontFamily:'Cabinet Grotesk,sans-serif', fontSize:'2.1rem', fontWeight:900, color:s.numColor, lineHeight:1 }}>{s.val}</div>
-            <div style={{ fontSize:'.72rem', color:'#94A3B8', marginTop:5, fontWeight:700, textTransform:'uppercase', letterSpacing:'.05em' }}>{s.lbl}</div>
+            style={{ animationDelay: `${s.delay}ms`, animation: 'scaleIn3 .45s cubic-bezier(.22,1,.36,1) both', opacity: 0, animationFillMode: 'forwards', borderColor: s.border }}>
+            <div style={{ width: 44, height: 44, borderRadius: 13, background: s.iconBg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.15rem', marginBottom: 12 }}>{s.icon}</div>
+            <div style={{ fontFamily: 'Cabinet Grotesk,sans-serif', fontSize: '2.1rem', fontWeight: 900, color: s.numColor, lineHeight: 1 }}>{s.val}</div>
+            <div style={{ fontSize: '.72rem', color: '#94A3B8', marginTop: 5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.05em' }}>{s.lbl}</div>
           </div>
         ))}
       </div>
 
-      {/* ── ALERTES ── */}
+      {/* ALERTES */}
       {totalUnread > 0 && (
-        <div style={{ marginBottom:16, padding:'14px 20px', background:'#EFF6FF', border:'1.5px solid #BFDBFE', borderRadius:16, display:'flex', alignItems:'center', gap:13, animation:'fadeUp3 .4s ease both' }}>
-          <div style={{ width:36, height:36, borderRadius:10, background:'#DBEAFE', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>💬</div>
-          <div style={{ flex:1 }}>
-            <span style={{ fontFamily:'Cabinet Grotesk,sans-serif', fontWeight:900, color:'#1D4ED8' }}>{totalUnread} message{totalUnread>1?'s':''} non lu{totalUnread>1?'s':''}</span>
-            <span style={{ color:'#64748B', fontSize:'.84rem' }}> de vos étudiants</span>
+        <div style={{ marginBottom: 16, padding: '14px 20px', background: '#EFF6FF', border: '1.5px solid #BFDBFE', borderRadius: 16, display: 'flex', alignItems: 'center', gap: 13, animation: 'fadeUp3 .4s ease both' }}>
+          <div style={{ width: 36, height: 36, borderRadius: 10, background: '#DBEAFE', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>💬</div>
+          <div style={{ flex: 1 }}>
+            <span style={{ fontFamily: 'Cabinet Grotesk,sans-serif', fontWeight: 900, color: '#1D4ED8' }}>{totalUnread} message{totalUnread > 1 ? 's' : ''} non lu{totalUnread > 1 ? 's' : ''}</span>
+            <span style={{ color: '#64748B', fontSize: '.84rem' }}> de vos étudiants</span>
           </div>
-          <button onClick={() => setActiveTab('confirmé')} style={{ padding:'7px 16px', background:'#00153D', color:'#fff', border:'none', borderRadius:10, cursor:'pointer', fontFamily:'Cabinet Grotesk,sans-serif', fontWeight:800, fontSize:'.78rem', transition:'all .18s' }}
-            onMouseEnter={e => e.currentTarget.style.background='#1E3A8A'}
-            onMouseLeave={e => e.currentTarget.style.background='#00153D'}>
+          <button onClick={() => setActiveTab('confirmé')} style={{ padding: '7px 16px', background: '#00153D', color: '#fff', border: 'none', borderRadius: 10, cursor: 'pointer', fontFamily: 'Cabinet Grotesk,sans-serif', fontWeight: 800, fontSize: '.78rem', transition: 'all .18s' }}
+            onMouseEnter={e => e.currentTarget.style.background = '#1E3A8A'}
+            onMouseLeave={e => e.currentTarget.style.background = '#00153D'}>
             Voir les chats →
           </button>
         </div>
       )}
-
       {counts.en_attente > 0 && (
-        <div style={{ marginBottom:24, padding:'14px 20px', background:'#FFFBEB', border:'1.5px solid #FCD34D', borderRadius:16, display:'flex', alignItems:'center', gap:13, animation:'fadeUp3 .4s .05s ease both', opacity:0, animationFillMode:'forwards' }}>
-          <div style={{ width:36, height:36, borderRadius:10, background:'#FEF3C7', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>🔔</div>
-          <div style={{ flex:1 }}>
-            <span style={{ fontFamily:'Cabinet Grotesk,sans-serif', fontWeight:900, color:'#B45309' }}>{counts.en_attente} demande{counts.en_attente>1?'s':''} en attente</span>
-            <div style={{ fontSize:'.78rem', color:'#92400E', marginTop:2, fontStyle:'italic' }}>Répondez rapidement pour ne pas faire attendre vos étudiants.</div>
+        <div style={{ marginBottom: 24, padding: '14px 20px', background: '#FFFBEB', border: '1.5px solid #FCD34D', borderRadius: 16, display: 'flex', alignItems: 'center', gap: 13, animation: 'fadeUp3 .4s .05s ease both', opacity: 0, animationFillMode: 'forwards' }}>
+          <div style={{ width: 36, height: 36, borderRadius: 10, background: '#FEF3C7', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>🔔</div>
+          <div style={{ flex: 1 }}>
+            <span style={{ fontFamily: 'Cabinet Grotesk,sans-serif', fontWeight: 900, color: '#B45309' }}>{counts.en_attente} demande{counts.en_attente > 1 ? 's' : ''} en attente</span>
+            <div style={{ fontSize: '.78rem', color: '#92400E', marginTop: 2, fontStyle: 'italic' }}>Répondez rapidement pour ne pas faire attendre vos étudiants.</div>
           </div>
-          <button onClick={() => {
-            setActiveTab('en_attente');
-            // Scroll vers la section réservations
-            setTimeout(() => {
-              document.querySelector('.pdb-section')?.scrollIntoView({ behavior:'smooth', block:'start' });
-            }, 100);
-          }} style={{ padding:'7px 16px', background:'#F59E0B', color:'#fff', border:'none', borderRadius:10, cursor:'pointer', fontFamily:'Cabinet Grotesk,sans-serif', fontWeight:800, fontSize:'.78rem', transition:'all .18s' }}
-            onMouseEnter={e => e.currentTarget.style.background='#D97706'}
-            onMouseLeave={e => e.currentTarget.style.background='#F59E0B'}>
+          <button onClick={() => { setActiveTab('en_attente'); setTimeout(() => { document.querySelector('.pdb-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 100); }}
+            style={{ padding: '7px 16px', background: '#F59E0B', color: '#fff', border: 'none', borderRadius: 10, cursor: 'pointer', fontFamily: 'Cabinet Grotesk,sans-serif', fontWeight: 800, fontSize: '.78rem', transition: 'all .18s' }}
+            onMouseEnter={e => e.currentTarget.style.background = '#D97706'}
+            onMouseLeave={e => e.currentTarget.style.background = '#F59E0B'}>
             Traiter →
           </button>
         </div>
       )}
 
-      {/* ── SECTION RÉSERVATIONS ── */}
-      {activeTab !== 'gains' && <div className="pdb-section" style={{ animation:'fadeUp3 .5s .1s ease both', opacity:0, animationFillMode:'forwards' }}>
-        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:20, paddingBottom:16, borderBottom:'1.5px solid #F1F5F9' }}>
-          <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-            <div style={{ width:4, height:20, background:'linear-gradient(180deg,#00153D,#3B82F6)', borderRadius:2 }}/>
-            <div>
-              <h3 style={{ fontFamily:'Cabinet Grotesk,sans-serif', margin:0, fontSize:'1.08rem', fontWeight:900, color:'#0F172A' }}>📩 Demandes de réservation</h3>
-              <div style={{ fontSize:'.76rem', color:'#94A3B8', marginTop:2, fontWeight:500 }}>Gérez et répondez aux demandes de vos étudiants</div>
+      {/* RÉSERVATIONS */}
+      {activeTab !== 'gains' && (
+        <div className="pdb-section" style={{ animation: 'fadeUp3 .5s .1s ease both', opacity: 0, animationFillMode: 'forwards' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, paddingBottom: 16, borderBottom: '1.5px solid #F1F5F9' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <div style={{ width: 4, height: 20, background: 'linear-gradient(180deg,#00153D,#3B82F6)', borderRadius: 2 }} />
+              <div>
+                <h3 style={{ fontFamily: 'Cabinet Grotesk,sans-serif', margin: 0, fontSize: '1.08rem', fontWeight: 900, color: '#0F172A' }}>📩 Demandes de réservation</h3>
+                <div style={{ fontSize: '.76rem', color: '#94A3B8', marginTop: 2, fontWeight: 500 }}>Gérez et répondez aux demandes de vos étudiants</div>
+              </div>
             </div>
           </div>
-        </div>
-
-        {/* Onglets */}
-        <div style={{ display:'flex', gap:8, marginBottom:16, flexWrap:'wrap' }}>
-          {tabs.map(t => (
-            <button key={t.key} className={`pdb-tab-btn${activeTab===t.key?' active':''}`}
-              onClick={() => setActiveTab(t.key)}
-              style={{ borderColor: activeTab===t.key ? t.border : '#E2E8F0', background: activeTab===t.key ? t.bg : '#fff', color: activeTab===t.key ? t.color : '#94A3B8' }}>
-              {t.label}
-              <span style={{ fontSize:'.62rem', fontWeight:900, padding:'2px 7px', borderRadius:20, background: activeTab===t.key ? 'rgba(0,0,0,0.1)' : '#F1F5F9', color: activeTab===t.key ? t.color : '#94A3B8' }}>{counts[t.key]}</span>
-            </button>
-          ))}
-        </div>
-
-        {/* Filtres */}
-        <div style={{ display:'flex', gap:8, marginBottom:20, alignItems:'center', flexWrap:'wrap', paddingBottom:16, borderBottom:'1.5px solid #F1F5F9' }}>
-          {[{val:'',icon:'🔀',label:'Tous modes'},{val:'en_ligne',icon:'🌐',label:'En ligne'},{val:'presentiel',icon:'🏫',label:'Présentiel'}].map(m => (
-            <button key={m.val} className={`pdb-filter-btn${filterMode===m.val?' active':''}`} onClick={() => setFilterMode(m.val)}>
-              {m.icon} {m.label}
-            </button>
-          ))}
-          <div style={{ width:1, height:20, background:'#F1F5F9' }}/>
-          <button className={`pdb-filter-btn${filterMonth===''?' active':''}`} onClick={() => setFilterMonth('')}>📅 Tous</button>
-          {availableMonths.map(m => {
-            const [y,mo] = m.split('-');
-            return <button key={m} className={`pdb-filter-btn${filterMonth===m?' active':''}`} onClick={() => setFilterMonth(m)}>{MONTH_LABELS[parseInt(mo)-1]} {y}</button>;
-          })}
-          {(filterMode||filterMonth) && (
-            <button onClick={() => { setFilterMode(''); setFilterMonth(''); }} style={{ marginLeft:'auto', padding:'7px 13px', background:'#FEF2F2', color:'#DC2626', border:'1.5px solid #FCA5A5', borderRadius:20, cursor:'pointer', fontWeight:700, fontSize:'.75rem', fontFamily:'Cabinet Grotesk,sans-serif' }}>✕ Réinitialiser</button>
+          <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
+            {tabs.map(t => (
+              <button key={t.key} className={`pdb-tab-btn${activeTab === t.key ? ' active' : ''}`}
+                onClick={() => setActiveTab(t.key)}
+                style={{ borderColor: activeTab === t.key ? t.border : '#E2E8F0', background: activeTab === t.key ? t.bg : '#fff', color: activeTab === t.key ? t.color : '#94A3B8' }}>
+                {t.label}
+                <span style={{ fontSize: '.62rem', fontWeight: 900, padding: '2px 7px', borderRadius: 20, background: activeTab === t.key ? 'rgba(0,0,0,0.1)' : '#F1F5F9', color: activeTab === t.key ? t.color : '#94A3B8' }}>{counts[t.key]}</span>
+              </button>
+            ))}
+          </div>
+          <div style={{ display: 'flex', gap: 8, marginBottom: 20, alignItems: 'center', flexWrap: 'wrap', paddingBottom: 16, borderBottom: '1.5px solid #F1F5F9' }}>
+            {[{ val: '', icon: '🔀', label: 'Tous modes' }, { val: 'en_ligne', icon: '🌐', label: 'En ligne' }, { val: 'presentiel', icon: '🏫', label: 'Présentiel' }].map(m => (
+              <button key={m.val} className={`pdb-filter-btn${filterMode === m.val ? ' active' : ''}`} onClick={() => setFilterMode(m.val)}>{m.icon} {m.label}</button>
+            ))}
+            <div style={{ width: 1, height: 20, background: '#F1F5F9' }} />
+            <button className={`pdb-filter-btn${filterMonth === '' ? ' active' : ''}`} onClick={() => setFilterMonth('')}>📅 Tous</button>
+            {availableMonths.map(m => {
+              const [y, mo] = m.split('-');
+              return <button key={m} className={`pdb-filter-btn${filterMonth === m ? ' active' : ''}`} onClick={() => setFilterMonth(m)}>{MONTH_LABELS[parseInt(mo) - 1]} {y}</button>;
+            })}
+            {(filterMode || filterMonth) && (
+              <button onClick={() => { setFilterMode(''); setFilterMonth(''); }} style={{ marginLeft: 'auto', padding: '7px 13px', background: '#FEF2F2', color: '#DC2626', border: '1.5px solid #FCA5A5', borderRadius: 20, cursor: 'pointer', fontWeight: 700, fontSize: '.75rem', fontFamily: 'Cabinet Grotesk,sans-serif' }}>✕ Réinitialiser</button>
+            )}
+            <div style={{ fontSize: '.78rem', color: '#94A3B8', marginLeft: (filterMode || filterMonth) ? 0 : 'auto', fontWeight: 600 }}>
+              <span style={{ fontFamily: 'Cabinet Grotesk,sans-serif', fontWeight: 900, color: '#0F172A' }}>{filtered.length}</span> réservation{filtered.length !== 1 ? 's' : ''}
+            </div>
+          </div>
+          {loading ? (
+            <div style={{ padding: 50, textAlign: 'center' }}>
+              <div style={{ width: 36, height: 36, border: '3px solid #E2E8F0', borderTopColor: '#00153D', borderRadius: '50%', animation: 'spin3 1s linear infinite', margin: '0 auto 14px' }} />
+              <div style={{ color: '#94A3B8', fontWeight: 600, fontSize: '.88rem' }}>Chargement...</div>
+            </div>
+          ) : filtered.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '60px 20px', color: '#94A3B8' }}>
+              <div style={{ fontSize: '3rem', marginBottom: 14 }}>{activeTab === 'en_attente' ? '✅' : '📭'}</div>
+              <div style={{ fontFamily: 'Cabinet Grotesk,sans-serif', fontWeight: 800, fontSize: '1.1rem', color: '#0F172A', marginBottom: 6 }}>
+                {activeTab === 'en_attente' ? 'Aucune demande en attente' : 'Aucune réservation'}
+              </div>
+              <div style={{ fontSize: '.85rem', fontStyle: 'italic' }}>
+                {activeTab === 'en_attente' ? 'Toutes vos demandes ont été traitées 🎉' : 'Aucune réservation dans cette catégorie.'}
+              </div>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {filtered
+                .sort((a, b) => {
+                  if (a.statut === 'en_attente' && b.statut !== 'en_attente') return -1;
+                  if (b.statut === 'en_attente' && a.statut !== 'en_attente') return 1;
+                  return new Date(b.created_at || 0) - new Date(a.created_at || 0);
+                })
+                .map((r, i) => (
+                  <ReservationCard key={r.id} r={r} index={i}
+                    onView={setSelectedResa}
+                    onAction={updateReservation}
+                    onChat={resa => setChatResa(resa)}
+                    unreadCount={unreadMap[r.id] || 0}
+                  />
+                ))}
+            </div>
           )}
-          <div style={{ fontSize:'.78rem', color:'#94A3B8', marginLeft:(filterMode||filterMonth)?0:'auto', fontWeight:600 }}>
-            <span style={{ fontFamily:'Cabinet Grotesk,sans-serif', fontWeight:900, color:'#0F172A' }}>{filtered.length}</span> réservation{filtered.length!==1?'s':''}
-          </div>
-        </div>
-
-        {/* Liste */}
-        {loading ? (
-          <div style={{ padding:50, textAlign:'center' }}>
-            <div style={{ width:36, height:36, border:'3px solid #E2E8F0', borderTopColor:'#00153D', borderRadius:'50%', animation:'spin3 1s linear infinite', margin:'0 auto 14px' }}/>
-            <div style={{ color:'#94A3B8', fontWeight:600, fontSize:'.88rem' }}>Chargement...</div>
-          </div>
-        ) : filtered.length === 0 ? (
-          <div style={{ textAlign:'center', padding:'60px 20px', color:'#94A3B8' }}>
-            <div style={{ fontSize:'3rem', marginBottom:14 }}>{activeTab==='en_attente'?'✅':'📭'}</div>
-            <div style={{ fontFamily:'Cabinet Grotesk,sans-serif', fontWeight:800, fontSize:'1.1rem', color:'#0F172A', marginBottom:6 }}>
-              {activeTab==='en_attente'?'Aucune demande en attente':'Aucune réservation'}
-            </div>
-            <div style={{ fontSize:'.85rem', fontStyle:'italic' }}>
-              {activeTab==='en_attente'?'Toutes vos demandes ont été traitées 🎉':'Aucune réservation dans cette catégorie.'}
-            </div>
-          </div>
-        ) : (
-          <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
-            {filtered
-              .sort((a,b) => {
-                if (a.statut==='en_attente' && b.statut!=='en_attente') return -1;
-                if (b.statut==='en_attente' && a.statut!=='en_attente') return 1;
-                return new Date(b.created_at||0) - new Date(a.created_at||0);
-              })
-              .map((r, i) => (
-                <ReservationCard key={r.id} r={r} index={i}
-                  onView={setSelectedResa}
-                  onAction={updateReservation}
-                  onChat={resa => setChatResa(resa)}
-                  unreadCount={unreadMap[r.id]||0}
-                />
-              ))}
-          </div>
-        )}
-      </div>}
-
-      {/* ── SECTION GAINS ── */}
-      {activeTab === 'gains' && (
-        <div style={{ animation:'fadeUp3 .5s .1s ease both', opacity:0, animationFillMode:'forwards' }}>
-          {/* Barre de navigation avec bouton retour */}
-          <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:20 }}>
-            <button
-              onClick={() => setActiveTab('all')}
-              style={{ display:'flex', alignItems:'center', gap:7, padding:'8px 16px', background:'#F8FAFC', border:'1.5px solid #E2E8F0', borderRadius:12, cursor:'pointer', fontFamily:"'Cabinet Grotesk',sans-serif", fontWeight:700, fontSize:'.82rem', color:'#64748B', transition:'all .18s' }}
-              onMouseEnter={e => { e.currentTarget.style.background='#EFF6FF'; e.currentTarget.style.borderColor='#BFDBFE'; e.currentTarget.style.color='#1D4ED8'; }}
-              onMouseLeave={e => { e.currentTarget.style.background='#F8FAFC'; e.currentTarget.style.borderColor='#E2E8F0'; e.currentTarget.style.color='#64748B'; }}>
-              ← Retour aux réservations
-            </button>
-            <div style={{ width:4, height:22, background:'linear-gradient(180deg,#065F46,#10B981)', borderRadius:2 }}/>
-            <h2 style={{ fontFamily:'Cabinet Grotesk,sans-serif', fontWeight:900, fontSize:'1.2rem', color:'#0F172A', margin:0 }}>💰 Gestion des gains</h2>
-          </div>
-          <GainsSection reservations={reservations}/>
         </div>
       )}
 
+      {/* GAINS */}
+      {activeTab === 'gains' && (
+        <div style={{ animation: 'fadeUp3 .5s .1s ease both', opacity: 0, animationFillMode: 'forwards' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
+            <button onClick={() => setActiveTab('all')}
+              style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '8px 16px', background: '#F8FAFC', border: '1.5px solid #E2E8F0', borderRadius: 12, cursor: 'pointer', fontFamily: "'Cabinet Grotesk',sans-serif", fontWeight: 700, fontSize: '.82rem', color: '#64748B', transition: 'all .18s' }}
+              onMouseEnter={e => { e.currentTarget.style.background = '#EFF6FF'; e.currentTarget.style.borderColor = '#BFDBFE'; e.currentTarget.style.color = '#1D4ED8'; }}
+              onMouseLeave={e => { e.currentTarget.style.background = '#F8FAFC'; e.currentTarget.style.borderColor = '#E2E8F0'; e.currentTarget.style.color = '#64748B'; }}>
+              ← Retour aux réservations
+            </button>
+            <div style={{ width: 4, height: 22, background: 'linear-gradient(180deg,#065F46,#10B981)', borderRadius: 2 }} />
+            <h2 style={{ fontFamily: 'Cabinet Grotesk,sans-serif', fontWeight: 900, fontSize: '1.2rem', color: '#0F172A', margin: 0 }}>💰 Gestion des gains</h2>
+          </div>
+          <GainsSection reservations={reservations} />
+        </div>
+      )}
+
+      {/* MODALS */}
       {selectedResa && (
         <ReservationModal reservation={selectedResa} onClose={() => setSelectedResa(null)}
-          onAction={(id,statut) => { updateReservation(id,statut); setSelectedResa(prev => prev?{...prev,statut}:null); }}
+          onAction={(id, statut) => { updateReservation(id, statut); setSelectedResa(prev => prev ? { ...prev, statut } : null); }}
           onChat={resa => { setSelectedResa(null); setChatResa(resa); }}
         />
       )}
-
       {chatResa && (
-        <ChatWindow reservation={chatResa} currentUser={user} onClose={() => { setChatResa(null); loadUnread(); }}/>
+        <ChatWindow reservation={chatResa} currentUser={user} onClose={() => { setChatResa(null); loadUnread(); }} />
       )}
     </div>
   );

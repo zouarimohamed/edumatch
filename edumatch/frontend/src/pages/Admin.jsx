@@ -1,16 +1,17 @@
-import React, { useEffect, useState, useMemo, useRef, useCallback } from 'react';
+import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
 import api from '../services/api';
 import FinancesTab from './FinancesTab';
 import { exportAdminProfs, exportAdminAnalytiques } from '../services/exportPDF';
 
+// ─── CSS GLOBAL ───────────────────────────────────────────────────────────────
 const CSS = `
 @import url('https://fonts.googleapis.com/css2?family=Cabinet+Grotesk:wght@400;500;700;800;900&family=Instrument+Sans:ital,wght@0,400;0,500;0,600;1,400&display=swap');
 .adm { font-family:'Instrument Sans',system-ui,sans-serif; color:#0F172A; background:#f8fafc; min-height:100vh; }
 @keyframes adm-fadeUp   { from{opacity:0;transform:translateY(14px)} to{opacity:1;transform:none} }
 @keyframes adm-scaleIn  { from{opacity:0;transform:scale(.96)} to{opacity:1;transform:scale(1)} }
 @keyframes adm-slideR   { from{transform:translateX(100%)} to{transform:translateX(0)} }
-@keyframes adm-modalIn  { from{opacity:0;transform:scale(.95)translateY(8px)} to{opacity:1;transform:none} }
+@keyframes adm-modalIn  { from{opacity:0;transform:scale(.95) translateY(8px)} to{opacity:1;transform:none} }
 @keyframes adm-spin     { to{transform:rotate(360deg)} }
 .adm-fadeUp  { animation:adm-fadeUp  .4s ease both }
 .adm-scaleIn { animation:adm-scaleIn .35s cubic-bezier(.22,1,.36,1) both }
@@ -19,11 +20,11 @@ const CSS = `
 .adm-stat { background:#fff; border:1.5px solid #f1f5f9; border-radius:20px; padding:22px; transition:all .22s cubic-bezier(.22,1,.36,1); position:relative; overflow:hidden; box-shadow:0 2px 8px rgba(0,0,0,.04); }
 .adm-stat:hover { transform:translateY(-3px); box-shadow:0 12px 32px rgba(0,0,0,.08); border-color:#e2e8f0; }
 .adm-stat-accent { position:absolute;top:0;left:0;right:0;height:3px;border-radius:20px 20px 0 0; }
-.adm-tab-bar { display:flex; background:#fff; border:1.5px solid #f1f5f9; border-radius:16px; padding:5px; gap:3px; box-shadow:0 2px 8px rgba(0,0,0,.04); }
-.adm-tab { flex:1; padding:10px 14px; border:none; border-radius:12px; font-family:'Instrument Sans',sans-serif; font-size:13px; font-weight:500; cursor:pointer; transition:all .18s; background:transparent; color:#64748b; white-space:nowrap; position:relative; }
-.adm-tab.active { background:#3b82f6; color:#fff; font-weight:700; box-shadow:0 2px 12px rgba(59,130,246,.3); }
-.adm-tab:not(.active):hover { background:#f8fafc; color:#0F172A; }
-.adm-tab-badge { display:inline-flex; align-items:center; justify-content:center; background:#ef4444; color:#fff; font-size:10px; font-weight:800; padding:1px 5px; border-radius:8px; margin-left:5px; min-width:16px; }
+.adm-tab-bar { display:flex; background:rgba(255,255,255,0.97); border:1px solid #e2e8f0; border-radius:12px; padding:4px; gap:2px; box-shadow:0 2px 12px rgba(0,0,0,0.06),0 1px 2px rgba(0,0,0,0.04); overflow-x:auto; position:sticky; top:0; z-index:400; backdrop-filter:blur(20px); -webkit-backdrop-filter:blur(20px); margin-bottom:0; }
+.adm-tab { flex:1; padding:8px 10px; border:none; border-radius:8px; font-family:'Instrument Sans',sans-serif; font-size:12px; font-weight:500; cursor:pointer; transition:all .15s; background:transparent; color:#64748b; white-space:nowrap; display:inline-flex; align-items:center; justify-content:center; gap:4px; }
+.adm-tab.active { background:#0F172A; color:#fff; font-weight:700; box-shadow:0 1px 8px rgba(15,23,42,.18); }
+.adm-tab:not(.active):hover { background:#f1f5f9; color:#0F172A; }
+.adm-tab-badge { display:inline-flex; align-items:center; justify-content:center; background:#ef4444; color:#fff; font-size:9px; font-weight:800; padding:1px 5px; border-radius:6px; min-width:15px; }
 .adm-table { width:100%; border-collapse:collapse; font-size:13px; }
 .adm-table th { padding:11px 16px; text-align:left; font-size:11px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:#94a3b8; border-bottom:1.5px solid #f1f5f9; background:#fafbfc; }
 .adm-table td { padding:14px 16px; border-bottom:1px solid #f8fafc; vertical-align:middle; }
@@ -37,6 +38,8 @@ const CSS = `
 .adm-btn-success:hover { background:#d1fae5; }
 .adm-btn-danger { background:#fef2f2; color:#991b1b; border-color:#fca5a5; }
 .adm-btn-danger:hover { background:#fee2e2; }
+.adm-btn-warning { background:#fffbeb; color:#b45309; border-color:#fcd34d; }
+.adm-btn-warning:hover { background:#fef3c7; }
 .adm-btn-ghost { background:transparent; color:#64748b; border-color:#e2e8f0; }
 .adm-btn-ghost:hover { background:#f8fafc; color:#0F172A; border-color:#cbd5e1; }
 .adm-btn-sm { padding:6px 12px; font-size:12px; border-radius:8px; }
@@ -46,48 +49,40 @@ const CSS = `
 .adm-badge-red    { background:#fef2f2; color:#991b1b; border-color:#fca5a5; }
 .adm-badge-blue   { background:#eff6ff; color:#1d4ed8; border-color:#bfdbfe; }
 .adm-badge-purple { background:#f5f3ff; color:#6d28d9; border-color:#ddd6fe; }
-.adm-badge-navy   { background:rgba(59,130,246,.08); color:#1d4ed8; border-color:rgba(59,130,246,.2); }
+.adm-badge-gray   { background:#f8fafc; color:#64748b; border-color:#e2e8f0; }
 .adm-input { background:#fff; border:1.5px solid #e2e8f0; border-radius:10px; color:#0F172A; padding:9px 14px; font-size:13px; outline:none; font-family:'Instrument Sans',sans-serif; transition:border-color .15s,box-shadow .15s; width:100%; box-sizing:border-box; }
 .adm-input:focus { border-color:#3b82f6; box-shadow:0 0 0 3px rgba(59,130,246,.1); }
+.adm-textarea { resize:vertical; min-height:80px; }
 .adm-search-wrap { position:relative; }
-.adm-search-icon { position:absolute;left:12px;top:50%;transform:translateY(-50%);color:#94a3b8;font-size:12px;pointer-events:none; }
-.adm-search-wrap .adm-input { padding-left:34px; }
+.adm-search-icon { position:absolute;left:12px;top:50%;transform:translateY(-50%);color:#94a3b8;font-size:14px;pointer-events:none; }
+.adm-search-wrap .adm-input { padding-left:36px; }
 .adm-bar-track { height:5px; background:#f1f5f9; border-radius:3px; overflow:hidden; }
 .adm-bar-fill  { height:100%; border-radius:3px; transition:width .9s cubic-bezier(.22,1,.36,1); }
 .adm-prof-card { background:#fff; border:1.5px solid #f1f5f9; border-radius:20px; overflow:visible; cursor:pointer; transition:all .22s cubic-bezier(.22,1,.36,1); position:relative; box-shadow:0 2px 8px rgba(0,0,0,.04); }
 .adm-prof-card:hover { transform:translateY(-4px); box-shadow:0 16px 40px rgba(0,0,0,.1); border-color:rgba(59,130,246,.3); }
 .adm-drawer-overlay { position:fixed;inset:0;background:rgba(15,23,42,.45);backdrop-filter:blur(5px);z-index:900; }
-.adm-drawer { position:fixed;top:0;right:0;bottom:0;width:540px; background:#fff; border-left:1.5px solid #f1f5f9; z-index:901; overflow-y:auto; animation:adm-slideR .28s cubic-bezier(.22,1,.36,1); box-shadow:-24px 0 60px rgba(0,0,0,.08); }
+.adm-drawer { position:fixed;top:0;right:0;bottom:0;width:540px;background:#fff;border-left:1.5px solid #f1f5f9;z-index:901;overflow-y:auto;animation:adm-slideR .28s cubic-bezier(.22,1,.36,1);box-shadow:-24px 0 60px rgba(0,0,0,.08); }
 .adm-drawer::-webkit-scrollbar { width:4px; }
 .adm-drawer::-webkit-scrollbar-thumb { background:#e2e8f0; border-radius:2px; }
 .adm-modal-overlay { position:fixed;inset:0;background:rgba(15,23,42,.5);backdrop-filter:blur(6px);z-index:2000;display:flex;align-items:center;justify-content:center;padding:20px; }
-.adm-modal { background:#fff;border-radius:24px;border:1.5px solid #f1f5f9;width:100%;max-width:440px;padding:28px;box-shadow:0 40px 100px rgba(0,0,0,.12);animation:adm-modalIn .25s ease; }
-.adm-alert { display:flex;align-items:center;gap:14px; padding:14px 20px; border-radius:14px; cursor:pointer; transition:all .18s; border:1.5px solid; }
+.adm-modal { background:#fff;border-radius:24px;border:1.5px solid #f1f5f9;width:100%;max-width:460px;padding:28px;box-shadow:0 40px 100px rgba(0,0,0,.15);animation:adm-modalIn .25s ease; }
+.adm-alert { display:flex;align-items:center;gap:14px;padding:14px 20px;border-radius:14px;cursor:pointer;transition:all .18s;border:1.5px solid; }
 .adm-alert:hover { transform:translateX(3px); }
 .adm-alert-amber { background:#fffbeb; border-color:#fcd34d; }
 .adm-alert-red   { background:#fff1f2; border-color:#fca5a5; }
 .adm-chart-card { background:#fff; border:1.5px solid #f1f5f9; border-radius:20px; padding:22px; box-shadow:0 2px 8px rgba(0,0,0,.04); }
-.adm-chip { display:inline-flex;align-items:center;gap:7px; padding:5px 11px; border-radius:20px; font-size:12px; font-weight:600; background:#fff; border:1.5px solid #e2e8f0; transition:all .15s; cursor:default; }
-.adm-chip:hover { border-color:#3b82f6; background:#eff6ff; color:#1d4ed8; }
 .adm-empty { padding:48px 20px; text-align:center; color:#94a3b8; }
 .adm-loader { border:3px solid #e2e8f0;border-top-color:#3b82f6;border-radius:50%;animation:adm-spin 1s linear infinite; }
-.adm-pending-row { display:flex; align-items:center; gap:12px; padding:12px 16px; border-radius:12px; border:1.5px solid #fcd34d; background:#fffbeb; transition:all .15s; }
+.adm-pending-row { display:flex;align-items:center;gap:12px;padding:12px 16px;border-radius:12px;border:1.5px solid #fcd34d;background:#fffbeb;transition:all .15s; }
 .adm-pending-row:hover { background:#fef3c7; transform:translateX(2px); }
-.adm-top-row { display:flex; align-items:center; gap:12px; padding:10px 12px; border-radius:12px; cursor:pointer; transition:background .15s; border:1.5px solid transparent; }
+.adm-top-row { display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:12px;cursor:pointer;transition:background .15s;border:1.5px solid transparent; }
 .adm-top-row:hover { background:#f8fafc; border-color:#e2e8f0; }
-.adm-section-title { display:flex; align-items:center; gap:8px; margin-bottom:16px; }
-.adm-section-title-bar { width:3px; height:18px; border-radius:2px; background:linear-gradient(180deg,#3b82f6,#60a5fa); }
-.adm-section-title h3 { font-family:'Cabinet Grotesk',sans-serif; font-weight:900; font-size:15px; color:#0F172A; margin:0; }
-.adm-section-title span { font-size:12px; color:#94a3b8; }
-.adm-dom { border:1.5px solid #e2e8f0; border-radius:16px; overflow:hidden; }
-.adm-dom-header { display:flex;align-items:center;gap:12px;padding:14px 18px;cursor:pointer;transition:background .15s;border-bottom:1px solid transparent; }
-.adm-dom-header:hover { background:#f8fafc; }
-.adm-dom-header.open { border-bottom-color:#e2e8f0; }
-.adm-dom-body { padding:16px 18px; }
-.adm-niveau-block { background:#f8fafc; border-radius:12px; border:1.5px solid #f1f5f9; overflow:hidden; }
-.adm-niveau-header { padding:10px 14px; border-bottom:1px solid #f1f5f9; display:flex; align-items:center; justify-content:space-between; background:#fff; }
-.adm-niveau-body { padding:12px 14px; }
+.adm-section-title { display:flex;align-items:center;gap:8px;margin-bottom:16px; }
+.adm-section-title-bar { width:3px;height:18px;border-radius:2px;background:linear-gradient(180deg,#3b82f6,#60a5fa); }
+.adm-section-title h3 { font-family:'Cabinet Grotesk',sans-serif;font-weight:900;font-size:15px;color:#0F172A;margin:0; }
+.adm-section-title span { font-size:12px;color:#94a3b8; }
 .adm-canvas-wrap { position:relative; }
+.adm-label { font-size:12px;font-weight:700;color:#64748b;display:block;margin-bottom:6px; }
 `;
 
 function injectCSS() {
@@ -98,11 +93,15 @@ function injectCSS() {
   }
 }
 
+// ─── CHART.JS LAZY LOAD ───────────────────────────────────────────────────────
 let _chartLoaded = false;
 function loadChart() {
   return new Promise(resolve => {
     if (window.Chart) { resolve(window.Chart); return; }
-    if (_chartLoaded) { const t=setInterval(()=>{if(window.Chart){clearInterval(t);resolve(window.Chart);}},50); return; }
+    if (_chartLoaded) {
+      const t = setInterval(() => { if (window.Chart) { clearInterval(t); resolve(window.Chart); } }, 50);
+      return;
+    }
     _chartLoaded = true;
     const s = document.createElement('script');
     s.src = 'https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js';
@@ -115,7 +114,7 @@ function getThemeVars() {
   return { text:'#0F172A', text2:'#64748b', text3:'#94a3b8', bg:'#f8fafc', border:'#e2e8f0', card:'#ffffff', blue:'#3b82f6', green:'#10b981', amber:'#f59e0b', red:'#ef4444', purple:'#8b5cf6' };
 }
 
-function useChart(canvasRef, configFn, deps=[]) {
+function useChart(canvasRef, configFn, deps = []) {
   const inst = useRef(null);
   useEffect(() => {
     if (!canvasRef.current) return;
@@ -127,243 +126,181 @@ function useChart(canvasRef, configFn, deps=[]) {
   }, deps); // eslint-disable-line
 }
 
+// ─── CHART COMPONENTS ─────────────────────────────────────────────────────────
+function ChartLineSig({ data }) {
+  const ref = useRef(null);
+  useChart(ref, (C, c) => {
+    // Dégradé sous la courbe
+    const getGrad = (ctx) => {
+      const canvas = ctx.chart.ctx;
+      const { top, bottom } = ctx.chart.chartArea || {};
+      if (!top && top !== 0) return 'rgba(99,102,241,0.08)';
+      const grad = canvas.createLinearGradient(0, top, 0, bottom);
+      grad.addColorStop(0, 'rgba(99,102,241,0.18)');
+      grad.addColorStop(1, 'rgba(99,102,241,0.01)');
+      return grad;
+    };
+    return {
+      type: 'line',
+      data: {
+        labels: data.map(d => d.mois || d.label),
+        datasets: [{
+          label: 'Signalements',
+          data: data.map(d => d.val),
+          borderColor: '#6366f1',
+          backgroundColor: (ctx) => getGrad(ctx),
+          fill: true,
+          tension: 0.45,
+          cubicInterpolationMode: 'monotone',
+          pointBackgroundColor: '#6366f1',
+          pointBorderColor: '#fff',
+          pointBorderWidth: 2.5,
+          pointRadius: 6,
+          pointHoverRadius: 9,
+          pointHoverBackgroundColor: '#4f46e5',
+          pointHoverBorderColor: '#fff',
+          pointHoverBorderWidth: 3,
+          borderWidth: 2.8,
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        animation: { duration: 900, easing: 'easeInOutQuart' },
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            backgroundColor: '#1e293b',
+            titleColor: '#94a3b8',
+            bodyColor: '#fff',
+            borderColor: '#6366f1',
+            borderWidth: 1,
+            padding: 12,
+            cornerRadius: 10,
+            callbacks: {
+              title: items => items[0].label,
+              label: ctx => `  ${ctx.raw} signalement${ctx.raw > 1 ? 's' : ''}`
+            }
+          }
+        },
+        scales: {
+          x: {
+            grid: { color: 'rgba(0,0,0,0.04)', drawBorder: false },
+            ticks: { color: '#64748b', font: { size: 11, weight: '600' } },
+            border: { dash: [4, 4] }
+          },
+          y: {
+            beginAtZero: true,
+            grid: { color: 'rgba(99,102,241,0.07)', drawBorder: false },
+            ticks: {
+              color: '#94a3b8',
+              font: { size: 11 },
+              stepSize: 1,
+              padding: 8,
+              callback: v => Number.isInteger(v) ? v : ''
+            },
+            border: { display: false }
+          }
+        }
+      }
+    };
+  }, [JSON.stringify(data)]);
+  return <canvas ref={ref} style={{ height: 220 }} />;
+}
+
 function ChartLine({ data }) {
   const ref = useRef(null);
   useChart(ref, (C, c) => ({
     type: 'line',
-    data: { labels: data.map(d=>d.mois), datasets: [{ label:'Reservations', data:data.map(d=>d.total), borderColor:c.blue, backgroundColor:'rgba(59,130,246,.07)', fill:true, tension:.4, pointBackgroundColor:c.blue, pointBorderColor:'#fff', pointBorderWidth:2, pointRadius:5, pointHoverRadius:7, borderWidth:2.5 }] },
-    options: { responsive:true, maintainAspectRatio:false, plugins:{ legend:{display:false}, tooltip:{backgroundColor:c.card,titleColor:c.text2,bodyColor:c.text,borderColor:c.border,borderWidth:1,callbacks:{label:ctx=>` ${ctx.raw} reservation${ctx.raw>1?'s':''}`}} }, scales:{ x:{grid:{color:c.border+'55'},ticks:{color:c.text2,font:{size:11}}}, y:{beginAtZero:true,grid:{color:c.border+'55'},ticks:{color:c.text2,font:{size:11},stepSize:1,callback:v=>Number.isInteger(v)?v:''}} } }
+    data: { labels: data.map(d => d.mois), datasets: [{ label: 'Réservations', data: data.map(d => d.total), borderColor: c.blue, backgroundColor: 'rgba(59,130,246,.07)', fill: true, tension: .4, pointBackgroundColor: c.blue, pointBorderColor: '#fff', pointBorderWidth: 2, pointRadius: 5, pointHoverRadius: 7, borderWidth: 2.5 }] },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { backgroundColor: c.card, titleColor: c.text2, bodyColor: c.text, borderColor: c.border, borderWidth: 1, callbacks: { label: ctx => ` ${ctx.raw} réservation${ctx.raw > 1 ? 's' : ''}` } } }, scales: { x: { grid: { color: c.border + '55' }, ticks: { color: c.text2, font: { size: 11 } } }, y: { beginAtZero: true, grid: { color: c.border + '55' }, ticks: { color: c.text2, font: { size: 11 }, stepSize: 1, callback: v => Number.isInteger(v) ? v : '' } } } }
   }), [JSON.stringify(data)]);
-  return <canvas ref={ref} style={{height:200}}/>;
+  return <canvas ref={ref} style={{ height: 200 }} />;
 }
 
 function ChartBar({ data }) {
   const ref = useRef(null);
-  const JOURS = ['Lun','Mar','Mer','Jeu','Ven','Sam','Dim'];
-  const labels = data.map(d => d.jour || JOURS[(d.jour_semaine??1)-1] || String(d.jour_semaine));
-  const vals   = data.map(d => d.total);
+  const JOURS = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
+  const labels = data.map(d => d.jour || JOURS[(d.jour_semaine ?? 1) - 1] || String(d.jour_semaine));
+  const vals = data.map(d => d.total);
   const maxVal = Math.max(...vals, 1);
   useChart(ref, (C, c) => ({
-    type:'bar',
-    data:{ labels, datasets:[{ label:'Reservations', data:vals, backgroundColor:vals.map(v=>v===maxVal&&maxVal>0?c.blue:c.blue+'55'), borderColor:vals.map(v=>v===maxVal&&maxVal>0?c.blue:c.blue+'44'), borderWidth:1.5, borderRadius:7, borderSkipped:false }] },
-    options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false},tooltip:{backgroundColor:c.card,titleColor:c.text2,bodyColor:c.text,borderColor:c.border,borderWidth:1}}, scales:{x:{grid:{display:false},ticks:{color:c.text,font:{size:12,weight:'600'}}},y:{beginAtZero:true,max:maxVal<3?3:undefined,grid:{color:c.border+'55'},ticks:{color:c.text2,font:{size:11},stepSize:1,callback:v=>Number.isInteger(v)?v:''}}} }
+    type: 'bar',
+    data: { labels, datasets: [{ label: 'Réservations', data: vals, backgroundColor: vals.map(v => v === maxVal && maxVal > 0 ? c.blue : c.blue + '55'), borderWidth: 1.5, borderRadius: 7, borderSkipped: false }] },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { grid: { display: false }, ticks: { color: c.text, font: { size: 12, weight: '600' } } }, y: { beginAtZero: true, grid: { color: c.border + '55' }, ticks: { color: c.text2, font: { size: 11 }, stepSize: 1, callback: v => Number.isInteger(v) ? v : '' } } } }
   }), [JSON.stringify(data)]);
-  return <canvas ref={ref} style={{height:180}}/>;
-}
-
-function ChartHorizBar({ data, metric }) {
-  const ref = useRef(null);
-  const PAL = ['#3b82f6','#10b981','#8b5cf6','#f59e0b','#ef4444','#06b6d4','#f97316','#ec4899'];
-  const maxVal = Math.max(...data.map(d => d.val||0), 1);
-  const isResa = metric === 'nb_resa';
-  useChart(ref, (C, c) => ({
-    type:'bar',
-    data:{
-      labels: data.map(d => (d.label||'').length>20?(d.label||'').slice(0,19)+'…':(d.label||'')),
-      datasets:[{
-        label: isResa ? 'Réservations' : 'Formateurs',
-        data: data.map(d=>d.val||0),
-        backgroundColor: data.map((_,i)=>PAL[i%PAL.length]+'cc'),
-        borderColor:     data.map((_,i)=>PAL[i%PAL.length]),
-        borderWidth:1.5, borderRadius:6, borderSkipped:false
-      }]
-    },
-    options:{
-      indexAxis:'y', responsive:true, maintainAspectRatio:false,
-      plugins:{
-        legend:{display:false},
-        tooltip:{
-          backgroundColor:'#1e293b',titleColor:'#94a3b8',bodyColor:'#fff',
-          borderColor:'#334155',borderWidth:1,padding:10,
-          callbacks:{
-            label: x => isResa
-              ? ` ${x.parsed.x} réservation${x.parsed.x>1?'s':''}`
-              : ` ${x.parsed.x} formateur${x.parsed.x>1?'s':''}`
-          }
-        }
-      },
-      scales:{
-        x:{
-          beginAtZero:true,
-          max: maxVal<2 ? maxVal+1 : undefined,
-          grid:{color:'rgba(0,0,0,.04)'},
-          ticks:{color:c.text2,font:{size:10},stepSize:1,callback:v=>Number.isInteger(v)?v:''}
-        },
-        y:{
-          grid:{display:false},
-          ticks:{color:'#374151',font:{size:12,weight:'600'}}
-        }
-      }
-    }
-  }), [JSON.stringify(data), metric]);
-  return <canvas ref={ref} style={{height:Math.max(160,data.length*44)}}/>;
-}
-
-function TableauBI({ data }) {
-  // Dédupliquer les matières de même nom (fusionner profs et resas)
-  const deduped = useMemo(() => {
-    const map = {};
-    data.forEach(m => {
-      const key = (m.label||'').toLowerCase().trim();
-      if (!map[key]) map[key] = { label: m.label, nb_profs: 0, nb_resa: 0 };
-      map[key].nb_profs += (m.nb_profs||0);
-      map[key].nb_resa  += (m.nb_resa||0);
-    });
-    return Object.values(map).sort((a,b) => {
-      if (b.nb_profs !== a.nb_profs) return b.nb_profs - a.nb_profs;
-      return b.nb_resa - a.nb_resa;
-    });
-  }, [data]);
-
-  const maxResa = Math.max(...deduped.map(d=>d.nb_resa||0), 1);
-
-  const getSat = (p, r) => {
-    if (p===0)   return { l:'Sans prof',     c:'#94a3b8', bg:'#f1f5f9', dot:'#cbd5e1' };
-    if (r===0)   return { l:'Peu demandée',  c:'#64748b', bg:'#f8fafc', dot:'#94a3b8' };
-    if (r/p>1.5) return { l:'Forte demande', c:'#dc2626', bg:'#fef2f2', dot:'#ef4444' };
-    if (r/p>0.5) return { l:'Bonne activité',c:'#059669', bg:'#ecfdf5', dot:'#10b981' };
-    return             { l:'Démarrage',     c:'#d97706', bg:'#fffbeb', dot:'#f59e0b' };
-  };
-
-  return (
-    <div style={{overflowX:'auto',borderRadius:16,border:'1.5px solid #f1f5f9'}}>
-      <table style={{width:'100%',borderCollapse:'collapse',fontSize:13}}>
-        <thead>
-          <tr style={{background:'#f8fafc'}}>
-            {['#','Matière','Formateurs','Réservations','Taux','Statut'].map((h,i)=>(
-              <th key={i} style={{
-                padding:'10px 14px', textAlign:i>1?'center':'left',
-                fontSize:10, fontWeight:800, color:'#94a3b8',
-                textTransform:'uppercase', letterSpacing:'.08em',
-                whiteSpace:'nowrap', borderBottom:'1.5px solid #f1f5f9'
-              }}>{h}</th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {deduped.map((m,i) => {
-            const r=m.nb_resa||0, p=m.nb_profs||0, sat=getSat(p,r);
-            const pct = maxResa>0 ? Math.round((r/maxResa)*100) : 0;
-            const taux = p>0 ? (r/p).toFixed(1) : null;
-            return (
-              <tr key={i}
-                style={{borderBottom:i<deduped.length-1?'1px solid #f1f5f9':'none',transition:'background .12s'}}
-                onMouseEnter={e=>e.currentTarget.style.background='#f8fafc'}
-                onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
-                {/* # */}
-                <td style={{padding:'12px 14px',color:'#cbd5e1',fontSize:12,fontWeight:700,fontFamily:'Cabinet Grotesk,sans-serif'}}>{i+1}</td>
-                {/* Matière */}
-                <td style={{padding:'12px 14px'}}>
-                  <div style={{fontFamily:'Cabinet Grotesk,sans-serif',fontWeight:800,fontSize:13,color:'#0F172A'}}>{m.label}</div>
-                </td>
-                {/* Formateurs */}
-                <td style={{padding:'12px 14px',textAlign:'center'}}>
-                  <span style={{
-                    display:'inline-flex',alignItems:'center',justifyContent:'center',
-                    width:32,height:32,borderRadius:10,
-                    background: p>0?'#ecfdf5':'#f1f5f9',
-                    color: p>0?'#059669':'#94a3b8',
-                    fontFamily:'Cabinet Grotesk,sans-serif',fontWeight:900,fontSize:15
-                  }}>{p}</span>
-                </td>
-                {/* Réservations */}
-                <td style={{padding:'12px 14px',textAlign:'center'}}>
-                  <div style={{display:'flex',alignItems:'center',gap:8,justifyContent:'center'}}>
-                    <span style={{
-                      display:'inline-flex',alignItems:'center',justifyContent:'center',
-                      width:32,height:32,borderRadius:10,
-                      background: r>0?'#eff6ff':'#f1f5f9',
-                      color: r>0?'#3b82f6':'#94a3b8',
-                      fontFamily:'Cabinet Grotesk,sans-serif',fontWeight:900,fontSize:15
-                    }}>{r}</span>
-                    <div style={{width:56,height:5,background:'#e2e8f0',borderRadius:3,overflow:'hidden'}}>
-                      <div style={{width:pct+'%',height:'100%',background:'#3b82f6',borderRadius:3,transition:'width .6s ease'}}/>
-                    </div>
-                  </div>
-                </td>
-                {/* Taux */}
-                <td style={{padding:'12px 14px',textAlign:'center'}}>
-                  {taux ? (
-                    <span style={{
-                      fontFamily:'Cabinet Grotesk,sans-serif',fontWeight:800,fontSize:13,
-                      color: parseFloat(taux)>1?'#059669':parseFloat(taux)>0.5?'#d97706':'#94a3b8'
-                    }}>{taux}</span>
-                  ) : <span style={{color:'#e2e8f0',fontSize:16}}>—</span>}
-                </td>
-                {/* Statut */}
-                <td style={{padding:'12px 14px',textAlign:'center'}}>
-                  <span style={{
-                    display:'inline-flex',alignItems:'center',gap:5,
-                    fontSize:11,fontWeight:700,
-                    padding:'4px 10px',borderRadius:20,
-                    background:sat.bg,color:sat.c,whiteSpace:'nowrap',
-                    border:`1.5px solid ${sat.dot}44`
-                  }}>
-                    <span style={{width:6,height:6,borderRadius:'50%',background:sat.dot,flexShrink:0}}/>
-                    {sat.l}
-                  </span>
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
-    </div>
-  );
+  return <canvas ref={ref} style={{ height: 180 }} />;
 }
 
 function ChartDoughnut({ data, colors }) {
   const ref = useRef(null);
-  const tot = data.reduce((a,b)=>a+(b.val||0),0);
+  const tot = data.reduce((a, b) => a + (b.val || 0), 0);
   useChart(ref, (C, c) => ({
-    type:'doughnut',
-    data:{ labels:data.map(d=>d.label), datasets:[{data:data.map(d=>d.val||0),backgroundColor:colors,borderWidth:0,hoverOffset:5}] },
-    options:{ responsive:true, maintainAspectRatio:false, cutout:'68%', plugins:{ legend:{position:'bottom',labels:{color:c.text,font:{size:11,weight:'600'},padding:12,usePointStyle:true, generateLabels:chart=>chart.data.labels.map((lbl,i)=>({text:`${lbl}  ${chart.data.datasets[0].data[i]} (${tot>0?Math.round(chart.data.datasets[0].data[i]/tot*100):0}%)`,fillStyle:colors[i],strokeStyle:colors[i],fontColor:c.text,hidden:false,index:i})) }}, tooltip:{backgroundColor:c.card,titleColor:c.text2,bodyColor:c.text,borderColor:c.border,borderWidth:1,callbacks:{label:x=>` ${x.label} : ${x.parsed} (${tot>0?Math.round(x.parsed/tot*100):0}%)`}} } }
+    type: 'doughnut',
+    data: { labels: data.map(d => d.label), datasets: [{ data: data.map(d => d.val || 0), backgroundColor: colors, borderWidth: 0, hoverOffset: 5 }] },
+    options: { responsive: true, maintainAspectRatio: false, cutout: '68%', plugins: { legend: { position: 'bottom', labels: { color: c.text, font: { size: 11, weight: '600' }, padding: 12, usePointStyle: true, generateLabels: chart => chart.data.labels.map((lbl, i) => ({ text: `${lbl}  ${chart.data.datasets[0].data[i]} (${tot > 0 ? Math.round(chart.data.datasets[0].data[i] / tot * 100) : 0}%)`, fillStyle: colors[i], strokeStyle: colors[i], fontColor: c.text, hidden: false, index: i })) } }, tooltip: { backgroundColor: c.card, titleColor: c.text2, bodyColor: c.text, borderColor: c.border, borderWidth: 1 } } }
   }), [JSON.stringify(data)]);
-  return <canvas ref={ref} style={{height:200}}/>;
+  return <canvas ref={ref} style={{ height: 200 }} />;
 }
 
-function isTarif(v) { return v!==null&&v!==undefined&&v!==''&&parseFloat(v)>0; }
+function ChartHorizBar({ data, metric }) {
+  const ref = useRef(null);
+  const PAL = ['#3b82f6', '#10b981', '#8b5cf6', '#f59e0b', '#ef4444', '#06b6d4', '#f97316', '#ec4899'];
+  const maxVal = Math.max(...data.map(d => d.val || 0), 1);
+  const isResa = metric === 'nb_resa';
+  useChart(ref, (C, c) => ({
+    type: 'bar',
+    data: { labels: data.map(d => (d.label || '').length > 20 ? (d.label || '').slice(0, 19) + '…' : (d.label || '')), datasets: [{ label: isResa ? 'Réservations' : 'Formateurs', data: data.map(d => d.val || 0), backgroundColor: data.map((_, i) => PAL[i % PAL.length] + 'cc'), borderColor: data.map((_, i) => PAL[i % PAL.length]), borderWidth: 1.5, borderRadius: 6, borderSkipped: false }] },
+    options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { backgroundColor: '#1e293b', titleColor: '#94a3b8', bodyColor: '#fff', borderColor: '#334155', borderWidth: 1, padding: 10, callbacks: { label: x => isResa ? ` ${x.parsed.x} réservation${x.parsed.x > 1 ? 's' : ''}` : ` ${x.parsed.x} formateur${x.parsed.x > 1 ? 's' : ''}` } } }, scales: { x: { beginAtZero: true, max: maxVal < 2 ? maxVal + 1 : undefined, grid: { color: 'rgba(0,0,0,.04)' }, ticks: { color: c.text2, font: { size: 10 }, stepSize: 1, callback: v => Number.isInteger(v) ? v : '' } }, y: { grid: { display: false }, ticks: { color: '#374151', font: { size: 12, weight: '600' } } } } }
+  }), [JSON.stringify(data), metric]);
+  return <canvas ref={ref} style={{ height: Math.max(160, data.length * 44) }} />;
+}
 
-function ProfAvatar({ prof, size=40 }) {
-  const nm   = `${prof?.user_prenom||''} ${prof?.user_nom||''}`.trim()||'P';
-  const init = nm.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);
-  const pals = [['#1e40af','#3b82f6'],['#065f46','#10b981'],['#4c1d95','#8b5cf6'],['#7c2d12','#f59e0b'],['#1e3a8a','#60a5fa']];
-  const [a,b] = pals[nm.charCodeAt(0)%pals.length];
-  const radius = size/4;
+// ─── UTILITAIRES UI ───────────────────────────────────────────────────────────
+function isTarif(v) { return v !== null && v !== undefined && v !== '' && parseFloat(v) > 0; }
+
+function ProfAvatar({ prof, size = 40 }) {
+  const nm = `${prof?.user_prenom || ''} ${prof?.user_nom || ''}`.trim() || 'P';
+  const init = nm.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
+  const pals = [['#1e40af', '#3b82f6'], ['#065f46', '#10b981'], ['#4c1d95', '#8b5cf6'], ['#7c2d12', '#f59e0b'], ['#1e3a8a', '#60a5fa']];
+  const [a, b] = pals[nm.charCodeAt(0) % pals.length];
+  const radius = size / 4;
   return (
-    <div style={{width:size,height:size,borderRadius:radius,flexShrink:0,overflow:'hidden',background:`linear-gradient(135deg,${a},${b})`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:size*.34,fontWeight:800,color:'#fff',fontFamily:'Cabinet Grotesk,sans-serif',boxShadow:'0 2px 8px rgba(0,0,0,.12)',position:'relative'}}>
+    <div style={{ width: size, height: size, borderRadius: radius, flexShrink: 0, overflow: 'hidden', background: `linear-gradient(135deg,${a},${b})`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: size * .34, fontWeight: 800, color: '#fff', fontFamily: 'Cabinet Grotesk,sans-serif', boxShadow: '0 2px 8px rgba(0,0,0,.12)', position: 'relative' }}>
       {prof?.photo_url
-        ? <img
-            src={`http://localhost:8001${prof.photo_url}`}
-            alt=""
-            style={{position:'absolute',top:0,left:0,width:'100%',height:'100%',objectFit:'cover',objectPosition:'center',display:'block',borderRadius:radius}}
-          />
+        ? <img src={`http://localhost:8001${prof.photo_url}`} alt="" style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'cover', borderRadius: radius }} />
         : init}
     </div>
   );
 }
 
+// ── PATCH 1 : StatutBadge avec "bloqué" ──
 function StatutBadge({ s }) {
-  const m = {'valide':{c:'adm-badge-green',i:'✓',l:'Validé'},'en_attente':{c:'adm-badge-amber',i:'...',l:'En attente'},'refuse':{c:'adm-badge-red',i:'x',l:'Refusé'},'approuve':{c:'adm-badge-green',i:'✓',l:'Approuvé'}};
-  const key = s==='validé'?'valide':s==='refusé'?'refuse':s==='approuvé'?'approuve':s==='en_attente'?'en_attente':s;
-  const cfg = m[key]||{c:'adm-badge-blue',i:'?',l:s};
+  const m = {
+    'valide':     { c: 'adm-badge-green',  i: '✓',  l: 'Validé' },
+    'en_attente': { c: 'adm-badge-amber',  i: '⏳', l: 'En attente' },
+    'refuse':     { c: 'adm-badge-red',    i: '✕',  l: 'Refusé' },
+    'approuve':   { c: 'adm-badge-green',  i: '✓',  l: 'Approuvé' },
+    'bloque':     { c: 'adm-badge-red',    i: '🚫', l: 'Bloqué' },
+  };
+  const key = s === 'validé' ? 'valide' : s === 'refusé' ? 'refuse' : s === 'approuvé' ? 'approuve' : s === 'en_attente' ? 'en_attente' : s === 'bloqué' ? 'bloque' : s;
+  const cfg = m[key] || { c: 'adm-badge-blue', i: '?', l: s };
   return <span className={`adm-badge ${cfg.c}`}>{cfg.i} {cfg.l}</span>;
 }
 
 function ModeBadge({ m }) {
-  const map = {en_ligne:{c:'adm-badge-blue',l:'En ligne'},presentiel:{c:'adm-badge-green',l:'Présentiel'},les_deux:{c:'adm-badge-purple',l:'Les deux'}};
-  const cfg = map[m]||map.presentiel;
+  const map = { en_ligne: { c: 'adm-badge-blue', l: 'En ligne' }, presentiel: { c: 'adm-badge-green', l: 'Présentiel' }, les_deux: { c: 'adm-badge-purple', l: 'Les deux' } };
+  const cfg = map[m] || map.presentiel;
   return <span className={`adm-badge ${cfg.c}`}>{cfg.l}</span>;
 }
 
 function SectionTitle({ title, sub, action }) {
   return (
-    <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:18}}>
-      <div className="adm-section-title" style={{marginBottom:0}}>
-        <div className="adm-section-title-bar"/>
+    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
+      <div className="adm-section-title" style={{ marginBottom: 0 }}>
+        <div className="adm-section-title-bar" />
         <h3>{title}</h3>
-        {sub&&<span>{sub}</span>}
+        {sub && <span>{sub}</span>}
       </div>
       {action}
     </div>
@@ -373,416 +310,943 @@ function SectionTitle({ title, sub, action }) {
 function EmptyState({ icon, title, sub }) {
   return (
     <div className="adm-empty">
-      <div style={{fontSize:32,marginBottom:12,opacity:.6}}>{icon}</div>
-      <div style={{fontFamily:'Cabinet Grotesk,sans-serif',fontWeight:800,fontSize:15,color:'#64748b',marginBottom:5}}>{title}</div>
-      {sub&&<div style={{fontSize:13,color:'#94a3b8'}}>{sub}</div>}
+      <div style={{ fontSize: 32, marginBottom: 12, opacity: .6 }}>{icon}</div>
+      <div style={{ fontFamily: 'Cabinet Grotesk,sans-serif', fontWeight: 800, fontSize: 15, color: '#64748b', marginBottom: 5 }}>{title}</div>
+      {sub && <div style={{ fontSize: 13, color: '#94a3b8' }}>{sub}</div>}
     </div>
   );
 }
 
+// ─── MODAL GÉNÉRIQUE DE CONFIRMATION ─────────────────────────────────────────
+function ConfirmModal({ title, message, confirmLabel, confirmClass = 'adm-btn-danger', onConfirm, onCancel, children }) {
+  return (
+    <div className="adm-modal-overlay" onClick={e => { if (e.target === e.currentTarget) onCancel(); }}>
+      <div className="adm-modal" style={{ maxWidth: 420 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 }}>
+          <h3 style={{ fontFamily: "'Cabinet Grotesk',sans-serif", fontWeight: 900, fontSize: 16, color: '#0F172A', margin: 0 }}>{title}</h3>
+          <button onClick={onCancel} style={{ width: 32, height: 32, borderRadius: 9, background: '#f8fafc', border: '1.5px solid #e2e8f0', cursor: 'pointer', color: '#64748b', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, flexShrink: 0, marginLeft: 12 }}>✕</button>
+        </div>
+        {message && <p style={{ fontSize: 13, color: '#64748b', margin: '0 0 20px', lineHeight: 1.6 }}>{message}</p>}
+        {children}
+        <div style={{ display: 'flex', gap: 10, marginTop: children ? 20 : 0 }}>
+          <button className={`adm-btn ${confirmClass}`} style={{ flex: 2, justifyContent: 'center' }} onClick={onConfirm}>{confirmLabel}</button>
+          <button className="adm-btn adm-btn-ghost" style={{ flex: 1, justifyContent: 'center' }} onClick={onCancel}>Annuler</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── PATCH 2 : ProfDrawer avec raison_refus affiché + correction bouton refuser ──
 function ProfDrawer({ prof, onClose, onValider, onRefuser }) {
   const [tab, setTab] = useState('profil');
   if (!prof) return null;
-  const nm     = `${prof.user_prenom||''} ${prof.user_nom||''}`.trim()||'Professeur';
-  const mats   = prof.tarifs_matieres?[...new Set(prof.tarifs_matieres.map(t=>t.nom_matiere))]:[];
-  const tarifs = prof.tarifs_matieres?prof.tarifs_matieres.filter(t=>parseFloat(t.tarif)>0):[];
-  const TABS   = [['profil','Profil'],['enseign','Enseignements'],['docs','Documents'],['dispos','Disponibilités']];
-  const InfoRow = ({icon,label,val,href}) => (
-    <div style={{display:'flex',gap:10,padding:'10px 0',borderBottom:'1px solid #f8fafc',alignItems:'center'}}>
-      <span style={{fontSize:14,width:20,textAlign:'center',flexShrink:0}}>{icon}</span>
-      <span style={{fontSize:10,fontWeight:700,color:'#94a3b8',textTransform:'uppercase',letterSpacing:'.06em',width:72,flexShrink:0}}>{label}</span>
-      {href?<a href={href} style={{fontSize:13,fontWeight:600,color:'#3b82f6',textDecoration:'none'}}>{val}</a>:<span style={{fontSize:13,fontWeight:500,color:'#0F172A'}}>{val||'—'}</span>}
+  const nm = `${prof.user_prenom || ''} ${prof.user_nom || ''}`.trim() || 'Professeur';
+  const mats = prof.tarifs_matieres ? [...new Set(prof.tarifs_matieres.map(t => t.nom_matiere))] : [];
+  const tarifs = prof.tarifs_matieres ? prof.tarifs_matieres.filter(t => parseFloat(t.tarif) > 0) : [];
+  const TABS = [['profil', 'Profil'], ['enseign', 'Enseignements'], ['docs', 'Documents'], ['dispos', 'Disponibilités']];
+  const InfoRow = ({ icon, label, val, href }) => (
+    <div style={{ display: 'flex', gap: 10, padding: '10px 0', borderBottom: '1px solid #f8fafc', alignItems: 'center' }}>
+      <span style={{ fontSize: 14, width: 20, textAlign: 'center', flexShrink: 0 }}>{icon}</span>
+      <span style={{ fontSize: 10, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '.06em', width: 72, flexShrink: 0 }}>{label}</span>
+      {href ? <a href={href} style={{ fontSize: 13, fontWeight: 600, color: '#3b82f6', textDecoration: 'none' }}>{val}</a> : <span style={{ fontSize: 13, fontWeight: 500, color: '#0F172A' }}>{val || '—'}</span>}
     </div>
   );
+
+  const isBloque = prof.user_statut === 'bloqué';
+
   return (
     <>
-      <div className="adm-drawer-overlay" onClick={onClose}/>
+      <div className="adm-drawer-overlay" onClick={onClose} />
       <div className="adm-drawer">
-        <div style={{height:70,background:'linear-gradient(135deg,#1e40af 0%,#3b82f6 60%,#60a5fa 100%)',position:'relative',overflow:'hidden',flexShrink:0}}>
-          <svg style={{position:'absolute',inset:0,width:'100%',height:'100%',opacity:.07}} viewBox="0 0 540 110" preserveAspectRatio="xMidYMid slice">
-            {Array.from({length:18},(_,i)=><circle key={i} cx={(i%6)*90+10} cy={Math.floor(i/6)*40+18} r="1.5" fill="#fff"/>)}
-          </svg>
-          <div style={{position:'absolute',top:12,left:16}}><StatutBadge s={prof.statut_validation}/></div>
-          <button onClick={onClose} style={{position:'absolute',top:12,right:14,width:32,height:32,borderRadius:9,background:'rgba(255,255,255,.12)',border:'1px solid rgba(255,255,255,.2)',cursor:'pointer',color:'#fff',fontSize:13,display:'flex',alignItems:'center',justifyContent:'center',transition:'background .12s'}}
-            onMouseEnter={e=>e.currentTarget.style.background='rgba(255,255,255,.22)'}
-            onMouseLeave={e=>e.currentTarget.style.background='rgba(255,255,255,.12)'}>x</button>
+        {/* Header coloré */}
+        <div style={{ height: 70, background: isBloque ? 'linear-gradient(135deg,#7c3aed,#a78bfa)' : 'linear-gradient(135deg,#1e40af 0%,#3b82f6 60%,#60a5fa 100%)', position: 'relative', overflow: 'hidden', flexShrink: 0 }}>
+          <div style={{ position: 'absolute', top: 12, left: 16 }}><StatutBadge s={isBloque ? 'bloqué' : prof.statut_validation} /></div>
+          <button onClick={onClose} style={{ position: 'absolute', top: 12, right: 14, width: 32, height: 32, borderRadius: 9, background: 'rgba(255,255,255,.12)', border: '1px solid rgba(255,255,255,.2)', cursor: 'pointer', color: '#fff', fontSize: 13, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✕</button>
         </div>
-        <div style={{padding:'0 24px 20px',borderBottom:'1px solid #f1f5f9'}}>
-          {/* Avatar + nom côte à côte, complètement sous le header */}
-          <div style={{display:'flex',alignItems:'center',gap:16,paddingTop:16,marginBottom:16}}>
-            <div style={{width:72,height:72,borderRadius:18,border:'3px solid #f1f5f9',overflow:'hidden',flexShrink:0,boxShadow:'0 2px 10px rgba(0,0,0,.10)'}}>
-              <ProfAvatar prof={prof} size={66}/>
+
+        {/* Avatar + nom */}
+        <div style={{ padding: '0 24px 20px', borderBottom: '1px solid #f1f5f9' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 16, paddingTop: 16, marginBottom: 16 }}>
+            <div style={{ width: 72, height: 72, borderRadius: 18, border: '3px solid #f1f5f9', overflow: 'hidden', flexShrink: 0, boxShadow: '0 2px 10px rgba(0,0,0,.10)' }}>
+              <ProfAvatar prof={prof} size={66} />
             </div>
             <div>
-              <h2 style={{fontFamily:'Cabinet Grotesk,sans-serif',fontSize:17,fontWeight:900,color:'#0F172A',margin:'0 0 6px',letterSpacing:'-.02em'}}>{nm}</h2>
-              <div style={{display:'flex',flexWrap:'wrap',gap:6,alignItems:'center'}}>
-                {prof.ville&&<span style={{fontSize:12,color:'#64748b',fontWeight:500}}>{prof.ville}</span>}
-                <ModeBadge m={prof.mode_enseignement}/>
-                <span style={{fontSize:12,color:'#64748b'}}><strong style={{color:'#0F172A'}}>{parseFloat(prof.note_moyenne||0).toFixed(1)}</strong> ({prof.nb_avis} avis)</span>
+              <h2 style={{ fontFamily: 'Cabinet Grotesk,sans-serif', fontSize: 17, fontWeight: 900, color: '#0F172A', margin: '0 0 6px', letterSpacing: '-.02em' }}>{nm}</h2>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center' }}>
+                {prof.ville && <span style={{ fontSize: 12, color: '#64748b', fontWeight: 500 }}>{prof.ville}</span>}
+                <ModeBadge m={prof.mode_enseignement} />
+                <span style={{ fontSize: 12, color: '#64748b' }}><strong style={{ color: '#0F172A' }}>{parseFloat(prof.note_moyenne || 0).toFixed(1)}</strong> ({prof.nb_avis} avis)</span>
               </div>
             </div>
           </div>
-          {prof.statut_validation==='validé'&&<div style={{padding:'9px 14px',background:'#ecfdf5',border:'1px solid #6ee7b7',borderRadius:10,fontSize:12,color:'#065f46',fontWeight:600}}>Professeur validé — visible sur la plateforme</div>}
-          {prof.statut_validation==='en_attente'&&<div style={{display:'flex',gap:8}}><button className="adm-btn adm-btn-success" style={{flex:1,justifyContent:'center'}} onClick={()=>{onValider(prof.id);onClose();}}>Valider</button><button className="adm-btn adm-btn-danger" style={{flex:1,justifyContent:'center'}} onClick={()=>{onRefuser(prof.id);onClose();}}>Refuser</button></div>}
+
+          {/* Statut actions */}
+          {isBloque && (
+            <div style={{ padding: '10px 14px', background: '#fef2f2', border: '1.5px solid #fca5a5', borderRadius: 10, fontSize: 12, color: '#991b1b' }}>
+              <div style={{ fontWeight: 700, marginBottom: 4 }}>🚫 Compte bloqué</div>
+              {prof.raison_blocage && <div style={{ color: '#7f1d1d' }}>Raison : {prof.raison_blocage}</div>}
+            </div>
+          )}
+          {!isBloque && prof.statut_validation === 'validé' && (
+            <div style={{ padding: '9px 14px', background: '#ecfdf5', border: '1px solid #6ee7b7', borderRadius: 10, fontSize: 12, color: '#065f46', fontWeight: 600 }}>
+              ✓ Professeur validé — visible sur la plateforme
+            </div>
+          )}
+          {!isBloque && prof.statut_validation === 'en_attente' && (
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button className="adm-btn adm-btn-success" style={{ flex: 1, justifyContent: 'center' }} onClick={() => { onValider(prof.id); onClose(); }}>✓ Valider</button>
+              <button className="adm-btn adm-btn-danger" style={{ flex: 1, justifyContent: 'center' }} onClick={() => { onRefuser(prof.id, nm); onClose(); }}>✕ Refuser</button>
+            </div>
+          )}
+          {/* CORRECTION : afficher raison_refus */}
+          {!isBloque && prof.statut_validation === 'refusé' && (
+            <div style={{ padding: '10px 14px', background: '#fef2f2', border: '1.5px solid #fca5a5', borderRadius: 10, fontSize: 12 }}>
+              <div style={{ fontWeight: 700, color: '#991b1b', marginBottom: prof.raison_refus ? 6 : 0 }}>✕ Professeur refusé</div>
+              {prof.raison_refus && (
+                <div style={{ color: '#7f1d1d', lineHeight: 1.5 }}>
+                  <strong>Raison :</strong> {prof.raison_refus}
+                </div>
+              )}
+              {!prof.raison_refus && <div style={{ color: '#94a3b8', fontStyle: 'italic' }}>Aucune raison fournie</div>}
+            </div>
+          )}
         </div>
-        <div style={{display:'flex',borderBottom:'1px solid #f1f5f9',padding:'0 12px',background:'#fff'}}>
-          {TABS.map(([k,l])=>(<button key={k} onClick={()=>setTab(k)} style={{flex:1,padding:'13px 4px',background:'none',border:'none',cursor:'pointer',fontSize:12,fontWeight:tab===k?700:400,color:tab===k?'#3b82f6':'#94a3b8',borderBottom:`2px solid ${tab===k?'#3b82f6':'transparent'}`,transition:'all .15s'}}>{l}</button>))}
+
+        {/* Onglets */}
+        <div style={{ display: 'flex', borderBottom: '1px solid #f1f5f9', padding: '0 12px', background: '#fff' }}>
+          {TABS.map(([k, l]) => (
+            <button key={k} onClick={() => setTab(k)} style={{ flex: 1, padding: '13px 4px', background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: tab === k ? 700 : 400, color: tab === k ? '#3b82f6' : '#94a3b8', borderBottom: `2px solid ${tab === k ? '#3b82f6' : 'transparent'}`, transition: 'all .15s' }}>{l}</button>
+          ))}
         </div>
-        <div style={{padding:24}}>
-          {tab==='profil'&&(
-            <div style={{display:'flex',flexDirection:'column',gap:18}}>
-              <div className="adm-card" style={{padding:'4px 16px 12px'}}>
-                <div style={{fontSize:10,fontWeight:700,color:'#94a3b8',textTransform:'uppercase',letterSpacing:'.08em',padding:'12px 0 4px'}}>Coordonnées</div>
-                <InfoRow icon="@" label="Email" val={prof.email} href={prof.email?`mailto:${prof.email}`:null}/>
-                <InfoRow icon="T" label="Téléphone" val={prof.telephone} href={prof.telephone?`tel:${prof.telephone}`:null}/>
-                <InfoRow icon="V" label="Ville" val={prof.ville}/>
+
+        {/* Contenu onglets */}
+        <div style={{ padding: 24 }}>
+          {tab === 'profil' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+              <div className="adm-card" style={{ padding: '4px 16px 12px' }}>
+                <div style={{ fontSize: 10, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '.08em', padding: '12px 0 4px' }}>Coordonnées</div>
+                <InfoRow icon="@" label="Email" val={prof.email} href={prof.email ? `mailto:${prof.email}` : null} />
+                <InfoRow icon="📞" label="Téléphone" val={prof.telephone} href={prof.telephone ? `tel:${prof.telephone}` : null} />
+                <InfoRow icon="📍" label="Ville" val={prof.ville} />
               </div>
-              {prof.bio&&<div className="adm-card" style={{padding:'16px 18px'}}><div style={{fontSize:10,fontWeight:700,color:'#94a3b8',textTransform:'uppercase',letterSpacing:'.08em',marginBottom:10}}>Bio</div><p style={{fontSize:13,color:'#64748b',lineHeight:1.7,margin:0,paddingLeft:12,borderLeft:'2px solid #3b82f6'}}>{prof.bio}</p></div>}
-              {(isTarif(prof.tarif_en_ligne)||isTarif(prof.tarif_presentiel))&&(
-                <div style={{display:'flex',gap:10}}>
-                  {isTarif(prof.tarif_en_ligne)&&<div style={{flex:1,padding:14,background:'#eff6ff',border:'1px solid #bfdbfe',borderRadius:14,textAlign:'center'}}><div style={{fontSize:11,color:'#1d4ed8',fontWeight:700,marginBottom:4}}>En ligne</div><div style={{fontFamily:'Cabinet Grotesk,sans-serif',fontWeight:900,fontSize:22,color:'#1d4ed8'}}>{prof.tarif_en_ligne} DT</div><div style={{fontSize:11,color:'#64748b',marginTop:2}}>/heure</div></div>}
-                  {isTarif(prof.tarif_presentiel)&&<div style={{flex:1,padding:14,background:'#ecfdf5',border:'1px solid #6ee7b7',borderRadius:14,textAlign:'center'}}><div style={{fontSize:11,color:'#065f46',fontWeight:700,marginBottom:4}}>Présentiel</div><div style={{fontFamily:'Cabinet Grotesk,sans-serif',fontWeight:900,fontSize:22,color:'#065f46'}}>{prof.tarif_presentiel} DT</div><div style={{fontSize:11,color:'#64748b',marginTop:2}}>/heure</div></div>}
+              {prof.bio && <div className="adm-card" style={{ padding: '16px 18px' }}><div style={{ fontSize: 10, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '.08em', marginBottom: 10 }}>Bio</div><p style={{ fontSize: 13, color: '#64748b', lineHeight: 1.7, margin: 0, paddingLeft: 12, borderLeft: '2px solid #3b82f6' }}>{prof.bio}</p></div>}
+              {(isTarif(prof.tarif_en_ligne) || isTarif(prof.tarif_presentiel)) && (
+                <div style={{ display: 'flex', gap: 10 }}>
+                  {isTarif(prof.tarif_en_ligne) && <div style={{ flex: 1, padding: 14, background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 14, textAlign: 'center' }}><div style={{ fontSize: 11, color: '#1d4ed8', fontWeight: 700, marginBottom: 4 }}>En ligne</div><div style={{ fontFamily: 'Cabinet Grotesk,sans-serif', fontWeight: 900, fontSize: 22, color: '#1d4ed8' }}>{prof.tarif_en_ligne} DT</div><div style={{ fontSize: 11, color: '#64748b', marginTop: 2 }}>/séance</div></div>}
+                  {isTarif(prof.tarif_presentiel) && <div style={{ flex: 1, padding: 14, background: '#ecfdf5', border: '1px solid #6ee7b7', borderRadius: 14, textAlign: 'center' }}><div style={{ fontSize: 11, color: '#065f46', fontWeight: 700, marginBottom: 4 }}>Présentiel</div><div style={{ fontFamily: 'Cabinet Grotesk,sans-serif', fontWeight: 900, fontSize: 22, color: '#065f46' }}>{prof.tarif_presentiel} DT</div><div style={{ fontSize: 11, color: '#64748b', marginTop: 2 }}>/séance</div></div>}
                 </div>
               )}
             </div>
           )}
-          {tab==='enseign'&&(
-            <div style={{display:'flex',flexDirection:'column',gap:16}}>
-              {mats.length>0?<div className="adm-card" style={{padding:16}}><div style={{fontSize:10,fontWeight:700,color:'#94a3b8',textTransform:'uppercase',letterSpacing:'.08em',marginBottom:12}}>Matières enseignées</div><div style={{display:'flex',flexWrap:'wrap',gap:6}}>{mats.map(m=><span key={m} className="adm-badge adm-badge-blue">{m}</span>)}</div></div>:<EmptyState icon="B" title="Aucune matière renseignée"/>}
-              {tarifs.length>0&&<div className="adm-card" style={{padding:16}}><div style={{fontSize:10,fontWeight:700,color:'#94a3b8',textTransform:'uppercase',letterSpacing:'.08em',marginBottom:12}}>Tarifs par matière</div><div style={{display:'flex',flexDirection:'column',gap:6}}>{tarifs.map((t,i)=><div key={i} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'8px 12px',background:'#f8fafc',borderRadius:10,border:'1px solid #f1f5f9'}}><div><span style={{fontWeight:700,fontSize:13}}>{t.nom_matiere}</span><span style={{fontSize:12,color:'#94a3b8',marginLeft:8}}>{t.nom_niveau}</span></div><span className="adm-badge adm-badge-green" style={{fontFamily:'Cabinet Grotesk,sans-serif',fontWeight:800}}>{t.tarif} DT/h</span></div>)}</div></div>}
+          {tab === 'enseign' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              {mats.length > 0 ? <div className="adm-card" style={{ padding: 16 }}><div style={{ fontSize: 10, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '.08em', marginBottom: 12 }}>Matières enseignées</div><div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>{mats.map(m => <span key={m} className="adm-badge adm-badge-blue">{m}</span>)}</div></div> : <EmptyState icon="📚" title="Aucune matière renseignée" />}
+              {tarifs.length > 0 && <div className="adm-card" style={{ padding: 16 }}><div style={{ fontSize: 10, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '.08em', marginBottom: 12 }}>Tarifs par matière</div><div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>{tarifs.map((t, i) => <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 12px', background: '#f8fafc', borderRadius: 10, border: '1px solid #f1f5f9' }}><div><span style={{ fontWeight: 700, fontSize: 13 }}>{t.nom_matiere}</span><span style={{ fontSize: 12, color: '#94a3b8', marginLeft: 8 }}>{t.nom_niveau}</span></div><span className="adm-badge adm-badge-green" style={{ fontFamily: 'Cabinet Grotesk,sans-serif', fontWeight: 800 }}>{t.tarif} DT/séance</span></div>)}</div></div>}
             </div>
           )}
-          {tab==='docs'&&(prof.certificats?.length>0?<div style={{display:'flex',flexDirection:'column',gap:8}}>{prof.certificats.map(c=><a key={c.id} href={`http://localhost:8001${c.fichier_url}`} target="_blank" rel="noreferrer" style={{textDecoration:'none',display:'flex',alignItems:'center',gap:12,padding:'13px 16px',background:'#f8fafc',border:'1.5px solid #f1f5f9',borderRadius:14,transition:'all .15s'}} onMouseEnter={e=>{e.currentTarget.style.borderColor='#3b82f6';e.currentTarget.style.background='#eff6ff';}} onMouseLeave={e=>{e.currentTarget.style.borderColor='#f1f5f9';e.currentTarget.style.background='#f8fafc';}}><div style={{width:40,height:40,borderRadius:10,background:'#eff6ff',border:'1px solid #bfdbfe',display:'flex',alignItems:'center',justifyContent:'center',fontSize:18,flexShrink:0}}>D</div><div style={{flex:1}}><div style={{fontWeight:700,fontSize:13,color:'#0F172A',marginBottom:2}}>{c.titre}</div><div style={{fontSize:12,color:'#3b82f6'}}>Consulter</div></div></a>)}</div>:<EmptyState icon="D" title="Aucun document" sub="Ce professeur n'a pas encore ajouté de diplômes."/>)}
-          {tab==='dispos'&&(prof.disponibilites?.length>0?<div style={{display:'flex',flexDirection:'column',gap:8}}>{prof.disponibilites.map(d=>{const full=d.nb_max_etudiants>0&&d.nb_inscrits>=d.nb_max_etudiants;return<div key={d.id} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'12px 16px',background:'#f8fafc',border:`1.5px solid ${full?'#fca5a5':'#f1f5f9'}`,borderRadius:14}}><div><div style={{fontFamily:'Cabinet Grotesk,sans-serif',fontWeight:700,fontSize:13,color:'#0F172A',marginBottom:3}}>{d.date_specifique}</div><div style={{fontSize:12,color:'#94a3b8'}}>{d.heure_debut} – {d.heure_fin}</div></div><span className={`adm-badge ${full?'adm-badge-red':'adm-badge-green'}`}>{full?'Complet':`${d.nb_inscrits}/${d.nb_max_etudiants}`}</span></div>;})}</div>:<EmptyState icon="C" title="Aucun créneau planifié"/>)}
+          {tab === 'docs' && (prof.certificats?.length > 0 ? <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>{prof.certificats.map(c => <a key={c.id} href={`http://localhost:8001${c.fichier_url}`} target="_blank" rel="noreferrer" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 12, padding: '13px 16px', background: '#f8fafc', border: '1.5px solid #f1f5f9', borderRadius: 14, transition: 'all .15s' }} onMouseEnter={e => { e.currentTarget.style.borderColor = '#3b82f6'; e.currentTarget.style.background = '#eff6ff'; }} onMouseLeave={e => { e.currentTarget.style.borderColor = '#f1f5f9'; e.currentTarget.style.background = '#f8fafc'; }}><div style={{ width: 40, height: 40, borderRadius: 10, background: '#eff6ff', border: '1px solid #bfdbfe', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, flexShrink: 0 }}>📄</div><div style={{ flex: 1 }}><div style={{ fontWeight: 700, fontSize: 13, color: '#0F172A', marginBottom: 2 }}>{c.titre}</div><div style={{ fontSize: 12, color: '#3b82f6' }}>Consulter →</div></div></a>)}</div> : <EmptyState icon="📄" title="Aucun document" sub="Ce professeur n'a pas encore ajouté de diplômes." />)}
+          {tab === 'dispos' && (() => {
+            const today = new Date(); today.setHours(0,0,0,0);
+            const futures = (prof.disponibilites || []).filter(d => {
+              if (!d.date_specifique) return false;
+              const dd = new Date(d.date_specifique); dd.setHours(0,0,0,0);
+              return dd >= today;
+            });
+            return futures.length > 0 ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {futures.map(d => {
+                  const full = d.nb_max_etudiants > 0 && d.nb_inscrits >= d.nb_max_etudiants;
+                  return (
+                    <div key={d.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', background: '#f8fafc', border: `1.5px solid ${full ? '#fca5a5' : '#f1f5f9'}`, borderRadius: 14 }}>
+                      <div>
+                        <div style={{ fontFamily: 'Cabinet Grotesk,sans-serif', fontWeight: 700, fontSize: 13, color: '#0F172A', marginBottom: 3 }}>
+                          {new Date(d.date_specifique).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+                        </div>
+                        <div style={{ fontSize: 12, color: '#94a3b8' }}>{d.heure_debut} – {d.heure_fin}</div>
+                      </div>
+                      <span className={`adm-badge ${full ? 'adm-badge-red' : 'adm-badge-green'}`}>{full ? 'Complet' : `${d.nb_inscrits}/${d.nb_max_etudiants}`}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : <EmptyState icon="📅" title="Aucun créneau à venir" sub="Toutes les disponibilités sont passées ou aucune n'est planifiée." />;
+          })()}
         </div>
       </div>
     </>
   );
 }
 
-function OverviewTab({ stats, allProfs, demandes, counts, onTabChange, onViewProf, chartData }) {
-  const pendingProfs    = allProfs.filter(p=>p.statut_validation==='en_attente');
-  const demandesPending = demandes.filter(d=>d.statut==='en_attente').length;
-  const valides         = allProfs.filter(p=>p.statut_validation==='validé');
-  const topProfs        = [
-    ...valides.filter(p=>parseFloat(p.note_moyenne||0)>0).sort((a,b)=>parseFloat(b.note_moyenne)-parseFloat(a.note_moyenne)),
-    ...valides.filter(p=>!parseFloat(p.note_moyenne||0))
-  ].slice(0,5);
-  const { reservations_par_mois=[] } = chartData;
-  const totalResa = reservations_par_mois.reduce((a,b)=>a+(b.total||0),0);
-  const pctMois   = stats.total_reservations>0
-    ? Math.min(100, Math.round(((stats.reservations_mois||0)/stats.total_reservations)*100))
-    : 0;
+// ── SignalementsTab enrichi : filtres + recherche + badges + avertir avec notification ──
+function SignalementsTab({ signalements, onReload }) {
+  const [actionModal, setActionModal] = useState(null);
+  const [raisonBlocage, setRaisonBlocage] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [filtre, setFiltre] = useState('tous');
+  const [recherche, setRecherche] = useState('');
 
-  // Activité : 4 vrais KPIs avec emojis
-  const activiteKpis = [
-    { icon:'📅', val:stats.reservations_mois||0,      lbl:'Réservations ce mois', color:'#3b82f6', bg:'#eff6ff' },
-    { icon:'👨‍🏫', val:valides.length,                   lbl:'Formateurs actifs',    color:'#10b981', bg:'#ecfdf5' },
-    { icon:'👥', val:stats.total_users||0,             lbl:'Utilisateurs',         color:'#8b5cf6', bg:'#f5f3ff' },
-    { icon:'📊', val:stats.total_reservations||0,      lbl:'Total réservations',   color:'#f59e0b', bg:'#fffbeb' },
+  const STATUT_CFG = {
+    'nouveau': { bg: '#eff6ff', color: '#1d4ed8', border: '#bfdbfe', label: '🆕 Nouveau',  dot: '#3b82f6' },
+    'ignoré':  { bg: '#f8fafc', color: '#64748b', border: '#e2e8f0', label: '🔕 Ignoré',   dot: '#94a3b8' },
+    'traité':  { bg: '#ecfdf5', color: '#065f46', border: '#6ee7b7', label: '✅ Traité',   dot: '#10b981' },
+  };
+
+  // Calcul nb signalements par prof
+  const sigParProf = useMemo(() => {
+    const m = {};
+    signalements.forEach(s => { m[s.prof_nom] = (m[s.prof_nom] || 0) + 1; });
+    return m;
+  }, [signalements]);
+
+  // Filtres + recherche
+  const filtered = useMemo(() => {
+    return signalements.filter(s => {
+      const matchFiltre = filtre === 'tous' || s.statut === filtre;
+      const matchRecherche = !recherche || s.prof_nom?.toLowerCase().includes(recherche.toLowerCase()) || s.etudiant_nom?.toLowerCase().includes(recherche.toLowerCase());
+      return matchFiltre && matchRecherche;
+    });
+  }, [signalements, filtre, recherche]);
+
+  const nouveaux = filtered.filter(s => s.statut === 'nouveau');
+  const archives = filtered.filter(s => s.statut !== 'nouveau');
+
+  const handleAction = async (sig, action) => {
+    if (action === 'bloquer') {
+      setRaisonBlocage('');
+      setActionModal({ sig, action });
+      return;
+    }
+    setSaving(true);
+    try {
+      await api.put(`/api/admin/signalements/${sig.id}/action`, { action });
+      onReload();
+    } catch (e) { alert(e.response?.data?.detail || 'Erreur'); }
+    finally { setSaving(false); }
+  };
+
+  const handleBloquerConfirm = async () => {
+    if (!actionModal) return;
+    setSaving(true);
+    try {
+      await api.put(`/api/admin/signalements/${actionModal.sig.id}/action`, {
+        action: 'bloquer',
+        raison: raisonBlocage || 'Signalement étudiant',
+      });
+      setActionModal(null);
+      onReload();
+    } catch (e) { alert(e.response?.data?.detail || 'Erreur'); }
+    finally { setSaving(false); }
+  };
+
+  const FILTRES = [
+    { key: 'tous',    label: 'Tous',       count: signalements.length },
+    { key: 'nouveau', label: 'En attente', count: signalements.filter(s => s.statut === 'nouveau').length },
+    { key: 'ignoré',  label: 'Ignorés',    count: signalements.filter(s => s.statut === 'ignoré').length },
+    { key: 'traité',  label: 'Traités',    count: signalements.filter(s => s.statut === 'traité').length },
   ];
 
-  // Médailles top formateurs
-  const medals = ['🥇','🥈','🥉','4️⃣','5️⃣'];
+  const SigCard = ({ sig }) => {
+    const cfg = STATUT_CFG[sig.statut] || STATUT_CFG['nouveau'];
+    const nbSig = sigParProf[sig.prof_nom] || 1;
+    const isNew = sig.statut === 'nouveau';
+    return (
+      <div style={{ padding: '18px 20px', background: isNew ? '#fffbff' : '#fff', border: `1.5px solid ${isNew ? '#e9d5ff' : '#f1f5f9'}`, borderRadius: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16, flexWrap: 'wrap', boxShadow: isNew ? '0 2px 12px rgba(139,92,246,0.07)' : 'none', transition: 'all .2s' }}>
+        <div style={{ flex: 1, minWidth: 220 }}>
+          {/* Étudiant → Prof */}
+          <div style={{ display: 'flex', gap: 8, marginBottom: 10, flexWrap: 'wrap', alignItems: 'center' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 10px', background: '#f1f5f9', borderRadius: 20 }}>
+              <span style={{ fontSize: 11 }}>👤</span>
+              <span style={{ fontWeight: 700, fontSize: 12, color: '#374151' }}>{sig.etudiant_nom}</span>
+            </div>
+            <span style={{ color: '#c4b5fd', fontSize: 12, fontWeight: 700 }}>→ signale →</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 10px', background: '#eff6ff', border: '1.5px solid #bfdbfe', borderRadius: 20 }}>
+              <span style={{ fontSize: 11 }}>👨‍🏫</span>
+              <span style={{ fontWeight: 800, fontSize: 12, color: '#1d4ed8' }}>{sig.prof_nom}</span>
+            </div>
+            {nbSig > 1 && (
+              <span style={{ fontSize: 11, fontWeight: 800, padding: '3px 8px', borderRadius: 20, background: '#fef2f2', color: '#dc2626', border: '1.5px solid #fca5a5' }}>
+                ⚠ {nbSig} signalements
+              </span>
+            )}
+          </div>
+          {/* Raison */}
+          <div style={{ fontSize: 13, color: '#374151', padding: '9px 13px', background: isNew ? 'rgba(233,213,255,.2)' : '#f8fafc', borderRadius: 10, fontStyle: 'italic', borderLeft: `3px solid ${cfg.border}`, lineHeight: 1.55, marginBottom: 8 }}>
+            "{sig.raison}"
+          </div>
+          {/* Méta */}
+          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
+            <span style={{ fontSize: 11, color: '#94a3b8', fontWeight: 600 }}>
+              📅 {new Date(sig.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })}
+            </span>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 20, background: cfg.bg, color: cfg.color, border: `1.5px solid ${cfg.border}` }}>
+              <span style={{ width: 6, height: 6, borderRadius: '50%', background: cfg.dot, flexShrink: 0 }}/>
+              {cfg.label}
+            </span>
+          </div>
+        </div>
+        {/* Actions (seulement pour nouveaux) */}
+        {isNew && (
+          <div style={{ display: 'flex', gap: 7, flexShrink: 0, flexDirection: 'column' }}>
+            <button onClick={() => handleAction(sig, 'ignorer')} disabled={saving}
+              className="adm-btn adm-btn-ghost adm-btn-sm"
+              style={{ fontSize: 12, padding: '7px 13px' }}>🔕 Ignorer</button>
+            <button onClick={() => handleAction(sig, 'avertir')} disabled={saving}
+              className="adm-btn adm-btn-warning adm-btn-sm"
+              style={{ fontSize: 12, padding: '7px 13px' }}>⚠️ Avertir le prof</button>
+            <button onClick={() => handleAction(sig, 'bloquer')} disabled={saving}
+              className="adm-btn adm-btn-danger adm-btn-sm"
+              style={{ fontSize: 12, padding: '7px 13px' }}>🚫 Bloquer prof</button>
+          </div>
+        )}
+      </div>
+    );
+  };
 
   return (
-    <div style={{display:'flex',flexDirection:'column',gap:20}}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
 
-      {/* ── Alertes urgentes ── */}
-      {(pendingProfs.length>0||demandesPending>0)&&(
-        <div style={{display:'flex',flexDirection:'column',gap:8}}>
-          {pendingProfs.length>0&&(
-            <div className="adm-alert adm-alert-amber" onClick={()=>onTabChange('profs')}>
-              <div style={{width:38,height:38,borderRadius:10,background:'rgba(245,158,11,.15)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:18,flexShrink:0}}>🔔</div>
-              <div style={{flex:1}}>
-                <div style={{fontFamily:'Cabinet Grotesk,sans-serif',fontWeight:800,fontSize:13,color:'#b45309'}}>{pendingProfs.length} formateur{pendingProfs.length>1?'s':''} en attente de validation</div>
-                <div style={{fontSize:12,color:'#92400e',marginTop:2}}>Répondez rapidement pour ne pas bloquer leur activité</div>
+      {/* KPIs */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 14 }}>
+        {[
+          { label: 'Nouveaux',  count: signalements.filter(s => s.statut === 'nouveau').length, color: '#1d4ed8', bg: '#eff6ff', border: '#bfdbfe', icon: '🚨' },
+          { label: 'Ignorés',   count: signalements.filter(s => s.statut === 'ignoré').length,  color: '#64748b', bg: '#f8fafc', border: '#e2e8f0', icon: '🔕' },
+          { label: 'Traités',   count: signalements.filter(s => s.statut === 'traité').length,   color: '#065f46', bg: '#ecfdf5', border: '#6ee7b7', icon: '✅' },
+        ].map((s, i) => (
+          <div key={i} onClick={() => setFiltre(i === 0 ? 'nouveau' : i === 1 ? 'ignoré' : 'traité')}
+            style={{ background: s.bg, border: `1.5px solid ${s.border}`, borderRadius: 20, padding: '20px 22px', display: 'flex', alignItems: 'center', gap: 14, boxShadow: '0 2px 8px rgba(0,0,0,.04)', cursor: 'pointer', transition: 'all .18s' }}
+            onMouseEnter={e => e.currentTarget.style.transform = 'translateY(-2px)'}
+            onMouseLeave={e => e.currentTarget.style.transform = 'none'}>
+            <div style={{ width: 46, height: 46, borderRadius: 13, background: 'rgba(255,255,255,.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.3rem', flexShrink: 0 }}>{s.icon}</div>
+            <div>
+              <div style={{ fontFamily: "'Cabinet Grotesk',sans-serif", fontSize: '2rem', fontWeight: 900, color: s.color, lineHeight: 1, marginBottom: 3 }}>{s.count}</div>
+              <div style={{ fontSize: '.72rem', color: s.color, opacity: .7, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '.08em' }}>{s.label}</div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Barre filtres + recherche */}
+      <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center', background: '#fff', padding: '14px 18px', borderRadius: 16, border: '1.5px solid #f1f5f9', boxShadow: '0 1px 6px rgba(0,0,0,.04)' }}>
+        <div style={{ display: 'flex', gap: 6 }}>
+          {FILTRES.map(f => (
+            <button key={f.key} onClick={() => setFiltre(f.key)}
+              style={{ padding: '7px 14px', borderRadius: 20, border: `1.5px solid ${filtre === f.key ? '#3b82f6' : '#e2e8f0'}`, background: filtre === f.key ? '#eff6ff' : '#f8fafc', color: filtre === f.key ? '#1d4ed8' : '#64748b', fontWeight: filtre === f.key ? 800 : 600, fontSize: 12, cursor: 'pointer', transition: 'all .15s', fontFamily: "'Instrument Sans',sans-serif", display: 'flex', alignItems: 'center', gap: 5 }}>
+              {f.label}
+              <span style={{ fontSize: 10, fontWeight: 900, padding: '1px 6px', borderRadius: 10, background: filtre === f.key ? '#3b82f6' : '#e2e8f0', color: filtre === f.key ? '#fff' : '#64748b' }}>{f.count}</span>
+            </button>
+          ))}
+        </div>
+        <div style={{ flex: 1, minWidth: 180, position: 'relative' }}>
+          <span style={{ position: 'absolute', left: 11, top: '50%', transform: 'translateY(-50%)', fontSize: 13, color: '#94a3b8' }}>🔍</span>
+          <input
+            value={recherche} onChange={e => setRecherche(e.target.value)}
+            placeholder="Rechercher par nom prof ou étudiant..."
+            style={{ width: '100%', paddingLeft: 32, paddingRight: 12, paddingTop: 8, paddingBottom: 8, border: '1.5px solid #e2e8f0', borderRadius: 20, fontSize: 12, outline: 'none', fontFamily: "'Instrument Sans',sans-serif", background: '#f8fafc', boxSizing: 'border-box', transition: 'border-color .15s' }}
+            onFocus={e => e.target.style.borderColor = '#3b82f6'}
+            onBlur={e => e.target.style.borderColor = '#e2e8f0'}
+          />
+        </div>
+        {(filtre !== 'tous' || recherche) && (
+          <button onClick={() => { setFiltre('tous'); setRecherche(''); }}
+            style={{ padding: '7px 13px', borderRadius: 20, border: '1.5px solid #fca5a5', background: '#fef2f2', color: '#dc2626', fontWeight: 700, fontSize: 12, cursor: 'pointer', transition: 'all .15s' }}>
+            ✕ Réinitialiser
+          </button>
+        )}
+        {filtered.length !== signalements.length && (
+          <span style={{ fontSize: 11, color: '#94a3b8', marginLeft: 'auto' }}>{filtered.length}/{signalements.length} signalement{filtered.length > 1 ? 's' : ''}</span>
+        )}
+      </div>
+
+      {/* Liste signalements */}
+      {nouveaux.length > 0 && (
+        <div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+            <span style={{ fontSize: 11, fontWeight: 800, color: '#1d4ed8', background: '#eff6ff', padding: '3px 10px', borderRadius: 20, border: '1.5px solid #bfdbfe', textTransform: 'uppercase', letterSpacing: '.06em' }}>⚠ Action requise</span>
+            <span style={{ fontSize: 12, color: '#64748b' }}>{nouveaux.length} signalement{nouveaux.length > 1 ? 's' : ''} en attente</span>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {nouveaux.map(sig => <SigCard key={sig.id} sig={sig} />)}
+          </div>
+        </div>
+      )}
+
+      {archives.length > 0 && (
+        <div>
+          {nouveaux.length > 0 && <div style={{ height: 1, background: '#f1f5f9', margin: '4px 0 16px' }}/>}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+            <span style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '.06em' }}>Historique — {archives.length} entrée{archives.length > 1 ? 's' : ''}</span>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {archives.map(sig => <SigCard key={sig.id} sig={sig} />)}
+          </div>
+        </div>
+      )}
+
+      {filtered.length === 0 && (
+        <div className="adm-card" style={{ padding: 40, textAlign: 'center' }}>
+          <EmptyState icon={recherche ? '🔍' : '✅'} title={recherche ? 'Aucun résultat' : 'Aucun signalement'} sub={recherche ? `Aucun résultat pour "${recherche}"` : 'Tout est calme !'} />
+        </div>
+      )}
+
+      {/* Modal bloquer */}
+      {actionModal && (
+        <ConfirmModal
+          title={`🚫 Bloquer ${actionModal.sig.prof_nom}`}
+          confirmLabel={saving ? 'Blocage...' : '🚫 Bloquer ce professeur'}
+          confirmClass="adm-btn-danger"
+          onConfirm={handleBloquerConfirm}
+          onCancel={() => setActionModal(null)}
+        >
+          <label className="adm-label">Raison du blocage <span style={{ color: '#94a3b8', fontWeight: 400 }}>(communiquée au prof)</span></label>
+          <textarea
+            autoFocus
+            className="adm-input adm-textarea"
+            placeholder="Ex: Comportement inapproprié signalé par plusieurs étudiants..."
+            value={raisonBlocage}
+            onChange={e => setRaisonBlocage(e.target.value)}
+          />
+        </ConfirmModal>
+      )}
+    </div>
+  );
+}
+
+// ── UsersTab — double filtrage statut + rôle ──
+function UsersTab({ onReload }) {
+  const [users, setUsers]             = useState([]);
+  const [loading, setLoading]         = useState(true);
+  const [search, setSearch]           = useState('');
+  const [filterStatut, setFilterStatut] = useState('tous');
+  const [filterRole, setFilterRole]   = useState('tous');
+  const [bloquerModal, setBloquerModal] = useState(null);
+  const [raisonBlocage, setRaisonBlocage] = useState('');
+  const [saving, setSaving]           = useState(false);
+
+  const fetchUsers = () => {
+    setLoading(true);
+    api.get('/api/admin/users/all')
+      .then(r => setUsers(Array.isArray(r.data) ? r.data : []))
+      .catch(() => setUsers([]))
+      .finally(() => setLoading(false));
+  };
+  useEffect(() => { fetchUsers(); }, []);
+
+  const filtered = useMemo(() => users.filter(u => {
+    const nm = `${u.prenom || ''} ${u.nom || ''} ${u.email || ''}`.toLowerCase();
+    if (search && !nm.includes(search.toLowerCase())) return false;
+    if (filterStatut !== 'tous' && u.statut !== filterStatut) return false;
+    if (filterRole  !== 'tous' && u.role   !== filterRole)   return false;
+    return true;
+  }), [users, search, filterStatut, filterRole]);
+
+  const handleBloquer = async () => {
+    if (!bloquerModal) return;
+    setSaving(true);
+    try {
+      await api.put(`/api/admin/users/${bloquerModal.id}/bloquer`, { raison: raisonBlocage });
+      setBloquerModal(null); setRaisonBlocage(''); fetchUsers(); onReload();
+    } catch (e) { alert(e.response?.data?.detail || 'Erreur'); }
+    finally { setSaving(false); }
+  };
+
+  const handleDebloquer = async (id) => {
+    try { await api.put(`/api/admin/users/${id}/debloquer`); fetchUsers(); onReload(); }
+    catch (e) { alert(e.response?.data?.detail || 'Erreur'); }
+  };
+
+  const ROLE_CFG = {
+    admin:      { c: 'adm-badge-purple', l: 'Admin',      icon: '🛡' },
+    professeur: { c: 'adm-badge-blue',   l: 'Professeur', icon: '👨‍🏫' },
+    étudiant:   { c: 'adm-badge-green',  l: 'Étudiant',   icon: '🎓' },
+  };
+
+  if (loading) return <div style={{ display: 'flex', justifyContent: 'center', padding: 40 }}><div className="adm-loader" style={{ width: 32, height: 32 }} /></div>;
+
+  const nbProfs   = users.filter(u => u.role === 'professeur').length;
+  const nbEtuds   = users.filter(u => u.role === 'étudiant').length;
+  const nbActifs  = users.filter(u => u.statut === 'actif').length;
+  const nbBloques = users.filter(u => u.statut === 'bloqué').length;
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+
+      {/* ── KPIs ── */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: 12 }}>
+        {[
+          { label: 'Total',       count: users.length, color: '#3b82f6', bg: '#eff6ff', border: '#bfdbfe', icon: '👥' },
+          { label: 'Professeurs', count: nbProfs,      color: '#8b5cf6', bg: '#f5f3ff', border: '#ddd6fe', icon: '👨‍🏫' },
+          { label: 'Étudiants',   count: nbEtuds,      color: '#f59e0b', bg: '#fffbeb', border: '#fcd34d', icon: '🎓' },
+          { label: 'Actifs',      count: nbActifs,     color: '#10b981', bg: '#ecfdf5', border: '#6ee7b7', icon: '✅' },
+          { label: 'Bloqués',     count: nbBloques,    color: '#ef4444', bg: '#fef2f2', border: '#fca5a5', icon: '🚫' },
+        ].map((s, i) => (
+          <div key={i} style={{ background: s.bg, border: `1.5px solid ${s.border}`, borderRadius: 18, padding: '16px 18px', display: 'flex', alignItems: 'center', gap: 12, boxShadow: '0 2px 8px rgba(0,0,0,.04)', transition: 'all .18s', cursor: 'default' }}
+            onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 8px 24px rgba(0,0,0,.08)'; }}
+            onMouseLeave={e => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,.04)'; }}>
+            <div style={{ width: 38, height: 38, borderRadius: 10, background: 'rgba(255,255,255,.65)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.1rem', flexShrink: 0 }}>{s.icon}</div>
+            <div>
+              <div style={{ fontFamily: "\'Cabinet Grotesk\',sans-serif", fontSize: '1.6rem', fontWeight: 900, color: s.color, lineHeight: 1, marginBottom: 2 }}>{s.count}</div>
+              <div style={{ fontSize: '.68rem', color: s.color, opacity: .7, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '.07em' }}>{s.label}</div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* ── Double filtrage : statut + rôle ── */}
+      <div style={{ display: 'flex', gap: 14, alignItems: 'flex-end', flexWrap: 'wrap', padding: '16px 20px', background: '#f8fafc', border: '1.5px solid #f1f5f9', borderRadius: 16 }}>
+        <div className="adm-search-wrap" style={{ flex: 1, minWidth: 200 }}>
+          <span className="adm-search-icon">🔍</span>
+          <input className="adm-input" placeholder="Rechercher par nom ou email..." value={search} onChange={e => setSearch(e.target.value)} />
+        </div>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+          <span style={{ fontSize: 10, fontWeight: 800, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '.08em' }}>Statut</span>
+          <div style={{ display: 'flex', gap: 4 }}>
+            {[{ k: 'tous', l: 'Tous', c: '#64748b' }, { k: 'actif', l: '✓ Actifs', c: '#10b981' }, { k: 'bloqué', l: '🚫 Bloqués', c: '#ef4444' }].map(f => (
+              <button key={f.k} onClick={() => setFilterStatut(f.k)} style={{ padding: '6px 13px', borderRadius: 20, border: `1.5px solid ${filterStatut === f.k ? f.c : '#e2e8f0'}`, background: filterStatut === f.k ? `${f.c}15` : '#fff', color: filterStatut === f.k ? f.c : '#64748b', fontSize: 12, fontWeight: filterStatut === f.k ? 700 : 500, cursor: 'pointer', transition: 'all .15s', whiteSpace: 'nowrap' }}>{f.l}</button>
+            ))}
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+          <span style={{ fontSize: 10, fontWeight: 800, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '.08em' }}>Rôle</span>
+          <div style={{ display: 'flex', gap: 4 }}>
+            {[{ k: 'tous', l: 'Tous', c: '#64748b' }, { k: 'professeur', l: '👨‍🏫 Profs', c: '#8b5cf6' }, { k: 'étudiant', l: '🎓 Étudiants', c: '#f59e0b' }].map(f => (
+              <button key={f.k} onClick={() => setFilterRole(f.k)} style={{ padding: '6px 13px', borderRadius: 20, border: `1.5px solid ${filterRole === f.k ? f.c : '#e2e8f0'}`, background: filterRole === f.k ? `${f.c}15` : '#fff', color: filterRole === f.k ? f.c : '#64748b', fontSize: 12, fontWeight: filterRole === f.k ? 700 : 500, cursor: 'pointer', transition: 'all .15s', whiteSpace: 'nowrap' }}>{f.l}</button>
+            ))}
+          </div>
+        </div>
+
+        {(filterStatut !== 'tous' || filterRole !== 'tous') && (
+          <button onClick={() => { setFilterStatut('tous'); setFilterRole('tous'); }} style={{ padding: '6px 12px', borderRadius: 10, border: '1.5px solid #fca5a5', background: '#fef2f2', color: '#dc2626', fontSize: 12, fontWeight: 700, cursor: 'pointer', alignSelf: 'flex-end' }}>✕ Réinitialiser</button>
+        )}
+
+        <span style={{ fontSize: 12, color: '#94a3b8', alignSelf: 'flex-end', marginLeft: 'auto', whiteSpace: 'nowrap' }}>
+          <strong style={{ color: '#0F172A' }}>{filtered.length}</strong> utilisateur{filtered.length > 1 ? 's' : ''}
+        </span>
+      </div>
+
+      {/* ── Tableau ── */}
+      <div className="adm-card" style={{ overflow: 'hidden' }}>
+        <table className="adm-table">
+          <thead>
+            <tr>
+              <th>Utilisateur</th>
+              <th>Rôle</th>
+              <th>Statut</th>
+              <th>Raison blocage</th>
+              <th>Inscrit le</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {filtered.length === 0 ? (
+              <tr><td colSpan={6} style={{ textAlign: 'center', padding: 40, color: '#94a3b8' }}>Aucun utilisateur trouvé</td></tr>
+            ) : filtered.map(u => {
+              const estBloque = u.statut === 'bloqué';
+              const roleCfg = ROLE_CFG[u.role] || { c: 'adm-badge-gray', l: u.role, icon: '?' };
+              return (
+                <tr key={u.id}>
+                  <td>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <div style={{ width: 36, height: 36, borderRadius: 10, background: estBloque ? '#fef2f2' : u.role === 'professeur' ? 'linear-gradient(135deg,#8b5cf6,#a78bfa)' : u.role === 'étudiant' ? 'linear-gradient(135deg,#f59e0b,#fbbf24)' : 'linear-gradient(135deg,#64748b,#94a3b8)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 900, color: estBloque ? '#ef4444' : '#fff', flexShrink: 0 }}>
+                        {estBloque ? '🚫' : roleCfg.icon}
+                      </div>
+                      <div>
+                        <div style={{ fontFamily: 'Cabinet Grotesk,sans-serif', fontWeight: 700, fontSize: 13, color: '#0F172A' }}>{u.prenom} {u.nom}</div>
+                        <div style={{ fontSize: 11, color: '#94a3b8' }}>{u.email}</div>
+                      </div>
+                    </div>
+                  </td>
+                  <td><span className={`adm-badge ${roleCfg.c}`}>{roleCfg.l}</span></td>
+                  <td>
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 20, background: estBloque ? '#fef2f2' : '#ecfdf5', color: estBloque ? '#991b1b' : '#065f46', border: `1px solid ${estBloque ? '#fca5a5' : '#6ee7b7'}` }}>
+                      {estBloque ? '🚫 Bloqué' : '✓ Actif'}
+                    </span>
+                  </td>
+                  <td style={{ fontSize: 12, color: '#64748b', maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {u.raison_blocage || <span style={{ color: '#e2e8f0' }}>—</span>}
+                  </td>
+                  <td style={{ fontSize: 12, color: '#94a3b8', whiteSpace: 'nowrap' }}>
+                    {u.created_at ? new Date(u.created_at).toLocaleDateString('fr-FR') : '—'}
+                  </td>
+                  <td>
+                    {u.role !== 'admin' && (
+                      estBloque ? (
+                        <button className="adm-btn adm-btn-success adm-btn-sm" onClick={() => handleDebloquer(u.id)}>✓ Débloquer</button>
+                      ) : (
+                        <button className="adm-btn adm-btn-danger adm-btn-sm" onClick={() => { setRaisonBlocage(''); setBloquerModal(u); }}>🚫 Bloquer</button>
+                      )
+                    )}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+
+      {/* ── Modal blocage ── */}
+      {bloquerModal && (
+        <ConfirmModal
+          title={`🚫 Bloquer ${bloquerModal.prenom} ${bloquerModal.nom}`}
+          confirmLabel={saving ? 'Blocage...' : '🚫 Confirmer le blocage'}
+          confirmClass="adm-btn-danger"
+          onConfirm={handleBloquer}
+          onCancel={() => setBloquerModal(null)}
+        >
+          <label className="adm-label">
+            Raison du blocage <span style={{ color: '#94a3b8', fontWeight: 400 }}>(communiquée à l'utilisateur à sa prochaine connexion)</span>
+          </label>
+          <textarea
+            autoFocus
+            className="adm-input adm-textarea"
+            placeholder="Ex: Non-respect des CGU, comportement inapproprié..."
+            value={raisonBlocage}
+            onChange={e => setRaisonBlocage(e.target.value)}
+          />
+          <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 8 }}>
+            ⚠️ L'utilisateur ne pourra plus se connecter et verra cette raison affichée.
+          </div>
+        </ConfirmModal>
+      )}
+    </div>
+  );
+}
+
+// ─── OVERVIEW TAB ─────────────────────────────────────────────────────────────
+function OverviewTab({ stats, allProfs, demandes, counts, onTabChange, onViewProf, chartData }) {
+  const pendingProfs = allProfs.filter(p => p.statut_validation === 'en_attente');
+  const demandesPending = demandes.filter(d => d.statut === 'en_attente').length;
+  const valides = allProfs.filter(p => p.statut_validation === 'validé');
+  const topProfs = [
+    ...valides.filter(p => parseFloat(p.note_moyenne || 0) > 0).sort((a, b) => parseFloat(b.note_moyenne) - parseFloat(a.note_moyenne)),
+    ...valides.filter(p => !parseFloat(p.note_moyenne || 0))
+  ].slice(0, 5);
+  const { reservations_par_mois = [] } = chartData;
+  const totalResa = reservations_par_mois.reduce((a, b) => a + (b.total || 0), 0);
+  const pctMois = stats.total_reservations > 0 ? Math.min(100, Math.round(((stats.reservations_mois || 0) / stats.total_reservations) * 100)) : 0;
+  const activiteKpis = [
+    { icon: '📅', val: stats.reservations_mois || 0, lbl: 'Réservations ce mois', color: '#3b82f6', bg: '#eff6ff' },
+    { icon: '👨‍🏫', val: valides.length, lbl: 'Formateurs actifs', color: '#10b981', bg: '#ecfdf5' },
+    { icon: '👥', val: stats.total_users || 0, lbl: 'Utilisateurs', color: '#8b5cf6', bg: '#f5f3ff' },
+    { icon: '📊', val: stats.total_reservations || 0, lbl: 'Total réservations', color: '#f59e0b', bg: '#fffbeb' },
+  ];
+  const medals = ['🥇', '🥈', '🥉', '4️⃣', '5️⃣'];
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+      {(pendingProfs.length > 0 || demandesPending > 0) && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {pendingProfs.length > 0 && (
+            <div className="adm-alert adm-alert-amber" onClick={() => onTabChange('profs')}>
+              <div style={{ width: 38, height: 38, borderRadius: 10, background: 'rgba(245,158,11,.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, flexShrink: 0 }}>🔔</div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontFamily: 'Cabinet Grotesk,sans-serif', fontWeight: 800, fontSize: 13, color: '#b45309' }}>{pendingProfs.length} formateur{pendingProfs.length > 1 ? 's' : ''} en attente de validation</div>
+                <div style={{ fontSize: 12, color: '#92400e', marginTop: 2 }}>Répondez rapidement pour ne pas bloquer leur activité</div>
               </div>
-              <span style={{fontSize:12,fontWeight:700,color:'#b45309',whiteSpace:'nowrap'}}>Traiter →</span>
+              <span style={{ fontSize: 12, fontWeight: 700, color: '#b45309', whiteSpace: 'nowrap' }}>Traiter →</span>
             </div>
           )}
-          {demandesPending>0&&(
-            <div className="adm-alert adm-alert-red" onClick={()=>onTabChange('demandes')}>
-              <div style={{width:38,height:38,borderRadius:10,background:'rgba(239,68,68,.12)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:18,flexShrink:0}}>💡</div>
-              <div style={{flex:1}}>
-                <div style={{fontFamily:'Cabinet Grotesk,sans-serif',fontWeight:800,fontSize:13,color:'#9f1239'}}>{demandesPending} demande{demandesPending>1?'s':''} de matière en attente</div>
-                <div style={{fontSize:12,color:'#881337',marginTop:2}}>Des formateurs souhaitent enseigner de nouvelles matières</div>
+          {demandesPending > 0 && (
+            <div className="adm-alert adm-alert-red" onClick={() => onTabChange('demandes')}>
+              <div style={{ width: 38, height: 38, borderRadius: 10, background: 'rgba(239,68,68,.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, flexShrink: 0 }}>💡</div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontFamily: 'Cabinet Grotesk,sans-serif', fontWeight: 800, fontSize: 13, color: '#9f1239' }}>{demandesPending} demande{demandesPending > 1 ? 's' : ''} de matière en attente</div>
+                <div style={{ fontSize: 12, color: '#881337', marginTop: 2 }}>Des formateurs souhaitent enseigner de nouvelles matières</div>
               </div>
-              <span style={{fontSize:12,fontWeight:700,color:'#dc2626',whiteSpace:'nowrap'}}>Voir →</span>
+              <span style={{ fontSize: 12, fontWeight: 700, color: '#dc2626', whiteSpace: 'nowrap' }}>Voir →</span>
             </div>
           )}
         </div>
       )}
 
-      {/* ── Ligne 1 : Graphe réservations (pleine largeur) ── */}
-      <div className="adm-chart-card adm-fadeUp" style={{animationDelay:'.05s'}}>
-        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:16,flexWrap:'wrap',gap:10}}>
+      <div className="adm-chart-card adm-fadeUp" style={{ animationDelay: '.05s' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 10 }}>
           <div>
-            <div className="adm-section-title" style={{marginBottom:3}}>
-              <div className="adm-section-title-bar"/>
+            <div className="adm-section-title" style={{ marginBottom: 3 }}>
+              <div className="adm-section-title-bar" />
               <h3>Évolution des réservations</h3>
             </div>
-            <div style={{paddingLeft:11,fontSize:12,color:'#94a3b8'}}>{totalResa} réservation{totalResa!==1?'s':''} au total</div>
+            <div style={{ paddingLeft: 11, fontSize: 12, color: '#94a3b8' }}>{totalResa} réservation{totalResa !== 1 ? 's' : ''} au total</div>
           </div>
-          <button className="adm-btn adm-btn-ghost adm-btn-sm" onClick={()=>onTabChange('analytiques')}>
-            Voir l'analyse complète →
-          </button>
+          <button className="adm-btn adm-btn-ghost adm-btn-sm" onClick={() => onTabChange('analytiques')}>Voir l'analyse complète →</button>
         </div>
-        {reservations_par_mois.length>0
-          ?<div className="adm-canvas-wrap"><ChartLine data={reservations_par_mois}/></div>
-          :<EmptyState icon="📈" title="Aucune réservation encore" sub="Les données apparaîtront dès les premières réservations"/>
-        }
+        {reservations_par_mois.length > 0 ? <div className="adm-canvas-wrap"><ChartLine data={reservations_par_mois} /></div> : <EmptyState icon="📈" title="Aucune réservation encore" sub="Les données apparaîtront dès les premières réservations" />}
       </div>
 
-      {/* ── Ligne 2 : Top formateurs + Activité ── */}
-      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:20}}>
-
-        {/* Top formateurs */}
-        <div className="adm-chart-card adm-fadeUp" style={{animationDelay:'.1s'}}>
-          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:16}}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+        <div className="adm-chart-card adm-fadeUp" style={{ animationDelay: '.1s' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
             <div>
-              <div className="adm-section-title" style={{marginBottom:3}}>
-                <div className="adm-section-title-bar"/>
-                <h3>Top Formateurs</h3>
-              </div>
-              <div style={{paddingLeft:11,fontSize:12,color:'#94a3b8'}}>{valides.length} formateur{valides.length!==1?'s':''} actif{valides.length!==1?'s':''}</div>
+              <div className="adm-section-title" style={{ marginBottom: 3 }}><div className="adm-section-title-bar" /><h3>Top Formateurs</h3></div>
+              <div style={{ paddingLeft: 11, fontSize: 12, color: '#94a3b8' }}>{valides.length} formateur{valides.length !== 1 ? 's' : ''} actif{valides.length !== 1 ? 's' : ''}</div>
             </div>
-            <button className="adm-btn adm-btn-ghost adm-btn-sm" onClick={()=>onTabChange('profs')}>Voir tous</button>
+            <button className="adm-btn adm-btn-ghost adm-btn-sm" onClick={() => onTabChange('profs')}>Voir tous</button>
           </div>
-
-          {topProfs.length>0 ? (
-            <div style={{display:'flex',flexDirection:'column',gap:3}}>
-              {topProfs.map((p,i)=>{
-                const nm   = `${p.user_prenom||''} ${p.user_nom||''}`.trim();
-                const note = parseFloat(p.note_moyenne||0);
-                const mats = p.tarifs_matieres ? [...new Set(p.tarifs_matieres.map(t=>t.nom_matiere))].slice(0,2) : [];
-                const initials = nm.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);
-                const pals=[['#00153D','#1E3A8A'],['#065F46','#047857'],['#4C1D95','#6D28D9'],['#7C2D12','#B45309']];
-                const [a,b]=pals[nm.charCodeAt(0)%pals.length];
+          {topProfs.length > 0 ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+              {topProfs.map((p, i) => {
+                const nm = `${p.user_prenom || ''} ${p.user_nom || ''}`.trim();
+                const note = parseFloat(p.note_moyenne || 0);
+                const mats = p.tarifs_matieres ? [...new Set(p.tarifs_matieres.map(t => t.nom_matiere))].slice(0, 2) : [];
+                const initials = nm.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
+                const pals = [['#00153D', '#1E3A8A'], ['#065F46', '#047857'], ['#4C1D95', '#6D28D9'], ['#7C2D12', '#B45309']];
+                const [a, b] = pals[nm.charCodeAt(0) % pals.length];
                 return (
-                  <div key={p.id} className="adm-top-row" onClick={()=>onViewProf(p)}>
-                    <span style={{fontSize:16,width:26,textAlign:'center',flexShrink:0}}>{medals[i]}</span>
-                    <div style={{width:34,height:34,borderRadius:10,background:`linear-gradient(135deg,${a},${b})`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:11,fontWeight:900,color:'#fff',flexShrink:0,fontFamily:'Cabinet Grotesk,sans-serif',overflow:'hidden'}}>
-                      {p.photo_url?<img src={`http://localhost:8001${p.photo_url}`} style={{width:'100%',height:'100%',objectFit:'cover'}} alt=""/>:initials}
+                  <div key={p.id} className="adm-top-row" onClick={() => onViewProf(p)}>
+                    <span style={{ fontSize: 16, width: 26, textAlign: 'center', flexShrink: 0 }}>{medals[i]}</span>
+                    <div style={{ width: 34, height: 34, borderRadius: 10, background: `linear-gradient(135deg,${a},${b})`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 900, color: '#fff', flexShrink: 0, fontFamily: 'Cabinet Grotesk,sans-serif', overflow: 'hidden' }}>
+                      {p.photo_url ? <img src={`http://localhost:8001${p.photo_url}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="" /> : initials}
                     </div>
-                    <div style={{flex:1,minWidth:0}}>
-                      <div style={{fontFamily:'Cabinet Grotesk,sans-serif',fontWeight:800,fontSize:13,color:'#0F172A',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{nm}</div>
-                      <div style={{fontSize:11,color:'#94a3b8',marginTop:1}}>{mats.length>0?mats.join(' · '):'Aucune matière'}</div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontFamily: 'Cabinet Grotesk,sans-serif', fontWeight: 800, fontSize: 13, color: '#0F172A', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{nm}</div>
+                      <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 1 }}>{mats.length > 0 ? mats.join(' · ') : 'Aucune matière'}</div>
                     </div>
-                    <div style={{textAlign:'right',flexShrink:0}}>
-                      {note>0
-                        ?<><div style={{fontSize:13,fontWeight:800,color:'#f59e0b',fontFamily:'Cabinet Grotesk,sans-serif'}}>⭐ {note.toFixed(1)}</div><div style={{fontSize:10,color:'#94a3b8'}}>{p.nb_avis} avis</div></>
-                        :<span className="adm-badge adm-badge-blue" style={{fontSize:10}}>Nouveau ✨</span>
-                      }
+                    <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                      {note > 0 ? <><div style={{ fontSize: 13, fontWeight: 800, color: '#f59e0b', fontFamily: 'Cabinet Grotesk,sans-serif' }}>⭐ {note.toFixed(1)}</div><div style={{ fontSize: 10, color: '#94a3b8' }}>{p.nb_avis} avis</div></> : <span className="adm-badge adm-badge-blue" style={{ fontSize: 10 }}>Nouveau ✨</span>}
                     </div>
                   </div>
                 );
               })}
             </div>
-          ) : (
-            <EmptyState icon="👨‍🏫" title="Aucun formateur validé"/>
-          )}
+          ) : <EmptyState icon="👨‍🏫" title="Aucun formateur validé" />}
         </div>
 
-        {/* Activité de la plateforme */}
-        <div className="adm-chart-card adm-fadeUp" style={{animationDelay:'.15s'}}>
-          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:16}}>
-            <div>
-              <div className="adm-section-title" style={{marginBottom:3}}>
-                <div className="adm-section-title-bar"/>
-                <h3>Activité de la plateforme</h3>
-              </div>
-              <div style={{paddingLeft:11,fontSize:12,color:'#94a3b8'}}>{new Date().toLocaleDateString('fr-FR',{month:'long',year:'numeric'})}</div>
-            </div>
+        <div className="adm-chart-card adm-fadeUp" style={{ animationDelay: '.15s' }}>
+          <div style={{ marginBottom: 16 }}>
+            <div className="adm-section-title" style={{ marginBottom: 3 }}><div className="adm-section-title-bar" /><h3>Activité de la plateforme</h3></div>
+            <div style={{ paddingLeft: 11, fontSize: 12, color: '#94a3b8' }}>{new Date().toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })}</div>
           </div>
-
-          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:14}}>
-            {activiteKpis.map(s=>(
-              <div key={s.lbl} style={{background:s.bg,borderRadius:14,padding:'14px 16px',border:`1.5px solid ${s.color}22`}}>
-                <div style={{fontSize:20,marginBottom:6}}>{s.icon}</div>
-                <div style={{fontFamily:'Cabinet Grotesk,sans-serif',fontSize:24,fontWeight:900,color:s.color,lineHeight:1,marginBottom:3}}>{s.val}</div>
-                <div style={{fontSize:11,color:s.color,opacity:.75,fontWeight:600}}>{s.lbl}</div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 14 }}>
+            {activiteKpis.map(s => (
+              <div key={s.lbl} style={{ background: s.bg, borderRadius: 14, padding: '14px 16px', border: `1.5px solid ${s.color}22` }}>
+                <div style={{ fontSize: 20, marginBottom: 6 }}>{s.icon}</div>
+                <div style={{ fontFamily: 'Cabinet Grotesk,sans-serif', fontSize: 24, fontWeight: 900, color: s.color, lineHeight: 1, marginBottom: 3 }}>{s.val}</div>
+                <div style={{ fontSize: 11, color: s.color, opacity: .75, fontWeight: 600 }}>{s.lbl}</div>
               </div>
             ))}
           </div>
-
-          {stats.total_reservations>0&&(
-            <div style={{padding:'12px 14px',background:'#f8fafc',borderRadius:12,border:'1.5px solid #f1f5f9'}}>
-              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:8}}>
-                <span style={{fontSize:12,fontWeight:600,color:'#0F172A'}}>Ce mois / total</span>
-                <span style={{fontFamily:'Cabinet Grotesk,sans-serif',fontWeight:800,fontSize:12,color:'#3b82f6'}}>{stats.reservations_mois||0} / {stats.total_reservations}</span>
+          {stats.total_reservations > 0 && (
+            <div style={{ padding: '12px 14px', background: '#f8fafc', borderRadius: 12, border: '1.5px solid #f1f5f9' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                <span style={{ fontSize: 12, fontWeight: 600, color: '#0F172A' }}>Ce mois / total</span>
+                <span style={{ fontFamily: 'Cabinet Grotesk,sans-serif', fontWeight: 800, fontSize: 12, color: '#3b82f6' }}>{stats.reservations_mois || 0} / {stats.total_reservations}</span>
               </div>
-              <div className="adm-bar-track">
-                <div className="adm-bar-fill" style={{width:`${pctMois}%`,background:'linear-gradient(90deg,#3b82f6,#60a5fa)'}}/>
-              </div>
-              <div style={{fontSize:11,color:'#94a3b8',marginTop:5}}>{pctMois}% de l'activité réalisée ce mois</div>
+              <div className="adm-bar-track"><div className="adm-bar-fill" style={{ width: `${pctMois}%`, background: 'linear-gradient(90deg,#3b82f6,#60a5fa)' }} /></div>
+              <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 5 }}>{pctMois}% de l'activité réalisée ce mois</div>
             </div>
           )}
         </div>
       </div>
-
     </div>
   );
 }
 
-function AnalytiquesTab({ stats, allProfs, chartData, onTabChange }) {
-  const [domainIdx,  setDomainIdx]  = useState(0);
-  const [metric,     setMetric]     = useState('nb_profs');
-  const [viewMode,   setViewMode]   = useState('matiere'); // 'matiere' | 'niveau'
-  const [expandedNiv,setExpandedNiv]= useState({});
+// ─── ANALYTIQUES TAB (complet, identique à l'original) ───────────────────────
+function TableauBI({ data }) {
+  const deduped = useMemo(() => {
+    const map = {};
+    data.forEach(m => {
+      const key = (m.label || '').toLowerCase().trim();
+      if (!map[key]) map[key] = { label: m.label, nb_profs: 0, nb_resa: 0 };
+      map[key].nb_profs += (m.nb_profs || 0);
+      map[key].nb_resa += (m.nb_resa || 0);
+    });
+    return Object.values(map).sort((a, b) => b.nb_profs !== a.nb_profs ? b.nb_profs - a.nb_profs : b.nb_resa - a.nb_resa);
+  }, [data]);
+  const maxResa = Math.max(...deduped.map(d => d.nb_resa || 0), 1);
+  const getSat = (p, r) => {
+    if (p === 0) return { l: 'Sans prof', c: '#94a3b8', bg: '#f1f5f9', dot: '#cbd5e1' };
+    if (r === 0) return { l: 'Peu demandée', c: '#64748b', bg: '#f8fafc', dot: '#94a3b8' };
+    if (r / p > 1.5) return { l: 'Forte demande', c: '#dc2626', bg: '#fef2f2', dot: '#ef4444' };
+    if (r / p > 0.5) return { l: 'Bonne activité', c: '#059669', bg: '#ecfdf5', dot: '#10b981' };
+    return { l: 'Démarrage', c: '#d97706', bg: '#fffbeb', dot: '#f59e0b' };
+  };
+  return (
+    <div style={{ overflowX: 'auto', borderRadius: 16, border: '1.5px solid #f1f5f9' }}>
+      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+        <thead>
+          <tr style={{ background: '#f8fafc' }}>
+            {['#', 'Matière', 'Formateurs', 'Réservations', 'Taux', 'Statut'].map((h, i) => (
+              <th key={i} style={{ padding: '10px 14px', textAlign: i > 1 ? 'center' : 'left', fontSize: 10, fontWeight: 800, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '.08em', whiteSpace: 'nowrap', borderBottom: '1.5px solid #f1f5f9' }}>{h}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {deduped.map((m, i) => {
+            const r = m.nb_resa || 0, p = m.nb_profs || 0, sat = getSat(p, r);
+            const pct = maxResa > 0 ? Math.round((r / maxResa) * 100) : 0;
+            const taux = p > 0 ? (r / p).toFixed(1) : null;
+            return (
+              <tr key={i} style={{ borderBottom: i < deduped.length - 1 ? '1px solid #f1f5f9' : 'none', transition: 'background .12s' }} onMouseEnter={e => e.currentTarget.style.background = '#f8fafc'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                <td style={{ padding: '12px 14px', color: '#cbd5e1', fontSize: 12, fontWeight: 700 }}>{i + 1}</td>
+                <td style={{ padding: '12px 14px' }}><div style={{ fontFamily: 'Cabinet Grotesk,sans-serif', fontWeight: 800, fontSize: 13, color: '#0F172A' }}>{m.label}</div></td>
+                <td style={{ padding: '12px 14px', textAlign: 'center' }}><span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 32, height: 32, borderRadius: 10, background: p > 0 ? '#ecfdf5' : '#f1f5f9', color: p > 0 ? '#059669' : '#94a3b8', fontFamily: 'Cabinet Grotesk,sans-serif', fontWeight: 900, fontSize: 15 }}>{p}</span></td>
+                <td style={{ padding: '12px 14px', textAlign: 'center' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'center' }}>
+                    <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 32, height: 32, borderRadius: 10, background: r > 0 ? '#eff6ff' : '#f1f5f9', color: r > 0 ? '#3b82f6' : '#94a3b8', fontFamily: 'Cabinet Grotesk,sans-serif', fontWeight: 900, fontSize: 15 }}>{r}</span>
+                    <div style={{ width: 56, height: 5, background: '#e2e8f0', borderRadius: 3, overflow: 'hidden' }}><div style={{ width: pct + '%', height: '100%', background: '#3b82f6', borderRadius: 3, transition: 'width .6s ease' }} /></div>
+                  </div>
+                </td>
+                <td style={{ padding: '12px 14px', textAlign: 'center' }}>{taux ? <span style={{ fontFamily: 'Cabinet Grotesk,sans-serif', fontWeight: 800, fontSize: 13, color: parseFloat(taux) > 1 ? '#059669' : parseFloat(taux) > 0.5 ? '#d97706' : '#94a3b8' }}>{taux}</span> : <span style={{ color: '#e2e8f0', fontSize: 16 }}>—</span>}</td>
+                <td style={{ padding: '12px 14px', textAlign: 'center' }}><span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 11, fontWeight: 700, padding: '4px 10px', borderRadius: 20, background: sat.bg, color: sat.c, whiteSpace: 'nowrap', border: `1.5px solid ${sat.dot}44` }}><span style={{ width: 6, height: 6, borderRadius: '50%', background: sat.dot, flexShrink: 0 }} />{sat.l}</span></td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
+}
 
-  const {
-    reservations_par_mois=[],
-    reservations_par_jour=[],
-    matieres_par_domaine=[],
-    modes_enseignement=[],
-    statut_profs=[],
-    par_niveau=[],
-    entonnoir={},
-    performance_profs=[],
-  } = chartData;
 
-  const totalResa = reservations_par_mois.reduce((a,b)=>a+(b.total||0),0);
-  const nbValides = statut_profs.find(s=>s.label==='Validés')?.val||0;
-  const totalP    = statut_profs.reduce((a,b)=>a+(b.val||0),0);
-  const tauxValid = totalP>0?Math.round((nbValides/totalP)*100):0;
-  const modesF    = modes_enseignement.filter(m=>(m.val||0)>0);
-  const domActif  = matieres_par_domaine[domainIdx]||null;
-  const niveauxDomActif = par_niveau[domainIdx]||par_niveau.find(d=>d.domaine===domActif?.domaine)||null;
+/* ── PieChartSVG : graphique camembert SVG inline ── */
+function PieChartSVG({ data, size = 180 }) {
+  const total = data.reduce((s, d) => s + (d.val || 0), 0);
+  if (total === 0) return <div style={{ textAlign:'center', color:'#94a3b8', fontSize:13, padding:24 }}>Aucune donnée</div>;
+  const cx = size / 2, cy = size / 2, r = size / 2 - 12;
+  let startAngle = -Math.PI / 2;
+  const slices = data.map(d => {
+    const angle = (d.val / total) * 2 * Math.PI;
+    const x1 = cx + r * Math.cos(startAngle);
+    const y1 = cy + r * Math.sin(startAngle);
+    startAngle += angle;
+    const x2 = cx + r * Math.cos(startAngle);
+    const y2 = cy + r * Math.sin(startAngle);
+    const large = angle > Math.PI ? 1 : 0;
+    return { ...d, x1, y1, x2, y2, large, startAngle: startAngle - angle, angle };
+  });
+  return (
+    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} style={{ display:'block', margin:'0 auto' }}>
+      {slices.map((s, i) => (
+        <path key={i}
+          d={`M ${cx} ${cy} L ${s.x1} ${s.y1} A ${r} ${r} 0 ${s.large} 1 ${s.x2} ${s.y2} Z`}
+          fill={s.color} stroke="#fff" strokeWidth={2}
+          style={{ transition:'opacity .2s' }}
+          onMouseEnter={e => e.target.style.opacity='.8'}
+          onMouseLeave={e => e.target.style.opacity='1'}
+        />
+      ))}
+      <circle cx={cx} cy={cy} r={r * 0.52} fill="#fff" />
+      <text x={cx} y={cy - 6} textAnchor="middle" fontSize={20} fontWeight={900} fill="#0F172A">{total}</text>
+      <text x={cx} y={cy + 12} textAnchor="middle" fontSize={10} fontWeight={600} fill="#94a3b8">TOTAL</text>
+    </svg>
+  );
+}
 
-  const STATUT_FIXED  = [{label:'Validés',color:'#10b981'},{label:'En attente',color:'#f59e0b'},{label:'Refusés',color:'#ef4444'}];
-  const statutData    = STATUT_FIXED.map(s=>({label:s.label,val:statut_profs.find(r=>r.label===s.label)?.val??0}));
-  const hasStatut     = statutData.some(s=>s.val>0);
-  const statutColors  = STATUT_FIXED.map(s=>s.color);
+/* ── LineChartSVG : graphique courbe SVG inline ── */
+function LineChartSVG({ data, color = '#3b82f6' }) {
+  if (!data || data.length === 0) return <div style={{ textAlign:'center', color:'#94a3b8', fontSize:13, padding:24 }}>Aucune donnée</div>;
+  const W = 420, H = 140, padL = 36, padR = 16, padT = 16, padB = 32;
+  const maxVal = Math.max(...data.map(d => d.val || 0), 1);
+  const pts = data.map((d, i) => ({
+    x: padL + (i / Math.max(data.length - 1, 1)) * (W - padL - padR),
+    y: padT + (1 - (d.val || 0) / maxVal) * (H - padT - padB),
+    ...d,
+  }));
+  const pathD = pts.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ');
+  const areaD = `${pathD} L ${pts[pts.length-1].x} ${H-padB} L ${pts[0].x} ${H-padB} Z`;
+  return (
+    <svg width="100%" viewBox={`0 0 ${W} ${H}`} style={{ overflow:'visible' }}>
+      <defs>
+        <linearGradient id="lgSig" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor={color} stopOpacity={0.18} />
+          <stop offset="100%" stopColor={color} stopOpacity={0} />
+        </linearGradient>
+      </defs>
+      {/* Grille horizontale */}
+      {[0,.25,.5,.75,1].map((t, i) => (
+        <line key={i} x1={padL} x2={W-padR} y1={padT + t*(H-padT-padB)} y2={padT + t*(H-padT-padB)} stroke="#f1f5f9" strokeWidth={1} />
+      ))}
+      {/* Aire */}
+      <path d={areaD} fill="url(#lgSig)" />
+      {/* Courbe */}
+      <path d={pathD} fill="none" stroke={color} strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" />
+      {/* Points */}
+      {pts.map((p, i) => (
+        <circle key={i} cx={p.x} cy={p.y} r={4} fill="#fff" stroke={color} strokeWidth={2.5}>
+          <title>{p.label} : {p.val}</title>
+        </circle>
+      ))}
+      {/* Labels X */}
+      {pts.filter((_, i) => data.length <= 8 || i % Math.ceil(data.length/8) === 0).map((p, i) => (
+        <text key={i} x={p.x} y={H-padB+14} textAnchor="middle" fontSize={9} fill="#94a3b8" fontWeight={600}>{p.label}</text>
+      ))}
+      {/* Labels Y max/min */}
+      <text x={padL-4} y={padT+4} textAnchor="end" fontSize={9} fill="#94a3b8">{maxVal}</text>
+      <text x={padL-4} y={H-padB} textAnchor="end" fontSize={9} fill="#94a3b8">0</text>
+    </svg>
+  );
+}
 
-  // Données matières dédupliquées
+function AnalytiquesTab({ stats, allProfs, chartData, onTabChange, signalements = [], users = [] }) {
+  const [domainIdx, setDomainIdx] = useState(0);
+  const [metric, setMetric] = useState('nb_profs');
+  const [viewMode, setViewMode] = useState('matiere');
+  const [expandedNiv, setExpandedNiv] = useState({});
+  const { reservations_par_mois = [], reservations_par_jour = [], matieres_par_domaine = [], modes_enseignement = [], statut_profs = [], par_niveau = [], entonnoir = {}, performance_profs = [] } = chartData;
+  const totalResa = reservations_par_mois.reduce((a, b) => a + (b.total || 0), 0);
+  const nbValides = statut_profs.find(s => s.label === 'Validés')?.val || 0;
+  const totalP = statut_profs.reduce((a, b) => a + (b.val || 0), 0);
+  const tauxValid = totalP > 0 ? Math.round((nbValides / totalP) * 100) : 0;
+  const modesF = modes_enseignement.filter(m => (m.val || 0) > 0);
+  const domActif = matieres_par_domaine[domainIdx] || null;
+  const niveauxDomActif = par_niveau[domainIdx] || par_niveau.find(d => d.domaine === domActif?.domaine) || null;
+  const STATUT_FIXED = [{ label: 'Validés', color: '#10b981' }, { label: 'En attente', color: '#f59e0b' }, { label: 'Refusés', color: '#ef4444' }];
+  const statutData = STATUT_FIXED.map(s => ({ label: s.label, val: statut_profs.find(r => r.label === s.label)?.val ?? 0 }));
+  const hasStatut = statutData.some(s => s.val > 0);
+  const statutColors = STATUT_FIXED.map(s => s.color);
   const matiereData = useMemo(() => {
     if (!domActif?.matieres?.length) return [];
     const map = {};
     domActif.matieres.forEach(m => {
-      const key = (m.matiere||m.nom||'').toLowerCase().trim();
+      const key = (m.matiere || m.nom || '').toLowerCase().trim();
       if (!key) return;
-      if (!map[key]) map[key] = { label: m.matiere||m.nom||'', nb_profs:0, nb_resa:0 };
-      map[key].nb_profs = Math.max(map[key].nb_profs, m.nb_profs||0);
-      map[key].nb_resa += (m.nb_resa||0);
+      if (!map[key]) map[key] = { label: m.matiere || m.nom || '', nb_profs: 0, nb_resa: 0 };
+      map[key].nb_profs = Math.max(map[key].nb_profs, m.nb_profs || 0);
+      map[key].nb_resa += (m.nb_resa || 0);
     });
-    return Object.values(map).map(m => ({
-      ...m, val: metric==='nb_resa' ? m.nb_resa : m.nb_profs,
-    })).sort((a,b) => b.val - a.val || b.nb_profs - a.nb_profs);
+    return Object.values(map).map(m => ({ ...m, val: metric === 'nb_resa' ? m.nb_resa : m.nb_profs })).sort((a, b) => b.val - a.val || b.nb_profs - a.nb_profs);
   }, [domActif, metric]);
-
-  // KPIs globaux analytiques
   const kpis = [
-    {icon:'📊', label:'Total réservations', val:totalResa||stats.total_reservations||0,                                              color:'#3b82f6', bg:'#eff6ff'},
-    {icon:'📅', label:'Ce mois',            val:stats.reservations_mois||reservations_par_mois.at(-1)?.total||0,                     color:'#10b981', bg:'#ecfdf5'},
-    {icon:'✅', label:'Taux validation',    val:tauxValid>0?`${tauxValid}%`:(stats.total_professeurs>0?`${Math.round(stats.total_professeurs/(stats.total_professeurs+(stats.en_attente||0)+(stats.refuses||0)||1)*100)}%`:'—'), color:'#8b5cf6', bg:'#f5f3ff'},
-    {icon:'⏳', label:'En attente valid.',   val:statutData.find(s=>s.label==='En attente')?.val||stats.en_attente||0,                color:'#f59e0b', bg:'#fffbeb'},
+    { icon: '📊', label: 'Total réservations', val: totalResa || stats.total_reservations || 0, color: '#3b82f6', bg: '#eff6ff' },
+    { icon: '📅', label: 'Ce mois', val: stats.reservations_mois || reservations_par_mois.at(-1)?.total || 0, color: '#10b981', bg: '#ecfdf5' },
+    { icon: '✅', label: 'Taux validation', val: tauxValid > 0 ? `${tauxValid}%` : '—', color: '#8b5cf6', bg: '#f5f3ff' },
+    { icon: '⏳', label: 'En attente valid.', val: statutData.find(s => s.label === 'En attente')?.val || stats.en_attente || 0, color: '#f59e0b', bg: '#fffbeb' },
   ];
 
-  // Composant Vue Niveau
   const VueParNiveau = () => {
-    if (!niveauxDomActif?.niveaux?.length) return (
-      <div style={{padding:'48px 20px',textAlign:'center',color:'#94a3b8'}}>
-        <div style={{fontSize:40,marginBottom:12}}>📂</div>
-        <div style={{fontFamily:'Cabinet Grotesk,sans-serif',fontWeight:800,fontSize:15,color:'#0F172A',marginBottom:5}}>Aucun niveau configuré</div>
-        <div style={{fontSize:13}}>Ajoutez des niveaux dans le Référentiel</div>
-      </div>
-    );
-
+    if (!niveauxDomActif?.niveaux?.length) return <div style={{ padding: '48px 20px', textAlign: 'center', color: '#94a3b8' }}><div style={{ fontSize: 40, marginBottom: 12 }}>📂</div><div style={{ fontFamily: 'Cabinet Grotesk,sans-serif', fontWeight: 800, fontSize: 15, color: '#0F172A', marginBottom: 5 }}>Aucun niveau configuré</div></div>;
     return (
-      <div style={{display:'flex',flexDirection:'column',gap:12}}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
         {niveauxDomActif.niveaux.map((niv, ni) => {
-          const isOpen = expandedNiv[ni] === true;  // fermé par défaut, ouvert si cliqué
-          const totalR = niv.total_resa || niv.matieres.reduce((a,m)=>a+(m.nb_resa||0),0);
-          const totalP2 = niv.total_profs || niv.matieres.reduce((a,m)=>a+(m.nb_profs||0),0);
+          const isOpen = expandedNiv[ni] === true;
+          const totalR = niv.total_resa || niv.matieres.reduce((a, m) => a + (m.nb_resa || 0), 0);
+          const totalP2 = niv.total_profs || niv.matieres.reduce((a, m) => a + (m.nb_profs || 0), 0);
           const hasActivity = totalR > 0 || totalP2 > 0;
-
           return (
-            <div key={ni} style={{border:`1.5px solid ${hasActivity?'#bfdbfe':'#f1f5f9'}`,borderRadius:18,overflow:'hidden',transition:'all .2s'}}>
-              {/* Header niveau */}
-              <div
-                onClick={()=>setExpandedNiv(p=>({...p,[ni]:!isOpen}))}
-                style={{
-                  display:'flex',alignItems:'center',gap:14,padding:'14px 20px',
-                  background:hasActivity?'linear-gradient(135deg,#eff6ff,#f0fdf4)':'#fafbfc',
-                  cursor:'pointer',transition:'background .18s',
-                }}
-              >
-                <div style={{
-                  width:42,height:42,borderRadius:13,flexShrink:0,
-                  background:hasActivity?'linear-gradient(135deg,#3b82f6,#10b981)':'#e2e8f0',
-                  display:'flex',alignItems:'center',justifyContent:'center',
-                  fontSize:18,boxShadow:hasActivity?'0 3px 10px rgba(59,130,246,.2)':'none'
-                }}>🎓</div>
-                <div style={{flex:1}}>
-                  <div style={{fontFamily:'Cabinet Grotesk,sans-serif',fontWeight:900,fontSize:15,color:'#0F172A',letterSpacing:'-.01em'}}>{niv.niveau}</div>
-                  <div style={{display:'flex',gap:14,marginTop:4,fontSize:12,color:'#64748b',fontWeight:500}}>
-                    <span>📚 {niv.matieres.length} matière{niv.matieres.length>1?'s':''}</span>
-                    <span style={{color:'#10b981',fontWeight:700}}>👨‍🏫 {totalP2} formateur{totalP2>1?'s':''}</span>
-                    {totalR>0 && <span style={{color:'#3b82f6',fontWeight:700}}>📅 {totalR} réservation{totalR>1?'s':''}</span>}
+            <div key={ni} style={{ border: `1.5px solid ${hasActivity ? '#bfdbfe' : '#f1f5f9'}`, borderRadius: 18, overflow: 'hidden', transition: 'all .2s' }}>
+              <div onClick={() => setExpandedNiv(p => ({ ...p, [ni]: !isOpen }))} style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '14px 20px', background: hasActivity ? 'linear-gradient(135deg,#eff6ff,#f0fdf4)' : '#fafbfc', cursor: 'pointer' }}>
+                <div style={{ width: 42, height: 42, borderRadius: 13, flexShrink: 0, background: hasActivity ? 'linear-gradient(135deg,#3b82f6,#10b981)' : '#e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18 }}>🎓</div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontFamily: 'Cabinet Grotesk,sans-serif', fontWeight: 900, fontSize: 15, color: '#0F172A' }}>{niv.niveau}</div>
+                  <div style={{ display: 'flex', gap: 14, marginTop: 4, fontSize: 12, color: '#64748b', fontWeight: 500 }}>
+                    <span>📚 {niv.matieres.length} matière{niv.matieres.length > 1 ? 's' : ''}</span>
+                    <span style={{ color: '#10b981', fontWeight: 700 }}>👨‍🏫 {totalP2}</span>
+                    {totalR > 0 && <span style={{ color: '#3b82f6', fontWeight: 700 }}>📅 {totalR}</span>}
                   </div>
                 </div>
-                {/* Mini barres de stats */}
-                <div style={{display:'flex',gap:10,alignItems:'center',flexShrink:0}}>
-                  <div style={{textAlign:'center'}}>
-                    <div style={{fontFamily:'Cabinet Grotesk,sans-serif',fontWeight:900,fontSize:20,color:totalP2>0?'#10b981':'#cbd5e1'}}>{totalP2}</div>
-                    <div style={{fontSize:9,color:'#94a3b8',textTransform:'uppercase',letterSpacing:'.06em'}}>profs</div>
-                  </div>
-                  <div style={{width:1,height:28,background:'#f1f5f9'}}/>
-                  <div style={{textAlign:'center'}}>
-                    <div style={{fontFamily:'Cabinet Grotesk,sans-serif',fontWeight:900,fontSize:20,color:totalR>0?'#3b82f6':'#cbd5e1'}}>{totalR}</div>
-                    <div style={{fontSize:9,color:'#94a3b8',textTransform:'uppercase',letterSpacing:'.06em'}}>résa</div>
-                  </div>
-                  <div style={{
-                    width:28,height:28,borderRadius:8,background:'#f1f5f9',
-                    display:'flex',alignItems:'center',justifyContent:'center',
-                    fontSize:12,color:'#94a3b8',marginLeft:4,transition:'transform .2s',
-                    transform:isOpen?'rotate(180deg)':'rotate(0deg)'
-                  }}>▾</div>
-                </div>
+                <div style={{ width: 28, height: 28, borderRadius: 8, background: '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, color: '#94a3b8', transition: 'transform .2s', transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)' }}>▾</div>
               </div>
-
-              {/* Matières du niveau */}
               {isOpen && (
-                <div style={{padding:'12px 20px 16px',background:'#fff'}}>
-                  {niv.matieres.length===0 ? (
-                    <div style={{textAlign:'center',padding:'16px',color:'#94a3b8',fontSize:13,fontStyle:'italic'}}>
-                      Aucune matière dans ce niveau
-                    </div>
-                  ) : (
-                    <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(220px,1fr))',gap:10}}>
-                      {niv.matieres.map((m,mi)=>{
-                        const r = m.nb_resa||0;
-                        const p = m.nb_profs||0;
-                        const sat = p===0?{c:'#94a3b8',bg:'#f1f5f9',l:'Sans prof'}
-                          : r===0?{c:'#64748b',bg:'#f8fafc',l:'Peu demandée'}
-                          : r/p>1.5?{c:'#dc2626',bg:'#fef2f2',l:'Forte demande'}
-                          : r/p>0.5?{c:'#059669',bg:'#ecfdf5',l:'Bonne activité'}
-                          : {c:'#d97706',bg:'#fffbeb',l:'Démarrage'};
-
-                        return (
-                          <div key={mi} style={{
-                            background:sat.bg,borderRadius:14,padding:'12px 14px',
-                            border:`1.5px solid ${sat.c}22`,
-                            display:'flex',flexDirection:'column',gap:7,
-                            transition:'transform .15s',cursor:'default'
-                          }}
-                            onMouseEnter={e=>e.currentTarget.style.transform='translateY(-2px)'}
-                            onMouseLeave={e=>e.currentTarget.style.transform='none'}
-                          >
-                            <div style={{fontFamily:'Cabinet Grotesk,sans-serif',fontWeight:800,fontSize:13,color:'#0F172A'}}>{m.matiere}</div>
-                            <div style={{display:'flex',gap:8,alignItems:'center'}}>
-                              <span style={{fontSize:11,fontWeight:700,color:'#10b981'}}>👨‍🏫 {p}</span>
-                              <span style={{color:'#e2e8f0'}}>·</span>
-                              <span style={{fontSize:11,fontWeight:700,color:'#3b82f6'}}>📅 {r}</span>
-                            </div>
-                            <span style={{
-                              fontSize:10,fontWeight:700,padding:'2px 8px',borderRadius:20,
-                              background:'rgba(255,255,255,.6)',color:sat.c,
-                              alignSelf:'flex-start',border:`1px solid ${sat.c}44`
-                            }}>{sat.l}</span>
-                          </div>
-                        );
+                <div style={{ padding: '12px 20px 16px', background: '#fff' }}>
+                  {niv.matieres.length === 0 ? <div style={{ textAlign: 'center', padding: '16px', color: '#94a3b8', fontSize: 13, fontStyle: 'italic' }}>Aucune matière dans ce niveau</div> : (
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(220px,1fr))', gap: 10 }}>
+                      {niv.matieres.map((m, mi) => {
+                        const r = m.nb_resa || 0, p = m.nb_profs || 0;
+                        const sat = p === 0 ? { c: '#94a3b8', bg: '#f1f5f9', l: 'Sans prof' } : r === 0 ? { c: '#64748b', bg: '#f8fafc', l: 'Peu demandée' } : r / p > 1.5 ? { c: '#dc2626', bg: '#fef2f2', l: 'Forte demande' } : r / p > 0.5 ? { c: '#059669', bg: '#ecfdf5', l: 'Bonne activité' } : { c: '#d97706', bg: '#fffbeb', l: 'Démarrage' };
+                        return (<div key={mi} style={{ background: sat.bg, borderRadius: 14, padding: '12px 14px', border: `1.5px solid ${sat.c}22`, display: 'flex', flexDirection: 'column', gap: 7 }}><div style={{ fontFamily: 'Cabinet Grotesk,sans-serif', fontWeight: 800, fontSize: 13, color: '#0F172A' }}>{m.matiere}</div><div style={{ display: 'flex', gap: 8 }}><span style={{ fontSize: 11, fontWeight: 700, color: '#10b981' }}>👨‍🏫 {p}</span><span style={{ color: '#e2e8f0' }}>·</span><span style={{ fontSize: 11, fontWeight: 700, color: '#3b82f6' }}>📅 {r}</span></div><span style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 20, background: 'rgba(255,255,255,.6)', color: sat.c, alignSelf: 'flex-start', border: `1px solid ${sat.c}44` }}>{sat.l}</span></div>);
                       })}
                     </div>
                   )}
@@ -796,420 +1260,351 @@ function AnalytiquesTab({ stats, allProfs, chartData, onTabChange }) {
   };
 
   return (
-    <div style={{display:'flex',flexDirection:'column',gap:24}}>
-
-      {/* Bouton export */}
-      <div style={{display:'flex',justifyContent:'flex-end'}}>
-        <button
-          onClick={() => exportAdminAnalytiques(stats, chartData, allProfs)}
-          style={{display:'flex',alignItems:'center',gap:7,padding:'9px 18px',background:'#00153D',color:'#fff',border:'none',borderRadius:12,cursor:'pointer',fontFamily:"'Cabinet Grotesk',sans-serif",fontWeight:800,fontSize:'.82rem',boxShadow:'0 4px 14px rgba(0,21,61,0.2)',transition:'all .18s'}}
-          onMouseEnter={e=>{e.currentTarget.style.background='#1E3A8A';e.currentTarget.style.transform='translateY(-1px)';}}
-          onMouseLeave={e=>{e.currentTarget.style.background='#00153D';e.currentTarget.style.transform='none';}}>
-          📄 Exporter rapport PDF
-        </button>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+      <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+        <button onClick={() => exportAdminAnalytiques(stats, chartData, allProfs)} style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '9px 18px', background: '#00153D', color: '#fff', border: 'none', borderRadius: 12, cursor: 'pointer', fontFamily: "'Cabinet Grotesk',sans-serif", fontWeight: 800, fontSize: '.82rem', boxShadow: '0 4px 14px rgba(0,21,61,0.2)', transition: 'all .18s' }} onMouseEnter={e => { e.currentTarget.style.background = '#1E3A8A'; e.currentTarget.style.transform = 'translateY(-1px)'; }} onMouseLeave={e => { e.currentTarget.style.background = '#00153D'; e.currentTarget.style.transform = 'none'; }}>📄 Exporter rapport PDF</button>
       </div>
-
-      {/* KPIs globaux */}
-      <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:14}}>
-        {kpis.map((k,i)=>(
-          <div key={i} className="adm-stat adm-scaleIn" style={{animationDelay:`${i*60}ms`}}>
-            <div className="adm-stat-accent" style={{background:k.color,animation:`adm-fadeUp .6s ${i*60}ms ease both`}}/>
-            <div style={{width:40,height:40,borderRadius:12,background:k.bg,display:'flex',alignItems:'center',justifyContent:'center',fontSize:18,marginBottom:14}}>{k.icon}</div>
-            <div style={{fontFamily:'Cabinet Grotesk,sans-serif',fontSize:28,fontWeight:900,color:k.color,lineHeight:1,marginBottom:5}}>{k.val}</div>
-            <div style={{fontSize:12,color:'#94a3b8',fontWeight:500}}>{k.label}</div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 14 }}>
+        {kpis.map((k, i) => (
+          <div key={i} className="adm-stat adm-scaleIn" style={{ animationDelay: `${i * 60}ms` }}>
+            <div className="adm-stat-accent" style={{ background: k.color }} />
+            <div style={{ width: 40, height: 40, borderRadius: 12, background: k.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, marginBottom: 14 }}>{k.icon}</div>
+            <div style={{ fontFamily: 'Cabinet Grotesk,sans-serif', fontSize: 28, fontWeight: 900, color: k.color, lineHeight: 1, marginBottom: 5 }}>{k.val}</div>
+            <div style={{ fontSize: 12, color: '#94a3b8', fontWeight: 500 }}>{k.label}</div>
           </div>
         ))}
       </div>
+      {/* ══════ GRAPHIQUES SIGNALEMENTS ══════ */}
+      {(() => {
+        // ── Données Doughnut ──
+        // Statut direct depuis la table signalements (source de vérité)
+        const sigNouveaux = signalements.filter(s => s.statut === 'nouveau').length;
+        const sigIgnores  = signalements.filter(s => s.statut === 'ignoré').length;
+        const sigTraites  = signalements.filter(s => s.statut === 'traité').length;
+        // Blocages = users bloqués (provenant des actions admin sur signalements)
+        const nbBloques   = (users || []).filter(u => u.statut === 'bloqué').length;
+        // Avertissements = traités qui ne sont pas des blocages
+        const nbAvertis   = Math.max(0, sigTraites - nbBloques);
+        const totalSig    = signalements.length;
 
-      {/* Graphes temporels */}
-      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:20}}>
-        <div className="adm-chart-card">
-          <SectionTitle title="Réservations par mois" sub={totalResa>0?`${totalResa} au total`:'Aucune encore'}/>
-          {reservations_par_mois.length>0?<div className="adm-canvas-wrap"><ChartLine data={reservations_par_mois}/></div>:<EmptyState icon="📈" title="Aucune donnée"/>}
-        </div>
-        <div className="adm-chart-card">
-          <SectionTitle title="Activité par jour de semaine"/>
-          {reservations_par_jour.length>0?<div className="adm-canvas-wrap"><ChartBar data={reservations_par_jour}/></div>:<EmptyState icon="📊" title="Aucune donnée"/>}
-        </div>
-      </div>
+        const doughnutData = [
+          { label: 'En attente',     val: sigNouveaux, color: '#3b82f6' },
+          { label: 'Ignorés',        val: sigIgnores,  color: '#94a3b8' },
+          { label: 'Avertissements', val: nbAvertis,   color: '#f59e0b' },
+          { label: 'Blocages',       val: nbBloques,   color: '#ef4444' },
+        ].filter(d => d.val > 0);
+        const doughnutColors = doughnutData.map(d => d.color);
 
-      {/* ═══ Section BI Matières ═══ */}
-      <div style={{background:'#fff',border:'1.5px solid #f1f5f9',borderRadius:24,padding:28,boxShadow:'0 2px 12px rgba(0,0,0,.04)'}}>
+        // ── Données évolution : regrouper par semaine si 1 seul mois, sinon par mois ──
+        const MOIS_FR = ['Jan','Fév','Mar','Avr','Mai','Jun','Jul','Aoû','Sep','Oct','Nov','Déc'];
+        const sigParMois = {};
+        signalements.forEach(s => {
+          if (!s.created_at) return;
+          const d = new Date(s.created_at);
+          const key = `${MOIS_FR[d.getMonth()]} ${d.getFullYear()}`;
+          sigParMois[key] = (sigParMois[key] || 0) + 1;
+        });
+        const moisKeys = Object.keys(sigParMois);
+        const nbMois   = moisKeys.length;
 
-        {/* Header */}
-        <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:22,flexWrap:'wrap',gap:12}}>
-          <div>
-            <div style={{display:'flex',alignItems:'center',gap:9,marginBottom:5}}>
-              <div style={{width:4,height:22,borderRadius:2,background:'linear-gradient(180deg,#3b82f6,#8b5cf6)'}}/>
-              <h3 style={{fontFamily:'Cabinet Grotesk,sans-serif',fontWeight:900,fontSize:17,color:'#0F172A',margin:0}}>
-                Analyse par matière
-                {domActif&&<span style={{fontSize:13,fontWeight:600,color:'#3b82f6',marginLeft:8}}>— {domActif.domaine}</span>}
-              </h3>
+        // Si 1 seul mois → regrouper par semaine du mois
+        let chartMode = 'mois'; // 'mois' | 'semaine'
+        let lineData  = [];
+        if (nbMois > 1) {
+          chartMode = 'mois';
+          lineData  = moisKeys.map(k => ({ label: k, val: sigParMois[k], mois: k })).slice(-8);
+        } else if (nbMois === 1) {
+          chartMode = 'semaine';
+          // Regrouper par semaine du mois (S1=j1-7, S2=j8-14, S3=j15-21, S4=j22+)
+          const semaines = { 'S1': 0, 'S2': 0, 'S3': 0, 'S4': 0 };
+          signalements.forEach(s => {
+            if (!s.created_at) return;
+            const jour = new Date(s.created_at).getDate();
+            if      (jour <= 7)  semaines['S1']++;
+            else if (jour <= 14) semaines['S2']++;
+            else if (jour <= 21) semaines['S3']++;
+            else                 semaines['S4']++;
+          });
+          lineData = Object.entries(semaines)
+            .map(([label, val]) => ({ label, val, mois: label }))
+            .filter((_, i) => {
+              // garder uniquement jusqu'à la semaine courante
+              const now = new Date();
+              const jourCourant = now.getDate();
+              if (i === 0) return true;
+              if (i === 1) return jourCourant > 7;
+              if (i === 2) return jourCourant > 14;
+              return jourCourant > 21;
+            });
+        }
+
+        const hasMultiPts = lineData.length > 1;
+
+        return (
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.4fr', gap: 20, marginBottom: 4 }}>
+
+            {/* ── Doughnut Résultats signalements ── */}
+            <div className="adm-chart-card">
+              <SectionTitle
+                title="Résultats des signalements"
+                sub={totalSig > 0 ? `${totalSig} signalement${totalSig > 1 ? 's' : ''} au total` : 'Aucun signalement'}
+              />
+              {totalSig > 0 && doughnutData.length > 0 ? (
+                <div className="adm-canvas-wrap">
+                  <ChartDoughnut data={doughnutData} colors={doughnutColors} />
+                </div>
+              ) : (
+                <EmptyState icon="🚨" title="Aucun signalement" sub="Les données apparaîtront dès les premiers signalements" />
+              )}
             </div>
-            <div style={{paddingLeft:13,fontSize:12,color:'#94a3b8'}}>
-              {matiereData.length} matière{matiereData.length!==1?'s':''} uniques · données réelles
+
+            {/* ── Évolution signalements ── */}
+            <div className="adm-chart-card">
+              <SectionTitle
+                title="Évolution des signalements"
+                sub={chartMode === 'semaine'
+                  ? `Par semaine · ${moisKeys[0] || ''}`
+                  : 'Par mois · données réelles'}
+              />
+              {totalSig === 0 ? (
+                <EmptyState icon="📈" title="Aucun signalement enregistré" sub="La courbe apparaîtra avec le temps" />
+              ) : hasMultiPts ? (
+                <div className="adm-canvas-wrap">
+                  <ChartLineSig data={lineData} />
+                </div>
+              ) : (
+                // 1 seul point (ex: tous dans S1) — barre verticale animée
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 14, paddingTop: 4 }}>
+                  {lineData.map((d, i) => (
+                    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                      <div style={{ width: 36, fontFamily: "'Cabinet Grotesk',sans-serif", fontWeight: 800, fontSize: 13, color: '#6366f1', textAlign: 'right', flexShrink: 0 }}>{d.label}</div>
+                      <div style={{ flex: 1, height: 28, background: '#f1f5f9', borderRadius: 8, overflow: 'hidden' }}>
+                        <div style={{ height: '100%', width: '100%', background: 'linear-gradient(90deg,#6366f1,#818cf8)', borderRadius: 8, transition: 'width 1.2s cubic-bezier(.22,1,.36,1)', display: 'flex', alignItems: 'center', paddingLeft: 10 }}>
+                          <span style={{ fontSize: 12, fontWeight: 800, color: '#fff' }}>{d.val} signalement{d.val > 1 ? 's' : ''}</span>
+                        </div>
+                      </div>
+                      <div style={{ fontFamily: "'Cabinet Grotesk',sans-serif", fontWeight: 900, fontSize: 20, color: '#6366f1', width: 30, flexShrink: 0 }}>{d.val}</div>
+                    </div>
+                  ))}
+                  <div style={{ marginTop: 4, padding: '10px 14px', background: '#f0f4ff', border: '1.5px solid #c7d2fe', borderRadius: 12, fontSize: 12, color: '#4f46e5', display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span>📊</span>
+                    <span>La courbe mensuelle apparaîtra le mois prochain avec plus de données.</span>
+                  </div>
+                </div>
+              )}
             </div>
+
           </div>
+        );
+      })()}
+      {/* Bouton raccourci vers onglet signalements */}
+      <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 8, marginBottom: 4 }}>
+        <button
+          onClick={() => onTabChange('signalements')}
+          style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px', background: '#fef2f2', color: '#dc2626', border: '1.5px solid #fca5a5', borderRadius: 10, cursor: 'pointer', fontWeight: 700, fontSize: 12, transition: 'all .18s' }}
+          onMouseEnter={e => { e.currentTarget.style.background = '#fee2e2'; e.currentTarget.style.transform = 'translateY(-1px)'; }}
+          onMouseLeave={e => { e.currentTarget.style.background = '#fef2f2'; e.currentTarget.style.transform = 'none'; }}
+        >
+          🚨 Gérer les signalements →
+        </button>
+      </div>
+      {/* ══════ FIN GRAPHIQUES SIGNALEMENTS ══════ */}
 
-          <div style={{display:'flex',gap:8,flexWrap:'wrap',alignItems:'center'}}>
-            {/* Sélecteur domaine */}
-            <div style={{display:'flex',gap:4,padding:4,background:'#f8fafc',borderRadius:14,border:'1.5px solid #f1f5f9'}}>
-              {matieres_par_domaine.map((d,i)=>(
-                <button key={i} onClick={()=>setDomainIdx(i)} style={{
-                  padding:'6px 14px',fontSize:12,fontWeight:700,borderRadius:10,border:'none',
-                  cursor:'pointer',transition:'all .18s',
-                  background:i===domainIdx?'#3b82f6':'transparent',
-                  color:i===domainIdx?'#fff':'#64748b',
-                  boxShadow:i===domainIdx?'0 2px 8px rgba(59,130,246,.3)':'none'
-                }}>{d.domaine}</button>
-              ))}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+        <div className="adm-chart-card"><SectionTitle title="Réservations par mois" sub={totalResa > 0 ? `${totalResa} au total` : 'Aucune encore'} />{reservations_par_mois.length > 0 ? <div className="adm-canvas-wrap"><ChartLine data={reservations_par_mois} /></div> : <EmptyState icon="📈" title="Aucune donnée" />}</div>
+        <div className="adm-chart-card"><SectionTitle title="Activité par jour de semaine" />{reservations_par_jour.length > 0 ? <div className="adm-canvas-wrap"><ChartBar data={reservations_par_jour} /></div> : <EmptyState icon="📊" title="Aucune donnée" />}</div>
+      </div>
+      <div style={{ background: '#fff', border: '1.5px solid #f1f5f9', borderRadius: 24, padding: 28, boxShadow: '0 2px 12px rgba(0,0,0,.04)' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 22, flexWrap: 'wrap', gap: 12 }}>
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 5 }}>
+              <div style={{ width: 4, height: 22, borderRadius: 2, background: 'linear-gradient(180deg,#3b82f6,#8b5cf6)' }} />
+              <h3 style={{ fontFamily: 'Cabinet Grotesk,sans-serif', fontWeight: 900, fontSize: 17, color: '#0F172A', margin: 0 }}>Analyse par matière{domActif && <span style={{ fontSize: 13, fontWeight: 600, color: '#3b82f6', marginLeft: 8 }}>— {domActif.domaine}</span>}</h3>
             </div>
-
-            {/* Vue : Matière / Niveau */}
-            <div style={{display:'flex',gap:4,padding:4,background:'#f8fafc',borderRadius:14,border:'1.5px solid #f1f5f9'}}>
-              {[['matiere','📚 Par matière'],['niveau','🎓 Par niveau']].map(([v,l])=>(
-                <button key={v} onClick={()=>setViewMode(v)} style={{
-                  padding:'6px 12px',fontSize:12,fontWeight:700,borderRadius:10,border:'none',
-                  cursor:'pointer',transition:'all .18s',
-                  background:viewMode===v?'#8b5cf6':'transparent',
-                  color:viewMode===v?'#fff':'#64748b',
-                  boxShadow:viewMode===v?'0 2px 8px rgba(139,92,246,.3)':'none'
-                }}>{l}</button>
-              ))}
+            <div style={{ paddingLeft: 13, fontSize: 12, color: '#94a3b8' }}>{matiereData.length} matière{matiereData.length !== 1 ? 's' : ''} uniques · données réelles</div>
+          </div>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+            <div style={{ display: 'flex', gap: 4, padding: 4, background: '#f8fafc', borderRadius: 14, border: '1.5px solid #f1f5f9' }}>
+              {matieres_par_domaine.map((d, i) => (<button key={i} onClick={() => setDomainIdx(i)} style={{ padding: '6px 14px', fontSize: 12, fontWeight: 700, borderRadius: 10, border: 'none', cursor: 'pointer', background: i === domainIdx ? '#3b82f6' : 'transparent', color: i === domainIdx ? '#fff' : '#64748b', transition: 'all .18s' }}>{d.domaine}</button>))}
             </div>
-
-            {/* Métrique (seulement en vue matière) */}
-            {viewMode==='matiere'&&(
-              <div style={{display:'flex',gap:4,padding:4,background:'#f8fafc',borderRadius:14,border:'1.5px solid #f1f5f9'}}>
-                {[['nb_profs','👨‍🏫 Formateurs'],['nb_resa','📅 Réservations']].map(([k,l])=>(
-                  <button key={k} onClick={()=>setMetric(k)} style={{
-                    padding:'6px 12px',fontSize:11,fontWeight:700,borderRadius:10,border:'none',
-                    cursor:'pointer',transition:'all .18s',
-                    background:metric===k?'#0ea5e9':'transparent',
-                    color:metric===k?'#fff':'#64748b',
-                    boxShadow:metric===k?'0 2px 8px rgba(14,165,233,.3)':'none'
-                  }}>{l}</button>
-                ))}
+            <div style={{ display: 'flex', gap: 4, padding: 4, background: '#f8fafc', borderRadius: 14, border: '1.5px solid #f1f5f9' }}>
+              {[['matiere', '📚 Par matière'], ['niveau', '🎓 Par niveau']].map(([v, l]) => (<button key={v} onClick={() => setViewMode(v)} style={{ padding: '6px 12px', fontSize: 12, fontWeight: 700, borderRadius: 10, border: 'none', cursor: 'pointer', background: viewMode === v ? '#8b5cf6' : 'transparent', color: viewMode === v ? '#fff' : '#64748b', transition: 'all .18s' }}>{l}</button>))}
+            </div>
+            {viewMode === 'matiere' && (
+              <div style={{ display: 'flex', gap: 4, padding: 4, background: '#f8fafc', borderRadius: 14, border: '1.5px solid #f1f5f9' }}>
+                {[['nb_profs', '👨‍🏫 Formateurs'], ['nb_resa', '📅 Réservations']].map(([k, l]) => (<button key={k} onClick={() => setMetric(k)} style={{ padding: '6px 12px', fontSize: 11, fontWeight: 700, borderRadius: 10, border: 'none', cursor: 'pointer', background: metric === k ? '#0ea5e9' : 'transparent', color: metric === k ? '#fff' : '#64748b', transition: 'all .18s' }}>{l}</button>))}
               </div>
             )}
           </div>
         </div>
+        {viewMode === 'matiere' && (matiereData.length > 0 ? (
+          <>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 10, marginBottom: 22 }}>
+              {[{ icon: '📚', label: 'Matières uniques', val: matiereData.length, color: '#3b82f6', bg: '#eff6ff' }, { icon: '👨‍🏫', label: 'Formateurs actifs', val: matiereData.reduce((a, m) => a + (m.nb_profs || 0), 0), color: '#10b981', bg: '#ecfdf5' }, { icon: '📅', label: 'Réservations', val: matiereData.reduce((a, m) => a + (m.nb_resa || 0), 0), color: '#8b5cf6', bg: '#f5f3ff' }, { icon: '🎯', label: 'Sans formateur', val: matiereData.filter(m => m.nb_profs === 0).length, color: '#ef4444', bg: '#fef2f2' }].map((k, i) => (<div key={i} style={{ background: k.bg, borderRadius: 14, padding: '12px 14px', border: `1.5px solid ${k.color}22`, display: 'flex', alignItems: 'center', gap: 10 }}><div style={{ width: 34, height: 34, borderRadius: 10, background: 'rgba(255,255,255,.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, flexShrink: 0 }}>{k.icon}</div><div><div style={{ fontFamily: 'Cabinet Grotesk,sans-serif', fontWeight: 900, fontSize: 20, color: k.color, lineHeight: 1 }}>{k.val}</div><div style={{ fontSize: 10, color: k.color, opacity: .7, marginTop: 2, fontWeight: 600 }}>{k.label}</div></div></div>))}
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.4fr', gap: 22, alignItems: 'start' }}>
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 12 }}><div style={{ width: 8, height: 8, borderRadius: 2, background: metric === 'nb_resa' ? '#8b5cf6' : '#10b981' }} /><span style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '.08em' }}>{metric === 'nb_resa' ? 'Réservations' : 'Formateurs'} par matière</span></div>
+                <div style={{ background: '#fafbfc', borderRadius: 14, padding: '14px 10px', border: '1.5px solid #f1f5f9' }}><ChartHorizBar data={matiereData} metric={metric} /></div>
+              </div>
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 12 }}><div style={{ width: 8, height: 8, borderRadius: 2, background: '#8b5cf6' }} /><span style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '.08em' }}>Tableau de synthèse</span></div>
+                <TableauBI data={matiereData} />
+              </div>
+            </div>
+          </>
+        ) : <div style={{ padding: '60px 20px', textAlign: 'center', color: '#94a3b8' }}><div style={{ fontSize: 44, marginBottom: 14 }}>📊</div><div style={{ fontFamily: 'Cabinet Grotesk,sans-serif', fontWeight: 800, fontSize: 15, color: '#0F172A', marginBottom: 5 }}>{domActif ? 'Aucune matière' : 'Sélectionnez un domaine'}</div></div>)}
+        {viewMode === 'niveau' && <VueParNiveau />}
+      </div>
 
-        {/* Vue PAR MATIÈRE */}
-        {viewMode==='matiere'&&(
-          matiereData.length>0?(
-            <>
-              {/* KPIs rapides matière */}
-              <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:10,marginBottom:22}}>
+      {/* ── Entonnoir de conversion ── */}
+      {entonnoir && entonnoir.etudiants_inscrits > 0 && (() => {
+        const steps = [
+          { icon: '👥', label: 'Étudiants inscrits',      val: entonnoir.etudiants_inscrits,       sub: '100% — base totale',                                                                        color: '#6366f1', bg: '#eef2ff', border: '#c7d2fe' },
+          { icon: '🎯', label: 'Étudiants actifs',        val: entonnoir.etudiants_actifs,          sub: `${entonnoir.taux_activation}% ont réservé`,                                                 color: '#3b82f6', bg: '#eff6ff', border: '#bfdbfe' },
+          { icon: '📋', label: 'Réservations envoyées',   val: entonnoir.reservations_total,         sub: `${entonnoir.etudiants_actifs > 0 ? (entonnoir.reservations_total / entonnoir.etudiants_actifs).toFixed(1) : 0} par étudiant actif`, color: '#f59e0b', bg: '#fffbeb', border: '#fcd34d' },
+          { icon: '✅', label: 'Confirmées',              val: entonnoir.reservations_confirmees,    sub: `${entonnoir.taux_confirmation}% de taux`,                                                   color: '#10b981', bg: '#ecfdf5', border: '#6ee7b7' },
+          { icon: '🏁', label: 'Terminées',               val: entonnoir.reservations_terminees,     sub: `${entonnoir.reservations_confirmees > 0 ? Math.round(entonnoir.reservations_terminees / entonnoir.reservations_confirmees * 100) : 0}% des confirmées`, color: '#059669', bg: '#d1fae5', border: '#34d399' },
+        ];
+        return (
+          <div style={{ background: '#fff', border: '1.5px solid #f1f5f9', borderRadius: 24, padding: 28, boxShadow: '0 2px 12px rgba(0,0,0,.04)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 6 }}>
+              <div style={{ width: 4, height: 22, borderRadius: 2, background: 'linear-gradient(180deg,#f59e0b,#ef4444)' }} />
+              <h3 style={{ fontFamily: 'Cabinet Grotesk,sans-serif', fontWeight: 900, fontSize: 17, color: '#0F172A', margin: 0 }}>Entonnoir de conversion</h3>
+            </div>
+            <div style={{ fontSize: 13, color: '#94a3b8', paddingLeft: 13, marginBottom: 24 }}>De l'inscription à la séance terminée</div>
+            <div style={{ display: 'flex', gap: 0, alignItems: 'stretch', marginBottom: 22 }}>
+              {steps.map((step, i) => (
+                <React.Fragment key={i}>
+                  <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+                    <div style={{ width: '100%', padding: '16px 12px', borderRadius: 16, textAlign: 'center', background: step.bg, border: `1.5px solid ${step.border}` }}>
+                      <div style={{ fontSize: 22, marginBottom: 6 }}>{step.icon}</div>
+                      <div style={{ fontFamily: 'Cabinet Grotesk,sans-serif', fontWeight: 900, fontSize: 26, color: step.color, lineHeight: 1, marginBottom: 4 }}>{step.val}</div>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: step.color, marginBottom: 4 }}>{step.label}</div>
+                      <div style={{ fontSize: 10, color: step.color, opacity: .65, fontStyle: 'italic' }}>{step.sub}</div>
+                    </div>
+                  </div>
+                  {i < steps.length - 1 && <div style={{ display: 'flex', alignItems: 'center', padding: '0 4px', paddingBottom: 8, flexShrink: 0 }}><div style={{ fontSize: 18, color: '#cbd5e1' }}>›</div></div>}
+                </React.Fragment>
+              ))}
+            </div>
+            <div style={{ background: '#f8fafc', borderRadius: 16, padding: '16px 20px', border: '1.5px solid #f1f5f9' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                <span style={{ fontFamily: 'Cabinet Grotesk,sans-serif', fontWeight: 800, fontSize: 13, color: '#0F172A' }}>Santé globale</span>
+                <span style={{ fontFamily: 'Cabinet Grotesk,sans-serif', fontWeight: 900, fontSize: 14, color: entonnoir.taux_confirmation >= 60 ? '#059669' : entonnoir.taux_confirmation >= 30 ? '#d97706' : '#dc2626' }}>
+                  {entonnoir.taux_confirmation >= 60 ? '🟢 Bonne' : entonnoir.taux_confirmation >= 30 ? '🟡 Moyenne' : '🔴 À améliorer'}
+                </span>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 12 }}>
                 {[
-                  {icon:'📚',label:'Matières uniques', val:matiereData.length,                                     color:'#3b82f6',bg:'#eff6ff'},
-                  {icon:'👨‍🏫',label:'Formateurs actifs',val:matiereData.reduce((a,m)=>a+(m.nb_profs||0),0),       color:'#10b981',bg:'#ecfdf5'},
-                  {icon:'📅',label:'Réservations',      val:matiereData.reduce((a,m)=>a+(m.nb_resa||0),0),         color:'#8b5cf6',bg:'#f5f3ff'},
-                  {icon:'🎯',label:'Sans formateur',     val:matiereData.filter(m=>m.nb_profs===0).length,          color:'#ef4444',bg:'#fef2f2'},
-                ].map((k,i)=>(
-                  <div key={i} style={{background:k.bg,borderRadius:14,padding:'12px 14px',border:`1.5px solid ${k.color}22`,display:'flex',alignItems:'center',gap:10}}>
-                    <div style={{width:34,height:34,borderRadius:10,background:'rgba(255,255,255,.6)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:16,flexShrink:0}}>{k.icon}</div>
-                    <div>
-                      <div style={{fontFamily:'Cabinet Grotesk,sans-serif',fontWeight:900,fontSize:20,color:k.color,lineHeight:1}}>{k.val}</div>
-                      <div style={{fontSize:10,color:k.color,opacity:.7,marginTop:2,fontWeight:600}}>{k.label}</div>
+                  { label: "Taux d'activation",    val: `${entonnoir.taux_activation}%`,    good: entonnoir.taux_activation >= 30,    color: '#6366f1' },
+                  { label: 'Taux de confirmation', val: `${entonnoir.taux_confirmation}%`,  good: entonnoir.taux_confirmation >= 60,  color: '#10b981' },
+                  { label: 'Taux de refus',        val: `${entonnoir.taux_refus}%`,         good: entonnoir.taux_refus <= 20,         color: '#ef4444' },
+                ].map((m, i) => (
+                  <div key={i} style={{ background: '#fff', borderRadius: 12, padding: '12px 14px', border: '1.5px solid #f1f5f9' }}>
+                    <div style={{ fontSize: 11, color: '#94a3b8', fontWeight: 600, marginBottom: 4 }}>{m.label}</div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                      <span style={{ fontFamily: 'Cabinet Grotesk,sans-serif', fontWeight: 900, fontSize: 20, color: m.color }}>{m.val}</span>
+                      <span style={{ fontSize: 14 }}>{m.good ? '✅' : '⚠️'}</span>
+                    </div>
+                    <div style={{ height: 6, background: '#f1f5f9', borderRadius: 3, overflow: 'hidden' }}>
+                      <div style={{ height: '100%', background: m.color, borderRadius: 3, width: m.val, transition: 'width 1.2s cubic-bezier(.22,1,.36,1)' }} />
                     </div>
                   </div>
                 ))}
               </div>
-
-              {/* Graphe + Tableau */}
-              <div style={{display:'grid',gridTemplateColumns:'1fr 1.4fr',gap:22,alignItems:'start'}}>
-                <div>
-                  <div style={{display:'flex',alignItems:'center',gap:7,marginBottom:12}}>
-                    <div style={{width:8,height:8,borderRadius:2,background:metric==='nb_resa'?'#8b5cf6':'#10b981'}}/>
-                    <span style={{fontSize:11,fontWeight:700,color:'#94a3b8',textTransform:'uppercase',letterSpacing:'.08em'}}>
-                      {metric==='nb_resa'?'Réservations':'Formateurs'} par matière
-                    </span>
-                  </div>
-                  <div style={{background:'#fafbfc',borderRadius:14,padding:'14px 10px',border:'1.5px solid #f1f5f9'}}>
-                    <ChartHorizBar data={matiereData} metric={metric}/>
-                  </div>
-                </div>
-                <div>
-                  <div style={{display:'flex',alignItems:'center',gap:7,marginBottom:12}}>
-                    <div style={{width:8,height:8,borderRadius:2,background:'#8b5cf6'}}/>
-                    <span style={{fontSize:11,fontWeight:700,color:'#94a3b8',textTransform:'uppercase',letterSpacing:'.08em'}}>Tableau de synthèse</span>
-                  </div>
-                  <TableauBI data={matiereData}/>
-                </div>
-              </div>
-
-              {/* Légende */}
-              <div style={{marginTop:18,paddingTop:14,borderTop:'1px solid #f1f5f9',display:'flex',gap:18,flexWrap:'wrap',alignItems:'center'}}>
-                {[{c:'#10b981',l:'Formateurs = actifs sur la plateforme'},{c:'#8b5cf6',l:'Réservations = demandes confirmées'},{c:'#0ea5e9',l:'Taux = réservations ÷ formateurs'}].map((x,i)=>(
-                  <div key={i} style={{display:'flex',alignItems:'center',gap:6,fontSize:12,color:'#64748b'}}>
-                    <div style={{width:10,height:10,borderRadius:3,background:x.c}}/>
-                    {x.l}
-                  </div>
-                ))}
-                <div style={{marginLeft:'auto',fontSize:11,color:'#cbd5e1',fontStyle:'italic'}}>Matières fusionnées par nom</div>
-              </div>
-            </>
-          ):(
-            <div style={{padding:'60px 20px',textAlign:'center',color:'#94a3b8'}}>
-              <div style={{fontSize:44,marginBottom:14}}>📊</div>
-              <div style={{fontFamily:'Cabinet Grotesk,sans-serif',fontWeight:800,fontSize:15,color:'#0F172A',marginBottom:5}}>
-                {domActif?'Aucune matière':'Sélectionnez un domaine'}
-              </div>
-              <div style={{fontSize:13,fontStyle:'italic'}}>
-                {domActif?'Ajoutez des matières dans le Référentiel':'Cliquez sur un domaine ci-dessus'}
-              </div>
             </div>
-          )
-        )}
-
-        {/* Vue PAR NIVEAU */}
-        {viewMode==='niveau'&&<VueParNiveau/>}
-      </div>
-
-      {/* Donuts */}
-      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:20}}>
-        <div className="adm-chart-card">
-          <SectionTitle title="Modes d'enseignement" sub={`${allProfs.filter(p=>p.statut_validation==='validé').length} formateurs validés`}/>
-          {modesF.length>0
-            ?<div className="adm-canvas-wrap"><ChartDoughnut data={modesF} colors={['#3b82f6','#10b981','#8b5cf6']}/></div>
-            :<EmptyState icon="🌐" title="Aucun formateur validé"/>
-          }
-        </div>
-        <div className="adm-chart-card">
-          <SectionTitle title="Statuts formateurs" sub="Validés · En attente · Refusés"/>
-          {hasStatut?<div className="adm-canvas-wrap"><ChartDoughnut data={statutData} colors={statutColors}/></div>:<EmptyState icon="👨‍🏫" title="Aucun formateur enregistré"/>}
-        </div>
-      </div>
-
-      {/* ═══ Performance des formateurs ═══ */}
-      {performance_profs.length>0&&(()=>{
-        const [showAll, setShowAll] = React.useState(false);
-        const PREVIEW = 10;
-        const displayed = showAll ? performance_profs : performance_profs.slice(0, PREVIEW);
-        return (
-        <div style={{background:'#fff',border:'1.5px solid #f1f5f9',borderRadius:24,padding:28,boxShadow:'0 2px 12px rgba(0,0,0,.04)'}}>
-          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:6,flexWrap:'wrap',gap:10}}>
-            <div style={{display:'flex',alignItems:'center',gap:9}}>
-              <div style={{width:4,height:22,borderRadius:2,background:'linear-gradient(180deg,#f59e0b,#10b981)'}}/>
-              <h3 style={{fontFamily:'Cabinet Grotesk,sans-serif',fontWeight:900,fontSize:17,color:'#0F172A',margin:0}}>Performance des formateurs</h3>
-            </div>
-            <button
-              onClick={()=>setShowAll(v=>!v)}
-              style={{display:'flex',alignItems:'center',gap:6,padding:'8px 16px',background:'linear-gradient(135deg,#f59e0b22,#10b98122)',color:'#b45309',border:'1.5px solid #fcd34d',borderRadius:10,cursor:'pointer',fontFamily:"'Cabinet Grotesk',sans-serif",fontWeight:800,fontSize:12,transition:'all .18s'}}
-              onMouseEnter={e=>{e.currentTarget.style.background='linear-gradient(135deg,#f59e0b,#10b981)';e.currentTarget.style.color='#fff';e.currentTarget.style.borderColor='transparent';}}
-              onMouseLeave={e=>{e.currentTarget.style.background='linear-gradient(135deg,#f59e0b22,#10b98122)';e.currentTarget.style.color='#b45309';e.currentTarget.style.borderColor='#fcd34d';}}>
-              {showAll ? `▲ Réduire` : `👁 Voir tout (${performance_profs.length})`}
-            </button>
           </div>
-          <div style={{fontSize:13,color:'#94a3b8',paddingLeft:13,marginBottom:22}}>
-            {showAll ? `${performance_profs.length} formateurs` : `Top ${PREVIEW} sur ${performance_profs.length}`} · classement par note et activité
-          </div>
-
-          <div style={{overflowX:'auto',borderRadius:16,border:'1.5px solid #f1f5f9'}}>
-            <table style={{width:'100%',borderCollapse:'collapse',fontSize:13}}>
-              <thead>
-                <tr style={{background:'#f8fafc'}}>
-                  {['#','Formateur','Matières','Note','Réservations','Confirmées','Refusées','Taux conf.'].map((h,i)=>(
-                    <th key={i} style={{padding:'10px 14px',textAlign:i>2?'center':'left',fontSize:10,fontWeight:800,color:'#94a3b8',textTransform:'uppercase',letterSpacing:'.08em',whiteSpace:'nowrap',borderBottom:'1.5px solid #f1f5f9'}}>{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {displayed.map((p,i)=>{
-                  const medal = i===0?'🥇':i===1?'🥈':i===2?'🥉':null;
-                  const initials = p.nom.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);
-                  const pals=[['#00153D','#1E3A8A'],['#065F46','#047857'],['#4C1D95','#6D28D9'],['#7C2D12','#B45309']];
-                  const [a,b]=pals[p.nom.charCodeAt(0)%pals.length];
-                  const tauxColor = p.taux_confirmation>=70?'#059669':p.taux_confirmation>=40?'#d97706':'#dc2626';
-
-                  return (
-                    <tr key={p.id}
-                      style={{borderBottom:i<displayed.length-1?'1px solid #f1f5f9':'none',transition:'background .12s'}}
-                      onMouseEnter={e=>e.currentTarget.style.background='#f8fafc'}
-                      onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
-                      {/* Rang */}
-                      <td style={{padding:'12px 14px',fontFamily:'Cabinet Grotesk,sans-serif',fontWeight:700,color:'#cbd5e1',fontSize:13}}>
-                        {medal||`${i+1}`}
-                      </td>
-                      {/* Formateur */}
-                      <td style={{padding:'12px 14px'}}>
-                        <div style={{display:'flex',alignItems:'center',gap:10}}>
-                          <div style={{width:36,height:36,borderRadius:11,background:`linear-gradient(135deg,${a},${b})`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:12,fontWeight:900,color:'#fff',flexShrink:0,fontFamily:'Cabinet Grotesk,sans-serif'}}>{initials}</div>
-                          <div>
-                            <div style={{fontFamily:'Cabinet Grotesk,sans-serif',fontWeight:800,fontSize:13,color:'#0F172A'}}>{p.nom}</div>
-                            <div style={{fontSize:11,color:'#94a3b8',marginTop:1}}>
-                              {p.ville&&`📍 ${p.ville} · `}
-                              {p.mode==='en_ligne'?'🌐 En ligne':p.mode==='presentiel'?'🏫 Présentiel':'🔀 Les deux'}
-                            </div>
-                          </div>
-                        </div>
-                      </td>
-                      {/* Matières */}
-                      <td style={{padding:'12px 14px'}}>
-                        <div style={{display:'flex',gap:4,flexWrap:'wrap'}}>
-                          {p.matieres.length>0
-                            ?p.matieres.map((m,mi)=>(
-                              <span key={mi} style={{fontSize:10,fontWeight:700,padding:'2px 7px',borderRadius:20,background:'#eff6ff',color:'#1d4ed8',border:'1px solid #bfdbfe',whiteSpace:'nowrap'}}>{m}</span>
-                            ))
-                            :<span style={{color:'#cbd5e1',fontSize:11}}>—</span>
-                          }
-                        </div>
-                      </td>
-                      {/* Note */}
-                      <td style={{padding:'12px 14px',textAlign:'center'}}>
-                        <div style={{display:'flex',flexDirection:'column',alignItems:'center',gap:2}}>
-                          <span style={{fontFamily:'Cabinet Grotesk,sans-serif',fontWeight:900,fontSize:16,color:p.note>0?'#f59e0b':'#e2e8f0'}}>
-                            {p.note>0?`⭐ ${p.note.toFixed(1)}`:'—'}
-                          </span>
-                          {p.nb_avis>0&&<span style={{fontSize:10,color:'#94a3b8'}}>{p.nb_avis} avis</span>}
-                        </div>
-                      </td>
-                      {/* Réservations */}
-                      <td style={{padding:'12px 14px',textAlign:'center'}}>
-                        <span style={{display:'inline-flex',alignItems:'center',justifyContent:'center',width:32,height:32,borderRadius:10,background:p.nb_resa>0?'#eff6ff':'#f1f5f9',color:p.nb_resa>0?'#3b82f6':'#94a3b8',fontFamily:'Cabinet Grotesk,sans-serif',fontWeight:900,fontSize:15}}>{p.nb_resa}</span>
-                      </td>
-                      {/* Confirmées */}
-                      <td style={{padding:'12px 14px',textAlign:'center'}}>
-                        <span style={{display:'inline-flex',alignItems:'center',justifyContent:'center',width:32,height:32,borderRadius:10,background:p.nb_confirme>0?'#ecfdf5':'#f1f5f9',color:p.nb_confirme>0?'#059669':'#94a3b8',fontFamily:'Cabinet Grotesk,sans-serif',fontWeight:900,fontSize:15}}>{p.nb_confirme}</span>
-                      </td>
-                      {/* Refusées */}
-                      <td style={{padding:'12px 14px',textAlign:'center'}}>
-                        <span style={{display:'inline-flex',alignItems:'center',justifyContent:'center',width:32,height:32,borderRadius:10,background:p.nb_refuse>0?'#fef2f2':'#f1f5f9',color:p.nb_refuse>0?'#dc2626':'#94a3b8',fontFamily:'Cabinet Grotesk,sans-serif',fontWeight:900,fontSize:15}}>{p.nb_refuse}</span>
-                      </td>
-                      {/* Taux confirmation */}
-                      <td style={{padding:'12px 14px',textAlign:'center'}}>
-                        {p.nb_resa>0?(
-                          <div style={{display:'flex',flexDirection:'column',alignItems:'center',gap:4}}>
-                            <span style={{fontFamily:'Cabinet Grotesk,sans-serif',fontWeight:900,fontSize:14,color:tauxColor}}>{p.taux_confirmation}%</span>
-                            <div style={{width:52,height:4,background:'#f1f5f9',borderRadius:2,overflow:'hidden'}}>
-                              <div style={{width:`${p.taux_confirmation}%`,height:'100%',background:tauxColor,borderRadius:2,transition:'width .6s'}}/>
-                            </div>
-                          </div>
-                        ):<span style={{color:'#e2e8f0',fontSize:16}}>—</span>}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-
-          {/* Légende + bouton voir plus/moins */}
-          <div style={{marginTop:14,paddingTop:12,borderTop:'1px solid #f1f5f9',display:'flex',gap:14,flexWrap:'wrap',fontSize:12,color:'#64748b',alignItems:'center'}}>
-            <div style={{display:'flex',alignItems:'center',gap:6}}><span style={{color:'#059669',fontWeight:700}}>≥70%</span> Excellent</div>
-            <div style={{display:'flex',alignItems:'center',gap:6}}><span style={{color:'#d97706',fontWeight:700}}>40–70%</span> Moyen</div>
-            <div style={{display:'flex',alignItems:'center',gap:6}}><span style={{color:'#dc2626',fontWeight:700}}>&lt;40%</span> À améliorer</div>
-            {performance_profs.length > PREVIEW && (
-              <button
-                onClick={()=>setShowAll(v=>!v)}
-                style={{marginLeft:'auto',display:'flex',alignItems:'center',gap:6,padding:'7px 16px',background:showAll?'#f8fafc':'linear-gradient(135deg,#f59e0b,#10b981)',color:showAll?'#64748b':'#fff',border:showAll?'1.5px solid #e2e8f0':'none',borderRadius:10,cursor:'pointer',fontFamily:"'Cabinet Grotesk',sans-serif",fontWeight:800,fontSize:12,transition:'all .2s',boxShadow:showAll?'none':'0 3px 12px rgba(245,158,11,0.3)'}}>
-                {showAll ? '▲ Réduire la liste' : `👁 Voir les ${performance_profs.length - PREVIEW} formateurs restants`}
-              </button>
-            )}
-          </div>
-        </div>
         );
       })()}
 
-            {/* ═══ Top matières demandées par les profs ═══ */}
-      {(()=>{
+      {/* ── Cercle demandes de matières ── */}
+      {(() => {
         const demandesStats = chartData.demandes_stats || [];
-        if(!demandesStats.length) return null;
-        const total = demandesStats.reduce((a,d)=>a+(d.nb||0),0);
-        const approuvees = demandesStats.find(d=>d.statut==='approuvé')?.nb||0;
-        const enAttente  = demandesStats.find(d=>d.statut==='en_attente')?.nb||0;
-        const refusees   = demandesStats.find(d=>d.statut==='refusé')?.nb||0;
-        const tauxAppro  = total>0?Math.round(approuvees/total*100):0;
-        const COLORS = {'approuvé':'#10B981','en_attente':'#F59E0B','refusé':'#EF4444'};
-        const LABELS = {'approuvé':'Approuvées','en_attente':'En attente','refusé':'Refusées'};
-        const ICONS  = {'approuvé':'✅','en_attente':'⏳','refusé':'❌'};
+        if (!demandesStats.length) return null;
+        const total      = demandesStats.reduce((a, d) => a + (d.nb || 0), 0);
+        const approuvees = demandesStats.find(d => d.statut === 'approuvé')?.nb || 0;
+        const enAttente  = demandesStats.find(d => d.statut === 'en_attente')?.nb || 0;
+        const refusees   = demandesStats.find(d => d.statut === 'refusé')?.nb || 0;
+        const tauxAppro  = total > 0 ? Math.round(approuvees / total * 100) : 0;
+        const COLORS  = { 'approuvé': '#10B981', 'en_attente': '#F59E0B', 'refusé': '#EF4444' };
+        const LABELS  = { 'approuvé': 'Approuvées', 'en_attente': 'En attente', 'refusé': 'Refusées' };
+        const ICONS   = { 'approuvé': '✅', 'en_attente': '⏳', 'refusé': '❌' };
 
         const DonutDemandes = () => {
-          const [anim, setAnim] = React.useState(false);
-          React.useEffect(()=>{ const t=setTimeout(()=>setAnim(true),400); return()=>clearTimeout(t); },[]);
-          const r=54, cx=70, cy=70, circ=2*Math.PI*r;
-          let cum=0;
+          const [anim, setAnim] = useState(false);
+          useEffect(() => { const t = setTimeout(() => setAnim(true), 400); return () => clearTimeout(t); }, []);
+          const r = 54, cx = 70, cy = 70, circ = 2 * Math.PI * r;
+          let cum = 0;
           return (
-            <div style={{position:'relative',width:140,height:140,flexShrink:0}}>
-              <svg width={140} height={140} style={{transform:'rotate(-90deg)'}}>
-                <circle cx={cx} cy={cy} r={r} fill="none" stroke="#F1F5F9" strokeWidth={14}/>
-                {demandesStats.map((d,i)=>{
-                  const pct=total>0?d.nb/total:0;
-                  const color=COLORS[d.statut]||'#94A3B8';
-                  const dash=anim?`${pct*circ} ${circ}`:`0 ${circ}`;
-                  const rot=-90+(cum/Math.max(total,1))*360;
-                  cum+=d.nb;
-                  return <circle key={i} cx={cx} cy={cy} r={r} fill="none"
-                    stroke={color} strokeWidth={14} strokeLinecap="round"
-                    strokeDasharray={dash}
-                    style={{transformOrigin:`${cx}px ${cy}px`,transform:`rotate(${rot}deg)`,
-                      transition:`stroke-dasharray 1.2s cubic-bezier(.22,1,.36,1) ${i*0.15}s`}}/>;
+            <div style={{ position: 'relative', width: 140, height: 140, flexShrink: 0 }}>
+              <svg width={140} height={140} style={{ transform: 'rotate(-90deg)' }}>
+                <circle cx={cx} cy={cy} r={r} fill="none" stroke="#F1F5F9" strokeWidth={14} />
+                {demandesStats.map((d, i) => {
+                  const pct   = total > 0 ? d.nb / total : 0;
+                  const color = COLORS[d.statut] || '#94A3B8';
+                  const dash  = anim ? `${pct * circ} ${circ}` : `0 ${circ}`;
+                  const rot   = -90 + (cum / Math.max(total, 1)) * 360;
+                  cum += d.nb;
+                  return <circle key={i} cx={cx} cy={cy} r={r} fill="none" stroke={color} strokeWidth={14} strokeLinecap="round" strokeDasharray={dash} style={{ transformOrigin: `${cx}px ${cy}px`, transform: `rotate(${rot}deg)`, transition: `stroke-dasharray 1.2s cubic-bezier(.22,1,.36,1) ${i * 0.15}s` }} />;
                 })}
               </svg>
-              <div style={{position:'absolute',inset:0,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center'}}>
-                <div style={{fontFamily:'Cabinet Grotesk,sans-serif',fontWeight:900,fontSize:'1.5rem',color:'#10B981',lineHeight:1}}>{tauxAppro}%</div>
-                <div style={{fontSize:'.58rem',color:'#94A3B8',fontWeight:700,marginTop:2,textTransform:'uppercase',letterSpacing:'.05em'}}>approuvées</div>
+              <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+                <div style={{ fontFamily: 'Cabinet Grotesk,sans-serif', fontWeight: 900, fontSize: '1.5rem', color: '#10B981', lineHeight: 1 }}>{tauxAppro}%</div>
+                <div style={{ fontSize: '.58rem', color: '#94A3B8', fontWeight: 700, marginTop: 2, textTransform: 'uppercase', letterSpacing: '.05em' }}>approuvées</div>
               </div>
             </div>
           );
         };
 
         return (
-          <div style={{background:'#fff',border:'1.5px solid #f1f5f9',borderRadius:24,padding:28,boxShadow:'0 2px 12px rgba(0,0,0,.04)'}}>
-            <div style={{display:'flex',alignItems:'center',gap:9,marginBottom:22}}>
-              <div style={{width:4,height:22,borderRadius:2,background:'linear-gradient(180deg,#4F46E5,#818CF8)'}}/>
-              <h3 style={{fontFamily:'Cabinet Grotesk,sans-serif',fontWeight:900,fontSize:17,color:'#0F172A',margin:0}}>📚 Analyse des demandes de matières</h3>
-              <span style={{fontSize:12,color:'#94a3b8',marginLeft:4}}>{total} demande{total!==1?'s':''} au total</span>
+          <div style={{ background: '#fff', border: '1.5px solid #f1f5f9', borderRadius: 24, padding: 28, boxShadow: '0 2px 12px rgba(0,0,0,.04)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 22 }}>
+              <div style={{ width: 4, height: 22, borderRadius: 2, background: 'linear-gradient(180deg,#4F46E5,#818CF8)' }} />
+              <h3 style={{ fontFamily: 'Cabinet Grotesk,sans-serif', fontWeight: 900, fontSize: 17, color: '#0F172A', margin: 0 }}>📚 Analyse des demandes de matières</h3>
+              <span style={{ fontSize: 12, color: '#94a3b8', marginLeft: 4 }}>{total} demande{total !== 1 ? 's' : ''} au total</span>
             </div>
-
-            {/* KPIs */}
-            <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:12,marginBottom:22}}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 12, marginBottom: 22 }}>
               {[
-                {icon:'⏳',label:'En attente', val:enAttente,  color:'#B45309',bg:'#FFFBEB',border:'#FCD34D'},
-                {icon:'✅',label:'Approuvées', val:approuvees,  color:'#065F46',bg:'#ECFDF5',border:'#6EE7B7'},
-                {icon:'❌',label:'Refusées',   val:refusees,    color:'#991B1B',bg:'#FEF2F2',border:'#FCA5A5'},
-              ].map((k,i)=>(
-                <div key={i} style={{background:k.bg,border:`1.5px solid ${k.border}`,borderRadius:16,padding:'14px 16px',display:'flex',alignItems:'center',gap:12,
-                  transition:'all .2s'}}
-                  onMouseEnter={e=>{e.currentTarget.style.transform='translateY(-2px)';e.currentTarget.style.boxShadow=`0 8px 20px rgba(0,0,0,0.07)`;}}
-                  onMouseLeave={e=>{e.currentTarget.style.transform='none';e.currentTarget.style.boxShadow='none';}}>
-                  <div style={{width:40,height:40,borderRadius:12,background:'rgba(255,255,255,0.6)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'1.1rem',flexShrink:0}}>{k.icon}</div>
+                { icon: '⏳', label: 'En attente', val: enAttente,  color: '#B45309', bg: '#FFFBEB', border: '#FCD34D' },
+                { icon: '✅', label: 'Approuvées', val: approuvees, color: '#065F46', bg: '#ECFDF5', border: '#6EE7B7' },
+                { icon: '❌', label: 'Refusées',   val: refusees,   color: '#991B1B', bg: '#FEF2F2', border: '#FCA5A5' },
+              ].map((k, i) => (
+                <div key={i} style={{ background: k.bg, border: `1.5px solid ${k.border}`, borderRadius: 16, padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <div style={{ width: 40, height: 40, borderRadius: 12, background: 'rgba(255,255,255,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.1rem', flexShrink: 0 }}>{k.icon}</div>
                   <div>
-                    <div style={{fontFamily:'Cabinet Grotesk,sans-serif',fontWeight:900,fontSize:'1.5rem',color:k.color,lineHeight:1}}>{k.val}</div>
-                    <div style={{fontSize:'.68rem',color:k.color,opacity:.7,fontWeight:700,textTransform:'uppercase',letterSpacing:'.06em',marginTop:2}}>{k.label}</div>
+                    <div style={{ fontFamily: 'Cabinet Grotesk,sans-serif', fontWeight: 900, fontSize: '1.5rem', color: k.color, lineHeight: 1 }}>{k.val}</div>
+                    <div style={{ fontSize: '.68rem', color: k.color, opacity: .7, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.06em', marginTop: 2 }}>{k.label}</div>
                   </div>
                 </div>
               ))}
             </div>
-
-            {/* Donut + barres */}
-            <div style={{display:'grid',gridTemplateColumns:'140px 1fr',gap:28,alignItems:'center'}}>
-              <DonutDemandes/>
-              <div style={{display:'flex',flexDirection:'column',gap:14}}>
-                {demandesStats.map((d,i)=>{
-                  const color=COLORS[d.statut]||'#94A3B8';
+            <div style={{ display: 'grid', gridTemplateColumns: '140px 1fr', gap: 28, alignItems: 'center' }}>
+              <DonutDemandes />
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                {demandesStats.map((d, i) => {
+                  const color = COLORS[d.statut] || '#94A3B8';
                   return (
                     <div key={i}>
-                      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:5}}>
-                        <span style={{display:'inline-flex',alignItems:'center',gap:7,fontSize:'.83rem',fontWeight:700,color:'#0F172A'}}>
-                          <span style={{width:10,height:10,borderRadius:'50%',background:color,display:'inline-block',flexShrink:0}}/>
-                          {ICONS[d.statut]} {LABELS[d.statut]||d.statut}
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 5 }}>
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 7, fontSize: '.83rem', fontWeight: 700, color: '#0F172A' }}>
+                          <span style={{ width: 10, height: 10, borderRadius: '50%', background: color, display: 'inline-block', flexShrink: 0 }} />
+                          {ICONS[d.statut]} {LABELS[d.statut] || d.statut}
                         </span>
-                        <div style={{display:'flex',alignItems:'center',gap:10}}>
-                          <span style={{fontFamily:'Cabinet Grotesk,sans-serif',fontWeight:900,fontSize:'.95rem',color}}>{d.pct}%</span>
-                          <span style={{fontSize:'.72rem',color:'#94A3B8',fontWeight:600}}>{d.nb} demande{d.nb!==1?'s':''}</span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                          <span style={{ fontFamily: 'Cabinet Grotesk,sans-serif', fontWeight: 900, fontSize: '.95rem', color }}>{d.pct}%</span>
+                          <span style={{ fontSize: '.72rem', color: '#94A3B8', fontWeight: 600 }}>{d.nb} demande{d.nb !== 1 ? 's' : ''}</span>
                         </div>
                       </div>
-                      <div style={{height:10,background:'#F1F5F9',borderRadius:6,overflow:'hidden'}}>
-                        <div style={{height:'100%',borderRadius:6,background:color,width:`${d.pct}%`,transition:'width 1.3s cubic-bezier(.22,1,.36,1) .3s'}}/>
+                      <div style={{ height: 10, background: '#F1F5F9', borderRadius: 6, overflow: 'hidden' }}>
+                        <div style={{ height: '100%', borderRadius: 6, background: color, width: `${d.pct}%`, transition: 'width 1.3s cubic-bezier(.22,1,.36,1) .3s' }} />
                       </div>
                     </div>
                   );
                 })}
-                <div style={{marginTop:4,padding:'11px 16px',background:'#ECFDF5',border:'1.5px solid #6EE7B7',borderRadius:14,display:'flex',alignItems:'center',justifyContent:'space-between'}}>
-                  <span style={{fontSize:'.82rem',fontWeight:700,color:'#065F46'}}>🎯 Taux d'approbation global</span>
-                  <span style={{fontFamily:'Cabinet Grotesk,sans-serif',fontWeight:900,fontSize:'1.05rem',color:'#065F46'}}>{tauxAppro}%</span>
+                <div style={{ marginTop: 4, padding: '11px 16px', background: '#ECFDF5', border: '1.5px solid #6EE7B7', borderRadius: 14, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <span style={{ fontSize: '.82rem', fontWeight: 700, color: '#065F46' }}>🎯 Taux d'approbation global</span>
+                  <span style={{ fontFamily: 'Cabinet Grotesk,sans-serif', fontWeight: 900, fontSize: '1.05rem', color: '#065F46' }}>{tauxAppro}%</span>
                 </div>
               </div>
             </div>
@@ -1217,640 +1612,483 @@ function AnalytiquesTab({ stats, allProfs, chartData, onTabChange }) {
         );
       })()}
 
-      {/* ═══ Entonnoir de conversion ═══ */}
-      {entonnoir.etudiants_inscrits>0&&(
-        <EntonnierBlock entonnoir={entonnoir}/>
-      )}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+        <div className="adm-chart-card"><SectionTitle title="Modes d'enseignement" sub={`${allProfs.filter(p => p.statut_validation === 'validé').length} formateurs validés`} />{modesF.length > 0 ? <div className="adm-canvas-wrap"><ChartDoughnut data={modesF} colors={['#3b82f6', '#10b981', '#8b5cf6']} /></div> : <EmptyState icon="🌐" title="Aucun formateur validé" />}</div>
+        <div className="adm-chart-card"><SectionTitle title="Statuts formateurs" sub="Validés · En attente · Refusés" />{hasStatut ? <div className="adm-canvas-wrap"><ChartDoughnut data={statutData} colors={statutColors} /></div> : <EmptyState icon="👨‍🏫" title="Aucun formateur enregistré" />}</div>
+      </div>
     </div>
   );
 }
 
-// Composant séparé pour déclencher les animations après montage
-function EntonnierBlock({ entonnoir }) {
-  const [animated, setAnimated] = React.useState(false);
-  React.useEffect(() => {
-    const t = setTimeout(() => setAnimated(true), 100);
-    return () => clearTimeout(t);
-  }, []);
+// ── PATCH 5 : ProfsTab avec filtre "bloqué" + handleRefuser avec raison ──
+function ProfsTab({ allProfs, structure = [], onView, onValider, onRefuser }) {
+  const [filter, setFilter] = useState('tous');
+  const [search, setSearch] = useState('');
+  const [viewMode, setViewMode] = useState('grid');
+  const [filterDomaine, setFilterDomaine] = useState('');
+  const [filterNiveau, setFilterNiveau] = useState('');
+  const [filterMatiere, setFilterMatiere] = useState('');
+
+  const counts = useMemo(() => ({
+    tous:       allProfs.length,
+    'validé':   allProfs.filter(p => p.statut_validation === 'validé').length,
+    en_attente: allProfs.filter(p => p.statut_validation === 'en_attente').length,
+    'refusé':   allProfs.filter(p => p.statut_validation === 'refusé').length,
+    'bloqué':   allProfs.filter(p => p.user_statut === 'bloqué').length,
+  }), [allProfs]);
+
+  const referentiel = structure;
+  const allDomaines = useMemo(() => {
+    if (referentiel.length > 0) return referentiel.map(d => d.nom);
+    const s = new Set(); allProfs.forEach(p => p.tarifs_matieres?.forEach(t => { if (t.nom_domaine && t.nom_domaine !== 'N/A') s.add(t.nom_domaine); })); return [...s].sort();
+  }, [referentiel, allProfs]);
+  const allNiveaux = useMemo(() => {
+    if (referentiel.length > 0) { const dom = referentiel.find(d => d.nom === filterDomaine); if (filterDomaine && dom) return (dom.niveaux || []).map(n => n.nom); return referentiel.flatMap(d => (d.niveaux || []).map(n => n.nom)); }
+    const s = new Set(); allProfs.forEach(p => p.tarifs_matieres?.forEach(t => { if (t.nom_niveau && t.nom_niveau !== 'N/A' && (!filterDomaine || t.nom_domaine === filterDomaine)) s.add(t.nom_niveau); })); return [...s].sort();
+  }, [referentiel, allProfs, filterDomaine]);
+  const allMatieres = useMemo(() => {
+    if (referentiel.length > 0) { const domaines = filterDomaine ? referentiel.filter(d => d.nom === filterDomaine) : referentiel; const s = new Set(); domaines.forEach(d => (d.niveaux || []).forEach(n => { if (!filterNiveau || n.nom === filterNiveau) (n.matieres || []).forEach(m => s.add(m.nom)); })); return [...s].sort(); }
+    const s = new Set(); allProfs.forEach(p => p.tarifs_matieres?.forEach(t => { if (!filterDomaine || t.nom_domaine === filterDomaine) s.add(t.nom_matiere); })); return [...s].sort();
+  }, [referentiel, allProfs, filterDomaine, filterNiveau]);
+
+  const filtered = useMemo(() => allProfs.filter(p => {
+    const nm = `${p.user_prenom || ''} ${p.user_nom || ''}`.toLowerCase();
+    if (filter === 'bloqué') { if (p.user_statut !== 'bloqué') return false; }
+    else if (filter !== 'tous' && p.statut_validation !== filter) return false;
+    if (search && !nm.includes(search.toLowerCase()) && !(p.ville || '').toLowerCase().includes(search.toLowerCase())) return false;
+    if (filterDomaine && !p.tarifs_matieres?.some(t => t.nom_domaine === filterDomaine)) return false;
+    if (filterNiveau && !p.tarifs_matieres?.some(t => t.nom_niveau === filterNiveau)) return false;
+    if (filterMatiere && !p.tarifs_matieres?.some(t => t.nom_matiere === filterMatiere)) return false;
+    return true;
+  }), [allProfs, filter, search, filterDomaine, filterNiveau, filterMatiere]);
+
+  const pending = allProfs.filter(p => p.statut_validation === 'en_attente');
+  const FILTERS = [
+    { k: 'tous',       l: 'Tous',       c: '#0F172A' },
+    { k: 'validé',     l: 'Validés',    c: '#10b981' },
+    { k: 'en_attente', l: 'En attente', c: '#f59e0b' },
+    { k: 'refusé',     l: 'Refusés',    c: '#ef4444' },
+    { k: 'bloqué',     l: '🚫 Bloqués', c: '#7c3aed' },
+  ];
 
   return (
-        <div style={{background:'#fff',border:'1.5px solid #f1f5f9',borderRadius:24,padding:28,boxShadow:'0 2px 12px rgba(0,0,0,.04)'}}>
-          <div style={{display:'flex',alignItems:'center',gap:9,marginBottom:6}}>
-            <div style={{width:4,height:22,borderRadius:2,background:'linear-gradient(180deg,#f59e0b,#ef4444)'}}/>
-            <h3 style={{fontFamily:'Cabinet Grotesk,sans-serif',fontWeight:900,fontSize:17,color:'#0F172A',margin:0}}>Entonnoir de conversion</h3>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+      {pending.length > 0 && (
+        <div className="adm-card" style={{ padding: '18px 20px', borderColor: '#fcd34d', background: '#fffbeb' }}>
+          <div style={{ fontFamily: 'Cabinet Grotesk,sans-serif', fontWeight: 800, fontSize: 13, color: '#b45309', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ background: '#fef3c7', padding: '2px 8px', borderRadius: 6, fontSize: 11 }}>⚠ ACTION REQUISE</span>
+            {pending.length} professeur{pending.length > 1 ? 's' : ''} en attente
           </div>
-          <div style={{fontSize:13,color:'#94a3b8',paddingLeft:13,marginBottom:24}}>
-            De l'inscription à la séance terminée — taux de conversion de la plateforme
-          </div>
-
-          {/* Étapes de l'entonnoir */}
-          <div style={{display:'flex',gap:0,alignItems:'stretch',marginBottom:24}}>
-            {[
-              {
-                icon:'👥', label:'Étudiants inscrits',
-                val: entonnoir.etudiants_inscrits,
-                sub: '100% — base totale',
-                color:'#6366f1', bg:'#eef2ff', border:'#c7d2fe',
-                pct: 100,
-              },
-              {
-                icon:'🎯', label:'Étudiants actifs',
-                val: entonnoir.etudiants_actifs,
-                sub: `${entonnoir.taux_activation}% ont réservé`,
-                color:'#3b82f6', bg:'#eff6ff', border:'#bfdbfe',
-                pct: entonnoir.taux_activation,
-              },
-              {
-                icon:'📋', label:'Réservations envoyées',
-                val: entonnoir.reservations_total,
-                sub: `${entonnoir.etudiants_actifs>0?Math.round(entonnoir.reservations_total/entonnoir.etudiants_actifs*10)/10:0} par étudiant actif`,
-                color:'#f59e0b', bg:'#fffbeb', border:'#fcd34d',
-                pct: null,
-              },
-              {
-                icon:'✅', label:'Confirmées',
-                val: entonnoir.reservations_confirmees,
-                sub: `${entonnoir.taux_confirmation}% de taux`,
-                color:'#10b981', bg:'#ecfdf5', border:'#6ee7b7',
-                pct: entonnoir.taux_confirmation,
-              },
-              {
-                icon:'🏁', label:'Terminées',
-                val: entonnoir.reservations_terminees,
-                sub: `${entonnoir.reservations_confirmees>0?Math.round(entonnoir.reservations_terminees/entonnoir.reservations_confirmees*100):0}% des confirmées`,
-                color:'#059669', bg:'#d1fae5', border:'#34d399',
-                pct: entonnoir.reservations_confirmees>0?Math.round(entonnoir.reservations_terminees/entonnoir.reservations_confirmees*100):0,
-              },
-            ].map((step,i,arr)=>(
-              <React.Fragment key={i}>
-                <div style={{flex:1,display:'flex',flexDirection:'column',alignItems:'center',gap:8}}>
-                  {/* Carte étape */}
-                  <div style={{
-                    width:'100%',padding:'16px 12px',borderRadius:16,textAlign:'center',
-                    background:step.bg,border:`1.5px solid ${step.border}`,
-                    position:'relative',overflow:'hidden'
-                  }}>
-                    {/* Barre de progression en fond */}
-                    {step.pct!==null&&(
-                      <div style={{
-                        position:'absolute',bottom:0,left:0,right:0,
-                        height:animated?`${step.pct}%`:'0%',
-                        background:`${step.color}12`,
-                        transition:'height 1.2s cubic-bezier(.22,1,.36,1)',
-                        maxHeight:'100%'
-                      }}/>
-                    )}
-                    <div style={{position:'relative',zIndex:1}}>
-                      <div style={{fontSize:22,marginBottom:6}}>{step.icon}</div>
-                      <div style={{fontFamily:'Cabinet Grotesk,sans-serif',fontWeight:900,fontSize:28,color:step.color,lineHeight:1,marginBottom:4}}>{step.val}</div>
-                      <div style={{fontSize:11,fontWeight:700,color:step.color,marginBottom:4}}>{step.label}</div>
-                      <div style={{fontSize:10,color:step.color,opacity:.65,fontStyle:'italic'}}>{step.sub}</div>
-                    </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {pending.map(p => {
+              const nm = `${p.user_prenom || ''} ${p.user_nom || ''}`.trim();
+              const mts = p.tarifs_matieres ? [...new Set(p.tarifs_matieres.map(t => t.nom_matiere))].slice(0, 2) : [];
+              return (
+                <div key={p.id} className="adm-pending-row">
+                  <ProfAvatar prof={p} size={38} />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontFamily: 'Cabinet Grotesk,sans-serif', fontWeight: 700, fontSize: 13, color: '#0F172A' }}>{nm}</div>
+                    <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 2 }}>{p.ville && `${p.ville} / `}{mts.join(', ') || 'Matières non renseignées'}</div>
+                  </div>
+                  <div style={{ display: 'flex', gap: 6 }}>
+                    <button className="adm-btn adm-btn-ghost adm-btn-sm" onClick={() => onView(p)}>Voir</button>
+                    <button className="adm-btn adm-btn-success adm-btn-sm" onClick={() => onValider(p.id)}>✓ Valider</button>
+                    <button className="adm-btn adm-btn-danger adm-btn-sm" onClick={() => onRefuser(p.id, nm)}>✕ Refuser</button>
                   </div>
                 </div>
-                {/* Flèche entre étapes */}
-                {i<arr.length-1&&(
-                  <div style={{display:'flex',alignItems:'center',padding:'0 4px',flexShrink:0,paddingBottom:8}}>
-                    <div style={{fontSize:18,color:'#cbd5e1'}}>›</div>
-                  </div>
-                )}
-              </React.Fragment>
-            ))}
-          </div>
-
-          {/* Barre de santé globale */}
-          <div style={{background:'#f8fafc',borderRadius:16,padding:'16px 20px',border:'1.5px solid #f1f5f9'}}>
-            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12}}>
-              <span style={{fontFamily:'Cabinet Grotesk,sans-serif',fontWeight:800,fontSize:13,color:'#0F172A'}}>Santé globale de la plateforme</span>
-              <span style={{
-                fontFamily:'Cabinet Grotesk,sans-serif',fontWeight:900,fontSize:14,
-                color: entonnoir.taux_confirmation>=60?'#059669':entonnoir.taux_confirmation>=30?'#d97706':'#dc2626'
-              }}>
-                {entonnoir.taux_confirmation>=60?'🟢 Bonne':entonnoir.taux_confirmation>=30?'🟡 Moyenne':'🔴 À améliorer'}
-              </span>
-            </div>
-            <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:12}}>
-              {[
-                {
-                  label:'Taux d\'activation',
-                  val:`${entonnoir.taux_activation}%`,
-                  sub:'\u00c9tudiants qui r\u00e9servent',
-                  good:entonnoir.taux_activation>=30,
-                  color:'#6366f1'
-                },
-                {
-                  label:'Taux de confirmation',
-                  val:`${entonnoir.taux_confirmation}%`,
-                  sub:'Réservations acceptées',
-                  good:entonnoir.taux_confirmation>=60,
-                  color:'#10b981'
-                },
-                {
-                  label:'Taux de refus',
-                  val:`${entonnoir.taux_refus}%`,
-                  sub:'Réservations refusées',
-                  good:entonnoir.taux_refus<=20,
-                  color:'#ef4444'
-                },
-              ].map((m,i)=>(
-                <div key={i} style={{background:'#fff',borderRadius:12,padding:'12px 14px',border:'1.5px solid #f1f5f9'}}>
-                  <div style={{fontSize:11,color:'#94a3b8',fontWeight:600,marginBottom:4}}>{m.label}</div>
-                  <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:4}}>
-                    <span style={{fontFamily:'Cabinet Grotesk,sans-serif',fontWeight:900,fontSize:20,color:m.color}}>{m.val}</span>
-                    <span style={{fontSize:14}}>{m.good?'✅':'⚠️'}</span>
-                  </div>
-                  <div style={{height:6,background:'#f1f5f9',borderRadius:3,overflow:'hidden',marginTop:6}}>
-                    <div style={{height:'100%',background:m.color,borderRadius:3,width:animated?m.val:'0%',transition:'width 1.4s cubic-bezier(.22,1,.36,1)'}}/>
-                  </div>
-                  <div style={{fontSize:10,color:'#94a3b8',marginTop:4,fontStyle:'italic'}}>{m.sub}</div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-  );
-}
-
-
-function ProfsTab({ allProfs, structure=[], onView, onValider, onRefuser }) {
-  const [filter,setFilter]       = useState('tous');
-  const [search,setSearch]       = useState('');
-  const [viewMode,setViewMode]   = useState('grid');
-  const [filterDomaine,setFilterDomaine] = useState('');
-  const [filterNiveau,setFilterNiveau]   = useState('');
-  const [filterMatiere,setFilterMatiere] = useState('');
-
-  const counts = useMemo(()=>({
-    tous:      allProfs.length,
-    'validé':  allProfs.filter(p=>p.statut_validation==='validé').length,
-    en_attente:allProfs.filter(p=>p.statut_validation==='en_attente').length,
-    'refusé':  allProfs.filter(p=>p.statut_validation==='refusé').length,
-  }),[allProfs]);
-
-  const referentiel = structure; // Utilise le référentiel déjà chargé par le parent
-
-  const allDomaines = useMemo(()=>{
-    if(referentiel.length>0) return referentiel.map(d=>d.nom);
-    const s=new Set();
-    allProfs.forEach(p=>p.tarifs_matieres?.forEach(t=>{if(t.nom_domaine&&t.nom_domaine!=='N/A')s.add(t.nom_domaine);}));
-    return [...s].sort();
-  },[referentiel,allProfs]);
-
-  const allNiveaux = useMemo(()=>{
-    if(referentiel.length>0){
-      const dom=referentiel.find(d=>d.nom===filterDomaine);
-      if(filterDomaine&&dom) return (dom.niveaux||[]).map(n=>n.nom);
-      return referentiel.flatMap(d=>(d.niveaux||[]).map(n=>n.nom));
-    }
-    const s=new Set();
-    allProfs.forEach(p=>p.tarifs_matieres?.forEach(t=>{
-      if(t.nom_niveau&&t.nom_niveau!=='N/A'&&(!filterDomaine||t.nom_domaine===filterDomaine))s.add(t.nom_niveau);
-    }));
-    return [...s].sort();
-  },[referentiel,allProfs,filterDomaine]);
-
-  const allMatieres = useMemo(()=>{
-    if(referentiel.length>0){
-      const domaines=filterDomaine?referentiel.filter(d=>d.nom===filterDomaine):referentiel;
-      const s=new Set();
-      domaines.forEach(d=>(d.niveaux||[]).forEach(n=>{
-        if(!filterNiveau||n.nom===filterNiveau)(n.matieres||[]).forEach(m=>s.add(m.nom));
-      }));
-      return [...s].sort();
-    }
-    const s=new Set();
-    allProfs.forEach(p=>p.tarifs_matieres?.forEach(t=>{
-      if(!filterDomaine||t.nom_domaine===filterDomaine)s.add(t.nom_matiere);
-    }));
-    return [...s].sort();
-  },[referentiel,allProfs,filterDomaine,filterNiveau]);
-
-
-  const filtered = useMemo(()=>allProfs.filter(p=>{
-    const nm=`${p.user_prenom||''} ${p.user_nom||''}`.toLowerCase();
-    if(filter!=='tous' && p.statut_validation!==filter) return false;
-    if(search && !nm.includes(search.toLowerCase()) && !(p.ville||'').toLowerCase().includes(search.toLowerCase())) return false;
-    if(filterDomaine && !p.tarifs_matieres?.some(t=>t.nom_domaine===filterDomaine)) return false;
-    if(filterNiveau  && !p.tarifs_matieres?.some(t=>t.nom_niveau===filterNiveau))   return false;
-    if(filterMatiere && !p.tarifs_matieres?.some(t=>t.nom_matiere===filterMatiere)) return false;
-    return true;
-  }),[allProfs,filter,search,filterDomaine,filterNiveau,filterMatiere]);
-  const pending=allProfs.filter(p=>p.statut_validation==='en_attente');
-  const FILTERS=[{k:'tous',l:'Tous',c:'#0F172A'},{k:'validé',l:'Validés',c:'#10b981'},{k:'en_attente',l:'En attente',c:'#f59e0b'},{k:'refusé',l:'Refusés',c:'#ef4444'}];
-  return(
-    <div style={{display:'flex',flexDirection:'column',gap:20}}>
-      {pending.length>0&&(
-        <div className="adm-card" style={{padding:'18px 20px',borderColor:'#fcd34d',background:'#fffbeb'}}>
-          <div style={{fontFamily:'Cabinet Grotesk,sans-serif',fontWeight:800,fontSize:13,color:'#b45309',marginBottom:12,display:'flex',alignItems:'center',gap:8}}>
-            <span style={{background:'#fef3c7',padding:'2px 8px',borderRadius:6,fontSize:11}}>! ACTION REQUISE</span>
-            {pending.length} professeur{pending.length>1?'s':''} en attente
-          </div>
-          <div style={{display:'flex',flexDirection:'column',gap:8}}>
-            {pending.map(p=>{const nm=`${p.user_prenom||''} ${p.user_nom||''}`.trim();const mts=p.tarifs_matieres?[...new Set(p.tarifs_matieres.map(t=>t.nom_matiere))].slice(0,2):[];return<div key={p.id} className="adm-pending-row"><ProfAvatar prof={p} size={38}/><div style={{flex:1,minWidth:0}}><div style={{fontFamily:'Cabinet Grotesk,sans-serif',fontWeight:700,fontSize:13,color:'#0F172A'}}>{nm}</div><div style={{fontSize:11,color:'#94a3b8',marginTop:2}}>{p.ville&&`${p.ville} / `}{mts.join(', ')||'Matieres non renseignees'}</div></div><div style={{display:'flex',gap:6}}><button className="adm-btn adm-btn-ghost adm-btn-sm" onClick={()=>onView(p)}>Voir</button><button className="adm-btn adm-btn-success adm-btn-sm" onClick={()=>onValider(p.id)}>Valider</button><button className="adm-btn adm-btn-danger adm-btn-sm" onClick={()=>onRefuser(p.id)}>X</button></div></div>;})}
+              );
+            })}
           </div>
         </div>
       )}
-      <div style={{display:'flex',gap:12,alignItems:'center',flexWrap:'wrap'}}>
-        <div className="adm-search-wrap" style={{flex:1,minWidth:220}}><span className="adm-search-icon">?</span><input className="adm-input" placeholder="Rechercher par nom ou ville..." value={search} onChange={e=>setSearch(e.target.value)}/></div>
-        <div style={{display:'flex',gap:6,flexWrap:'wrap'}}>
-          {FILTERS.map(f=><button key={f.k} onClick={()=>setFilter(f.k)} style={{padding:'7px 14px',borderRadius:22,border:`1.5px solid ${filter===f.k?f.c:'#e2e8f0'}`,background:filter===f.k?`${f.c}14`:'#fff',color:filter===f.k?f.c:'#64748b',fontSize:12,fontWeight:filter===f.k?700:500,cursor:'pointer',display:'flex',alignItems:'center',gap:6,transition:'all .15s'}}>{f.l}<span style={{fontSize:10,fontWeight:800,background:filter===f.k?`${f.c}20`:'#f8fafc',color:filter===f.k?f.c:'#94a3b8',padding:'1px 6px',borderRadius:8,minWidth:18,textAlign:'center'}}>{counts[f.k]||0}</span></button>)}
+
+      <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+        <div className="adm-search-wrap" style={{ flex: 1, minWidth: 220 }}>
+          <span className="adm-search-icon">🔍</span>
+          <input className="adm-input" placeholder="Rechercher par nom ou ville..." value={search} onChange={e => setSearch(e.target.value)} />
         </div>
-        <div style={{display:'flex',gap:4}}>{[['grid','G'],['list','L']].map(([v,i])=><button key={v} onClick={()=>setViewMode(v)} style={{width:34,height:34,borderRadius:9,border:'1.5px solid #e2e8f0',background:viewMode===v?'#3b82f6':'#fff',color:viewMode===v?'#fff':'#94a3b8',cursor:'pointer',fontSize:14,display:'flex',alignItems:'center',justifyContent:'center',transition:'all .15s'}}>{i}</button>)}</div>
-        <span style={{fontSize:12,color:'#94a3b8',fontWeight:500}}><strong style={{color:'#0F172A'}}>{filtered.length}</strong> resultat{filtered.length>1?'s':''}</span>
-        <button
-          onClick={()=>exportAdminProfs(filtered)}
-          style={{display:'flex',alignItems:'center',gap:6,padding:'8px 14px',background:'#00153D',color:'#fff',border:'none',borderRadius:10,cursor:'pointer',fontFamily:"'Cabinet Grotesk',sans-serif",fontWeight:800,fontSize:'.78rem',boxShadow:'0 3px 10px rgba(0,21,61,0.18)',transition:'all .15s',whiteSpace:'nowrap'}}
-          onMouseEnter={e=>{e.currentTarget.style.background='#1E3A8A';}}
-          onMouseLeave={e=>{e.currentTarget.style.background='#00153D';}}>
-          📄 PDF
-        </button>
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+          {FILTERS.map(f => (
+            <button key={f.k} onClick={() => setFilter(f.k)} style={{ padding: '7px 14px', borderRadius: 22, border: `1.5px solid ${filter === f.k ? f.c : '#e2e8f0'}`, background: filter === f.k ? `${f.c}14` : '#fff', color: filter === f.k ? f.c : '#64748b', fontSize: 12, fontWeight: filter === f.k ? 700 : 500, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, transition: 'all .15s' }}>
+              {f.l}<span style={{ fontSize: 10, fontWeight: 800, background: filter === f.k ? `${f.c}20` : '#f8fafc', color: filter === f.k ? f.c : '#94a3b8', padding: '1px 6px', borderRadius: 8, minWidth: 18, textAlign: 'center' }}>{counts[f.k] || 0}</span>
+            </button>
+          ))}
+        </div>
+        <div style={{ display: 'flex', gap: 4 }}>
+          {[['grid', '⊞'], ['list', '≡']].map(([v, i]) => (
+            <button key={v} onClick={() => setViewMode(v)} style={{ width: 34, height: 34, borderRadius: 9, border: '1.5px solid #e2e8f0', background: viewMode === v ? '#3b82f6' : '#fff', color: viewMode === v ? '#fff' : '#94a3b8', cursor: 'pointer', fontSize: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all .15s' }}>{i}</button>
+          ))}
+        </div>
+        <span style={{ fontSize: 12, color: '#94a3b8', fontWeight: 500 }}><strong style={{ color: '#0F172A' }}>{filtered.length}</strong> résultat{filtered.length > 1 ? 's' : ''}</span>
+        <button onClick={() => exportAdminProfs(filtered)} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', background: '#00153D', color: '#fff', border: 'none', borderRadius: 10, cursor: 'pointer', fontFamily: "'Cabinet Grotesk',sans-serif", fontWeight: 800, fontSize: '.78rem', boxShadow: '0 3px 10px rgba(0,21,61,0.18)', transition: 'all .15s', whiteSpace: 'nowrap' }} onMouseEnter={e => e.currentTarget.style.background = '#1E3A8A'} onMouseLeave={e => e.currentTarget.style.background = '#00153D'}>📄 PDF</button>
       </div>
+
       {/* Filtres domaine / niveau / matière */}
-      <div style={{display:'flex',gap:10,flexWrap:'wrap',padding:'14px 18px',background:'#f8fafc',borderRadius:16,border:'1.5px solid #f1f5f9'}}>
+      <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', padding: '14px 18px', background: '#f8fafc', borderRadius: 16, border: '1.5px solid #f1f5f9' }}>
         {[
-          {label:'🗂 Domaine', val:filterDomaine, set:(v)=>{setFilterDomaine(v);setFilterNiveau('');setFilterMatiere('');}, opts:allDomaines, ph:'Tous les domaines'},
-          {label:'🎓 Niveau',  val:filterNiveau,  set:(v)=>{setFilterNiveau(v);setFilterMatiere('');},  opts:allNiveaux,  ph:'Tous les niveaux'},
-          {label:'📚 Matière', val:filterMatiere, set:setFilterMatiere, opts:allMatieres, ph:'Toutes les matières'},
-        ].map(f=>(
-          <div key={f.label} style={{display:'flex',flexDirection:'column',gap:4,minWidth:160}}>
-            <span style={{fontSize:10,fontWeight:800,color:'#94a3b8',textTransform:'uppercase',letterSpacing:'.08em'}}>{f.label}</span>
-            <div style={{position:'relative'}}>
-              <select value={f.val} onChange={e=>f.set(e.target.value)}
-                style={{background:'#fff',border:`1.5px solid ${f.val?'#3b82f6':'#e2e8f0'}`,borderRadius:10,color:'#0F172A',padding:'8px 28px 8px 12px',fontSize:12,fontWeight:600,outline:'none',cursor:'pointer',appearance:'none',WebkitAppearance:'none',width:'100%',transition:'border-color .15s'}}>
+          { label: '🗂 Domaine', val: filterDomaine, set: (v) => { setFilterDomaine(v); setFilterNiveau(''); setFilterMatiere(''); }, opts: allDomaines, ph: 'Tous les domaines' },
+          { label: '🎓 Niveau', val: filterNiveau, set: (v) => { setFilterNiveau(v); setFilterMatiere(''); }, opts: allNiveaux, ph: 'Tous les niveaux' },
+          { label: '📚 Matière', val: filterMatiere, set: setFilterMatiere, opts: allMatieres, ph: 'Toutes les matières' },
+        ].map(f => (
+          <div key={f.label} style={{ display: 'flex', flexDirection: 'column', gap: 4, minWidth: 160 }}>
+            <span style={{ fontSize: 10, fontWeight: 800, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '.08em' }}>{f.label}</span>
+            <div style={{ position: 'relative' }}>
+              <select value={f.val} onChange={e => f.set(e.target.value)} style={{ background: '#fff', border: `1.5px solid ${f.val ? '#3b82f6' : '#e2e8f0'}`, borderRadius: 10, color: '#0F172A', padding: '8px 28px 8px 12px', fontSize: 12, fontWeight: 600, outline: 'none', cursor: 'pointer', appearance: 'none', WebkitAppearance: 'none', width: '100%', transition: 'border-color .15s' }}>
                 <option value="">{f.ph}</option>
-                {f.opts.map(o=><option key={o} value={o}>{o}</option>)}
+                {f.opts.map(o => <option key={o} value={o}>{o}</option>)}
               </select>
-              <span style={{position:'absolute',right:9,top:'50%',transform:'translateY(-50%)',fontSize:10,color:'#94a3b8',pointerEvents:'none'}}>▾</span>
+              <span style={{ position: 'absolute', right: 9, top: '50%', transform: 'translateY(-50%)', fontSize: 10, color: '#94a3b8', pointerEvents: 'none' }}>▾</span>
             </div>
           </div>
         ))}
-        {(filterDomaine||filterNiveau||filterMatiere)&&(
-          <div style={{display:'flex',alignItems:'flex-end'}}>
-            <button onClick={()=>{setFilterDomaine('');setFilterNiveau('');setFilterMatiere('');}}
-              style={{padding:'8px 14px',background:'#fef2f2',color:'#dc2626',border:'1.5px solid #fca5a5',borderRadius:10,cursor:'pointer',fontWeight:700,fontSize:12,display:'flex',alignItems:'center',gap:5}}>
-              ✕ Réinitialiser
-            </button>
+        {(filterDomaine || filterNiveau || filterMatiere) && (
+          <div style={{ display: 'flex', alignItems: 'flex-end' }}>
+            <button onClick={() => { setFilterDomaine(''); setFilterNiveau(''); setFilterMatiere(''); }} style={{ padding: '8px 14px', background: '#fef2f2', color: '#dc2626', border: '1.5px solid #fca5a5', borderRadius: 10, cursor: 'pointer', fontWeight: 700, fontSize: 12, display: 'flex', alignItems: 'center', gap: 5 }}>✕ Réinitialiser</button>
           </div>
         )}
       </div>
-      <div style={{display:'flex',gap:12,alignItems:'center',flexWrap:'wrap'}}>
-      </div>
-      {filtered.length===0?<EmptyState icon="?" title="Aucun formateur trouve" sub="Modifiez vos criteres"/>
-      :viewMode==='grid'?<div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:16}}>{filtered.map((p,i)=><ProfCardGrid key={p.id} prof={p} index={i} onView={onView} onValider={onValider} onRefuser={onRefuser}/>)}</div>
-      :<div className="adm-card" style={{overflow:'hidden'}}><table className="adm-table"><thead><tr><th>Formateur</th><th>Matieres</th><th>Ville</th><th>Mode</th><th>Note</th><th>Statut</th><th>Actions</th></tr></thead><tbody>{filtered.map(p=>{const nm=`${p.user_prenom||''} ${p.user_nom||''}`.trim();const mts=p.tarifs_matieres?[...new Set(p.tarifs_matieres.map(t=>t.nom_matiere))].slice(0,2):[];const note=parseFloat(p.note_moyenne||0);return<tr key={p.id}><td><div style={{display:'flex',alignItems:'center',gap:10}}><ProfAvatar prof={p} size={34}/><div><div style={{fontFamily:'Cabinet Grotesk,sans-serif',fontWeight:700,fontSize:13,color:'#0F172A'}}>{nm}</div><div style={{fontSize:11,color:'#94a3b8'}}>{p.email}</div></div></div></td><td><div style={{display:'flex',gap:4,flexWrap:'wrap'}}>{mts.map(m=><span key={m} className="adm-badge adm-badge-blue" style={{fontSize:10}}>{m}</span>)}{mts.length===0&&<span style={{fontSize:12,color:'#94a3b8',fontStyle:'italic'}}>-</span>}</div></td><td style={{fontSize:12,color:'#64748b'}}>{p.ville||'-'}</td><td><ModeBadge m={p.mode_enseignement}/></td><td style={{fontSize:13,fontWeight:700}}>{note>0?`* ${note.toFixed(1)}`:'-'}</td><td><StatutBadge s={p.statut_validation}/></td><td><div style={{display:'flex',gap:5}}><button className="adm-btn adm-btn-ghost adm-btn-sm" onClick={()=>onView(p)}>Voir</button>{p.statut_validation==='en_attente'&&<><button className="adm-btn adm-btn-success adm-btn-sm" onClick={()=>onValider(p.id)}>v</button><button className="adm-btn adm-btn-danger adm-btn-sm" onClick={()=>onRefuser(p.id)}>x</button></>}</div></td></tr>;})}</tbody></table></div>}
+
+      {filtered.length === 0
+        ? <EmptyState icon="🔍" title="Aucun formateur trouvé" sub="Modifiez vos critères" />
+        : viewMode === 'grid'
+          ? <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 16 }}>{filtered.map((p, i) => <ProfCardGrid key={p.id} prof={p} index={i} onView={onView} onValider={onValider} onRefuser={onRefuser} />)}</div>
+          : (
+            <div className="adm-card" style={{ overflow: 'hidden' }}>
+              <table className="adm-table">
+                <thead><tr><th>Formateur</th><th>Matières</th><th>Ville</th><th>Mode</th><th>Note</th><th>Statut</th><th>Actions</th></tr></thead>
+                <tbody>
+                  {filtered.map(p => {
+                    const nm = `${p.user_prenom || ''} ${p.user_nom || ''}`.trim();
+                    const mts = p.tarifs_matieres ? [...new Set(p.tarifs_matieres.map(t => t.nom_matiere))].slice(0, 2) : [];
+                    const note = parseFloat(p.note_moyenne || 0);
+                    const estBloque = p.user_statut === 'bloqué';
+                    return (
+                      <tr key={p.id}>
+                        <td><div style={{ display: 'flex', alignItems: 'center', gap: 10 }}><ProfAvatar prof={p} size={34} /><div><div style={{ fontFamily: 'Cabinet Grotesk,sans-serif', fontWeight: 700, fontSize: 13, color: '#0F172A' }}>{nm}</div><div style={{ fontSize: 11, color: '#94a3b8' }}>{p.email}</div></div></div></td>
+                        <td><div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>{mts.map(m => <span key={m} className="adm-badge adm-badge-blue" style={{ fontSize: 10 }}>{m}</span>)}{mts.length === 0 && <span style={{ fontSize: 12, color: '#94a3b8', fontStyle: 'italic' }}>-</span>}</div></td>
+                        <td style={{ fontSize: 12, color: '#64748b' }}>{p.ville || '-'}</td>
+                        <td><ModeBadge m={p.mode_enseignement} /></td>
+                        <td style={{ fontSize: 13, fontWeight: 700 }}>{note > 0 ? `⭐ ${note.toFixed(1)}` : '-'}</td>
+                        <td><StatutBadge s={estBloque ? 'bloqué' : p.statut_validation} /></td>
+                        <td>
+                          <div style={{ display: 'flex', gap: 5 }}>
+                            <button className="adm-btn adm-btn-ghost adm-btn-sm" onClick={() => onView(p)}>Voir</button>
+                            {p.statut_validation === 'en_attente' && <>
+                              <button className="adm-btn adm-btn-success adm-btn-sm" onClick={() => onValider(p.id)}>✓</button>
+                              <button className="adm-btn adm-btn-danger adm-btn-sm" onClick={() => onRefuser(p.id, nm)}>✕</button>
+                            </>}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )
+      }
     </div>
   );
 }
 
 function ProfCardGrid({ prof, index, onView, onValider, onRefuser }) {
-  const nm=`${prof.user_prenom||''} ${prof.user_nom||''}`.trim()||'Formateur';
-  const mats=prof.tarifs_matieres?[...new Set(prof.tarifs_matieres.map(t=>t.nom_matiere))].slice(0,3):[];
-  const tarifMin=[prof.tarif_en_ligne,prof.tarif_presentiel].filter(v=>isTarif(v)).map(Number);
-  const minT=tarifMin.length?Math.min(...tarifMin):null;
-  const note=parseFloat(prof.note_moyenne||0);
-  return(
-    <div className="adm-prof-card adm-scaleIn" style={{animationDelay:`${index*50}ms`}} onClick={()=>onView(prof)}>
-      <div style={{height:80,background:'linear-gradient(135deg,#1e40af,#3b82f6,#60a5fa)',borderRadius:'20px 20px 0 0',position:'relative',overflow:'hidden'}}>
-        <div style={{position:'absolute',top:8,right:10}}><StatutBadge s={prof.statut_validation}/></div>
-        {minT&&<div style={{position:'absolute',bottom:7,left:10,fontSize:10,fontWeight:700,color:'rgba(255,255,255,.85)',background:'rgba(255,255,255,.12)',padding:'2px 8px',borderRadius:6}}>des {minT} DT/h</div>}
-      </div>
-      <div style={{marginTop:-36,padding:'0 16px'}}>
-        <div style={{width:68,height:68,borderRadius:18,background:'#fff',border:'3px solid #fff',boxShadow:'0 4px 12px rgba(0,0,0,.12)',overflow:'hidden',flexShrink:0}}>
-          <ProfAvatar prof={prof} size={62}/>
+  const nm = `${prof.user_prenom || ''} ${prof.user_nom || ''}`.trim() || 'Professeur';
+  const mats = prof.tarifs_matieres ? [...new Set(prof.tarifs_matieres.map(t => t.nom_matiere))].slice(0, 3) : [];
+  const niveaux = [...new Set((prof.tarifs_matieres || []).map(t => t.nom_niveau).filter(Boolean))].slice(0, 2);
+  const tarifMin = [prof.tarif_en_ligne, prof.tarif_presentiel].filter(v => isTarif(v)).map(Number);
+  const minT = tarifMin.length ? Math.min(...tarifMin) : null;
+  const note = parseFloat(prof.note_moyenne || 0);
+  const estBloque = prof.user_statut === 'bloqué';
+  const statut = estBloque ? 'bloqué' : prof.statut_validation;
+
+  // Couleur accent selon statut
+  const accentCfg = {
+    'validé':     { color: '#10b981', bg: '#ecfdf5', border: '#6ee7b7' },
+    'en_attente': { color: '#f59e0b', bg: '#fffbeb', border: '#fcd34d' },
+    'refusé':     { color: '#ef4444', bg: '#fef2f2', border: '#fca5a5' },
+    'bloqué':     { color: '#7c3aed', bg: '#f5f3ff', border: '#c4b5fd' },
+  }[statut] || { color: '#94a3b8', bg: '#f8fafc', border: '#e2e8f0' };
+
+  return (
+    <div
+      className="adm-scaleIn"
+      style={{
+        animationDelay: `${index * 50}ms`,
+        opacity: estBloque ? .75 : 1,
+        background: '#fff',
+        border: `1.5px solid ${accentCfg.border}`,
+        borderRadius: 16,
+        overflow: 'hidden',
+        cursor: 'pointer',
+        transition: 'all .22s cubic-bezier(.22,1,.36,1)',
+        boxShadow: '0 2px 8px rgba(0,0,0,.05)',
+        display: 'flex',
+        flexDirection: 'column',
+      }}
+      onClick={() => onView(prof)}
+      onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-3px)'; e.currentTarget.style.boxShadow = `0 10px 28px ${accentCfg.color}22`; }}
+      onMouseLeave={e => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,.05)'; }}
+    >
+      {/* Barre accent haut */}
+      <div style={{ height: 4, background: accentCfg.color, flexShrink: 0 }} />
+
+      <div style={{ padding: '14px 16px', display: 'flex', gap: 12, alignItems: 'flex-start', flex: 1 }}>
+        {/* Avatar */}
+        <div style={{ width: 52, height: 52, borderRadius: 14, border: `2px solid ${accentCfg.border}`, overflow: 'hidden', flexShrink: 0, background: accentCfg.bg }}>
+          <ProfAvatar prof={prof} size={48} />
         </div>
-      </div>
-      <div style={{padding:'8px 16px 16px'}}>
-        <div style={{fontFamily:'Cabinet Grotesk,sans-serif',fontWeight:900,fontSize:14,color:'#0F172A',marginBottom:5}}>{nm}</div>
-        <div style={{display:'flex',gap:6,alignItems:'center',marginBottom:10,flexWrap:'wrap'}}>{prof.ville&&<span style={{fontSize:11,color:'#94a3b8'}}>{prof.ville}</span>}<ModeBadge m={prof.mode_enseignement}/></div>
-        {mats.length>0&&<div style={{display:'flex',flexWrap:'wrap',gap:4,marginBottom:6}}>{mats.map(m=><span key={m} style={{fontSize:10,fontWeight:700,padding:'2px 7px',borderRadius:12,background:'#eff6ff',color:'#1d4ed8',border:'1px solid #bfdbfe'}}>{m}</span>)}</div>}
-        {(()=>{
-          const niveaux=[...new Set((prof.tarifs_matieres||[]).map(t=>t.nom_niveau).filter(Boolean))].slice(0,3);
-          return niveaux.length>0?(
-            <div style={{display:'flex',flexWrap:'wrap',gap:4,marginBottom:8}}>
-              {niveaux.map(n=><span key={n} style={{fontSize:10,fontWeight:700,padding:'2px 7px',borderRadius:12,background:'#fff7ed',color:'#c2410c',border:'1px solid #fed7aa'}}>🎓 {n}</span>)}
+
+        {/* Infos principales */}
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 6, marginBottom: 4 }}>
+            <div style={{ fontFamily: "'Cabinet Grotesk',sans-serif", fontWeight: 900, fontSize: 13, color: '#0F172A', lineHeight: 1.2 }}>{nm}</div>
+            <StatutBadge s={statut} />
+          </div>
+
+          {/* Ville + mode */}
+          <div style={{ display: 'flex', gap: 6, alignItems: 'center', marginBottom: 8, flexWrap: 'wrap' }}>
+            {prof.ville && <span style={{ fontSize: 11, color: '#64748b', display: 'flex', alignItems: 'center', gap: 3 }}>📍 {prof.ville}</span>}
+            <ModeBadge m={prof.mode_enseignement} />
+            {minT && <span style={{ fontSize: 10, fontWeight: 800, color: accentCfg.color, background: accentCfg.bg, padding: '2px 7px', borderRadius: 8, border: `1px solid ${accentCfg.border}` }}>dès {minT} DT/séance</span>}
+          </div>
+
+          {/* Matières */}
+          {mats.length > 0 && (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 5 }}>
+              {mats.map(m => <span key={m} style={{ fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 10, background: '#f0f9ff', color: '#0369a1', border: '1px solid #bae6fd' }}>{m}</span>)}
             </div>
-          ):null;
-        })()}
-        <div style={{display:'flex',alignItems:'center',gap:6,marginBottom:12,fontSize:12}}><span style={{color:'#f59e0b'}}>*</span><span style={{fontWeight:700,color:'#0F172A'}}>{note>0?note.toFixed(1):'-'}</span><span style={{color:'#94a3b8'}}>{prof.nb_avis} avis</span></div>
-        <div style={{borderTop:'1px solid #f1f5f9',paddingTop:12,display:'flex',gap:6}}>
-          <button className="adm-btn adm-btn-primary adm-btn-sm" style={{flex:1,justifyContent:'center'}} onClick={e=>{e.stopPropagation();onView(prof);}}>Voir profil</button>
-          {prof.statut_validation==='en_attente'&&<><button className="adm-btn adm-btn-success adm-btn-sm" onClick={e=>{e.stopPropagation();onValider(prof.id);}}>v</button><button className="adm-btn adm-btn-danger adm-btn-sm" onClick={e=>{e.stopPropagation();onRefuser(prof.id);}}>x</button></>}
+          )}
+
+          {/* Niveaux */}
+          {niveaux.length > 0 && (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 6 }}>
+              {niveaux.map(n => <span key={n} style={{ fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 10, background: '#fefce8', color: '#a16207', border: '1px solid #fef08a' }}>🎓 {n}</span>)}
+            </div>
+          )}
+
+          {/* Note */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 11, color: '#64748b' }}>
+            <span style={{ color: '#f59e0b' }}>⭐</span>
+            <span style={{ fontWeight: 700, color: '#0F172A' }}>{note > 0 ? note.toFixed(1) : '—'}</span>
+            <span>{prof.nb_avis || 0} avis</span>
+          </div>
         </div>
+      </div>
+
+      {/* Footer actions */}
+      <div style={{ borderTop: `1px solid ${accentCfg.border}`, padding: '10px 14px', display: 'flex', gap: 7, background: accentCfg.bg }}>
+        <button
+          className="adm-btn adm-btn-primary adm-btn-sm"
+          style={{ flex: 1, justifyContent: 'center', fontSize: 11 }}
+          onClick={e => { e.stopPropagation(); onView(prof); }}
+        >Voir dossier</button>
+        {statut === 'en_attente' && <>
+          <button className="adm-btn adm-btn-success adm-btn-sm" onClick={e => { e.stopPropagation(); onValider(prof.id); }} title="Valider">✓</button>
+          <button className="adm-btn adm-btn-danger adm-btn-sm" onClick={e => { e.stopPropagation(); onRefuser(prof.id, nm); }} title="Refuser">✕</button>
+        </>}
       </div>
     </div>
   );
 }
 
+// ─── DEMANDES TAB ─────────────────────────────────────────────────────────────
 function DemandesTab({ demandes, onApprouver, onRefuser }) {
-  const pending=demandes.filter(d=>d.statut==='en_attente');
-  const archived=demandes.filter(d=>d.statut!=='en_attente');
-  return(
-    <div style={{display:'flex',flexDirection:'column',gap:20}}>
-      <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:14}}>
+  const pending = demandes.filter(d => d.statut === 'en_attente');
+  const archived = demandes.filter(d => d.statut !== 'en_attente');
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 14 }}>
         {[
-          {label:'En attente', count:pending.length,                                      color:'#B45309',bg:'#FFFBEB',border:'#FCD34D',icon:'⏳',shadow:'rgba(245,158,11,0.2)'},
-          {label:'Approuvées', count:demandes.filter(d=>d.statut==='approuvé').length,    color:'#065F46',bg:'#ECFDF5',border:'#6EE7B7',icon:'✅',shadow:'rgba(16,185,129,0.2)'},
-          {label:'Refusées',   count:demandes.filter(d=>d.statut==='refusé').length,      color:'#991B1B',bg:'#FEF2F2',border:'#FCA5A5',icon:'❌',shadow:'rgba(239,68,68,0.2)'},
-        ].map((s,i)=>(
-          <div key={s.label} style={{
-            background:s.bg, border:`1.5px solid ${s.border}`,
-            borderRadius:20, padding:'22px 24px',
-            display:'flex', alignItems:'center', gap:16,
-            boxShadow:`0 2px 12px ${s.shadow}`,
-            transition:'all .22s cubic-bezier(.22,1,.36,1)',
-            animationDelay:`${i*60}ms`, animation:'adm-scaleIn .45s cubic-bezier(.22,1,.36,1) both',
-            cursor:'default'
-          }}
-            onMouseEnter={e=>{e.currentTarget.style.transform='translateY(-4px)';e.currentTarget.style.boxShadow=`0 12px 32px ${s.shadow}`;}}
-            onMouseLeave={e=>{e.currentTarget.style.transform='none';e.currentTarget.style.boxShadow=`0 2px 12px ${s.shadow}`;}}>
-            <div style={{width:52,height:52,borderRadius:16,background:'rgba(255,255,255,0.6)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'1.4rem',flexShrink:0,boxShadow:'0 2px 8px rgba(0,0,0,0.06)'}}>{s.icon}</div>
-            <div>
-              <div style={{fontFamily:'Cabinet Grotesk,sans-serif',fontSize:'2.2rem',fontWeight:900,color:s.color,lineHeight:1,marginBottom:4}}>{s.count}</div>
-              <div style={{fontSize:'.72rem',color:s.color,opacity:.7,fontWeight:800,textTransform:'uppercase',letterSpacing:'.08em'}}>{s.label}</div>
-            </div>
+          { label: 'En attente', count: pending.length, color: '#B45309', bg: '#FFFBEB', border: '#FCD34D', icon: '⏳', shadow: 'rgba(245,158,11,0.2)' },
+          { label: 'Approuvées', count: demandes.filter(d => d.statut === 'approuvé').length, color: '#065F46', bg: '#ECFDF5', border: '#6EE7B7', icon: '✅', shadow: 'rgba(16,185,129,0.2)' },
+          { label: 'Refusées', count: demandes.filter(d => d.statut === 'refusé').length, color: '#991B1B', bg: '#FEF2F2', border: '#FCA5A5', icon: '❌', shadow: 'rgba(239,68,68,0.2)' },
+        ].map((s, i) => (
+          <div key={s.label} style={{ background: s.bg, border: `1.5px solid ${s.border}`, borderRadius: 20, padding: '22px 24px', display: 'flex', alignItems: 'center', gap: 16, boxShadow: `0 2px 12px ${s.shadow}`, transition: 'all .22s' }} onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-4px)'; e.currentTarget.style.boxShadow = `0 12px 32px ${s.shadow}`; }} onMouseLeave={e => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = `0 2px 12px ${s.shadow}`; }}>
+            <div style={{ width: 52, height: 52, borderRadius: 16, background: 'rgba(255,255,255,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.4rem', flexShrink: 0 }}>{s.icon}</div>
+            <div><div style={{ fontFamily: 'Cabinet Grotesk,sans-serif', fontSize: '2.2rem', fontWeight: 900, color: s.color, lineHeight: 1, marginBottom: 4 }}>{s.count}</div><div style={{ fontSize: '.72rem', color: s.color, opacity: .7, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '.08em' }}>{s.label}</div></div>
           </div>
         ))}
       </div>
-      {pending.length>0?(
-        <div className="adm-card" style={{padding:22}}>
-          <SectionTitle title="Demandes en attente" sub="A traiter en priorite"/>
-          <div style={{display:'flex',flexDirection:'column',gap:10}}>
-            {pending.map(d=>(
-                <div key={d.id} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'16px 20px',background:'#fffbeb',border:'1.5px solid #fcd34d',borderRadius:16,transition:'all .2s',cursor:'default'}}
-                  onMouseEnter={e=>{e.currentTarget.style.background='#fef3c7';e.currentTarget.style.transform='translateX(3px)';e.currentTarget.style.boxShadow='0 4px 16px rgba(245,158,11,0.15)';}}
-                  onMouseLeave={e=>{e.currentTarget.style.background='#fffbeb';e.currentTarget.style.transform='none';e.currentTarget.style.boxShadow='none';}}>
-                  <div style={{display:'flex',alignItems:'center',gap:14}}>
-                    <div style={{width:42,height:42,borderRadius:12,background:'#FEF3C7',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'1.1rem',flexShrink:0}}>📚</div>
-                    <div>
-                      <div style={{fontFamily:'Cabinet Grotesk,sans-serif',fontWeight:800,fontSize:14,color:'#0F172A',marginBottom:4}}>{d.nom_matiere}</div>
-                      <div style={{display:'flex',gap:12,fontSize:12,color:'#94a3b8',alignItems:'center',flexWrap:'wrap'}}>
-                        <span style={{background:'#FEF3C7',color:'#B45309',padding:'2px 8px',borderRadius:8,fontWeight:700,fontSize:11}}>🎓 {d.nom_niveau}</span>
-                        <span>👨‍🏫 {d.prof_nom}</span>
-                        <span>📅 {new Date(d.created_at).toLocaleDateString('fr-FR')}</span>
+      {pending.length > 0 ? (
+        <div className="adm-card" style={{ padding: 22 }}>
+          <SectionTitle title="Demandes en attente" sub="À traiter en priorité" />
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: 16 }}>
+            {pending.map((d, i) => (
+              <div key={d.id} className="adm-scaleIn" style={{ animationDelay: `${i * 60}ms`, background: 'linear-gradient(135deg, #faf5ff 0%, #ede9fe 100%)', border: '1.5px solid #c4b5fd', borderRadius: 18, overflow: 'hidden', boxShadow: '0 4px 16px rgba(139,92,246,0.10)', transition: 'all .22s' }}
+                onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-4px)'; e.currentTarget.style.boxShadow = '0 12px 32px rgba(139,92,246,0.18)'; }}
+                onMouseLeave={e => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = '0 4px 16px rgba(139,92,246,0.10)'; }}
+              >
+                {/* Bande colorée haut */}
+                <div style={{ height: 5, background: 'linear-gradient(90deg, #8b5cf6, #a78bfa, #c4b5fd)' }} />
+                <div style={{ padding: '16px 18px' }}>
+                  {/* En-tête : icône + matière + niveau */}
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, marginBottom: 14 }}>
+                    <div style={{ width: 48, height: 48, borderRadius: 14, background: 'linear-gradient(135deg,#7c3aed,#a78bfa)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.3rem', flexShrink: 0, boxShadow: '0 4px 12px rgba(124,58,237,0.25)' }}>📚</div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontFamily: "'Cabinet Grotesk',sans-serif", fontWeight: 900, fontSize: 15, color: '#3b0764', marginBottom: 5, lineHeight: 1.2 }}>{d.nom_matiere}</div>
+                      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                        <span style={{ fontSize: 10, fontWeight: 700, padding: '3px 9px', borderRadius: 20, background: 'rgba(124,58,237,0.10)', color: '#7c3aed', border: '1px solid #c4b5fd' }}>🎓 {d.nom_niveau || 'Niveau non précisé'}</span>
+                        {d.nom_domaine && <span style={{ fontSize: 10, fontWeight: 700, padding: '3px 9px', borderRadius: 20, background: 'rgba(139,92,246,0.08)', color: '#6d28d9', border: '1px solid #ddd6fe' }}>{d.nom_domaine}</span>}
                       </div>
                     </div>
                   </div>
-                  <div style={{display:'flex',gap:8,flexShrink:0}}>
-                    <button
-                      onClick={()=>onApprouver(d.id)}
-                      style={{display:'flex',alignItems:'center',gap:6,padding:'9px 18px',background:'#10B981',color:'#fff',border:'none',borderRadius:10,cursor:'pointer',fontFamily:"'Cabinet Grotesk',sans-serif",fontWeight:800,fontSize:13,boxShadow:'0 3px 10px rgba(16,185,129,0.25)',transition:'all .18s'}}
-                      onMouseEnter={e=>{e.currentTarget.style.background='#059669';e.currentTarget.style.transform='translateY(-1px)';e.currentTarget.style.boxShadow='0 6px 18px rgba(16,185,129,0.35)';}}
-                      onMouseLeave={e=>{e.currentTarget.style.background='#10B981';e.currentTarget.style.transform='none';e.currentTarget.style.boxShadow='0 3px 10px rgba(16,185,129,0.25)';}}>
-                      ✅ Approuver
-                    </button>
-                    <button
-                      onClick={()=>onRefuser(d.id)}
-                      style={{display:'flex',alignItems:'center',gap:6,padding:'9px 18px',background:'#FEF2F2',color:'#DC2626',border:'1.5px solid #FCA5A5',borderRadius:10,cursor:'pointer',fontFamily:"'Cabinet Grotesk',sans-serif",fontWeight:800,fontSize:13,transition:'all .18s'}}
-                      onMouseEnter={e=>{e.currentTarget.style.background='#FEE2E2';e.currentTarget.style.transform='translateY(-1px)';e.currentTarget.style.boxShadow='0 4px 12px rgba(220,38,38,0.15)';}}
-                      onMouseLeave={e=>{e.currentTarget.style.background='#FEF2F2';e.currentTarget.style.transform='none';e.currentTarget.style.boxShadow='none';}}>
-                      ❌ Refuser
-                    </button>
+
+                  {/* Infos professeur */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', background: 'rgba(255,255,255,0.7)', borderRadius: 12, marginBottom: 14, border: '1px solid rgba(196,181,253,0.4)' }}>
+                    <div style={{ width: 32, height: 32, borderRadius: 10, background: 'linear-gradient(135deg,#6d28d9,#8b5cf6)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.9rem', flexShrink: 0 }}>👨‍🏫</div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontFamily: "'Cabinet Grotesk',sans-serif", fontWeight: 800, fontSize: 12, color: '#1e1b4b' }}>{d.prof_nom}</div>
+                      <div style={{ fontSize: 10, color: '#7c3aed', fontWeight: 600, marginTop: 1 }}>Demande soumise le {new Date(d.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}</div>
+                    </div>
+                  </div>
+
+                  {/* Actions */}
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <button onClick={() => onApprouver(d.id)} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '10px 0', background: 'linear-gradient(135deg,#10b981,#059669)', color: '#fff', border: 'none', borderRadius: 11, cursor: 'pointer', fontFamily: "'Cabinet Grotesk',sans-serif", fontWeight: 800, fontSize: 12, boxShadow: '0 3px 10px rgba(16,185,129,0.25)', transition: 'all .18s' }}
+                      onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = '0 6px 16px rgba(16,185,129,0.35)'; }}
+                      onMouseLeave={e => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = '0 3px 10px rgba(16,185,129,0.25)'; }}
+                    >✅ Approuver</button>
+                    <button onClick={() => onRefuser(d.id)} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '10px 0', background: '#fff', color: '#dc2626', border: '1.5px solid #fca5a5', borderRadius: 11, cursor: 'pointer', fontFamily: "'Cabinet Grotesk',sans-serif", fontWeight: 800, fontSize: 12, transition: 'all .18s' }}
+                      onMouseEnter={e => { e.currentTarget.style.background = '#fef2f2'; e.currentTarget.style.transform = 'translateY(-1px)'; }}
+                      onMouseLeave={e => { e.currentTarget.style.background = '#fff'; e.currentTarget.style.transform = 'none'; }}
+                    >❌ Refuser</button>
                   </div>
                 </div>
-              ))}
+              </div>
+            ))}
           </div>
         </div>
-      ):<div className="adm-card" style={{padding:32,textAlign:'center'}}><EmptyState icon="v" title="Aucune demande en attente" sub="Toutes les demandes ont ete traitees"/></div>}
-      {archived.length>0&&<div className="adm-card" style={{overflow:'hidden'}}><div style={{padding:'18px 20px 4px'}}><SectionTitle title="Historique" sub={`${archived.length} demande${archived.length>1?'s':''} traitees`}/></div><table className="adm-table"><thead><tr><th>Matiere</th><th>Niveau</th><th>Professeur</th><th>Date</th><th>Statut</th></tr></thead><tbody>{archived.map(d=><tr key={d.id}><td style={{fontFamily:'Cabinet Grotesk,sans-serif',fontWeight:700}}>{d.nom_matiere}</td><td style={{fontSize:12,color:'#64748b'}}>{d.nom_niveau}</td><td style={{fontSize:13}}>{d.prof_nom}</td><td style={{fontSize:12,color:'#94a3b8'}}>{new Date(d.created_at).toLocaleDateString('fr-FR')}</td><td><StatutBadge s={d.statut}/></td></tr>)}</tbody></table></div>}
+      ) : <div className="adm-card" style={{ padding: 32, textAlign: 'center' }}><EmptyState icon="✅" title="Aucune demande en attente" sub="Toutes les demandes ont été traitées" /></div>}
+      {archived.length > 0 && <div className="adm-card" style={{ overflow: 'hidden' }}><div style={{ padding: '18px 20px 4px' }}><SectionTitle title="Historique" sub={`${archived.length} demande${archived.length > 1 ? 's' : ''} traitées`} /></div><table className="adm-table"><thead><tr><th>Matière</th><th>Niveau</th><th>Professeur</th><th>Date</th><th>Statut</th></tr></thead><tbody>{archived.map(d => <tr key={d.id}><td style={{ fontFamily: 'Cabinet Grotesk,sans-serif', fontWeight: 700 }}>{d.nom_matiere}</td><td style={{ fontSize: 12, color: '#64748b' }}>{d.nom_niveau}</td><td style={{ fontSize: 13 }}>{d.prof_nom}</td><td style={{ fontSize: 12, color: '#94a3b8' }}>{new Date(d.created_at).toLocaleDateString('fr-FR')}</td><td><StatutBadge s={d.statut} /></td></tr>)}</tbody></table></div>}
     </div>
   );
 }
 
+// ─── REFERENTIEL TAB (identique à l'original) ────────────────────────────────
 function ReferentielTab({ structure, villes, onReload }) {
-  const [expanded,    setExpanded]    = useState({});
-  const [openGroupe,  setOpenGroupe]  = useState({});
-  const [modal,       setModal]       = useState(null);
-  const [formVal,     setFormVal]     = useState('');
-  const [saving,      setSaving]      = useState(false);
-  const [delConf,     setDelConf]     = useState(null);
-  const [search,      setSearch]      = useState('');
+  const [expanded, setExpanded] = useState({});
+  const [openGroupe, setOpenGroupe] = useState({});
+  const [modal, setModal] = useState(null);
+  const [formVal, setFormVal] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [delConf, setDelConf] = useState(null);
+  const [search, setSearch] = useState('');
 
-  const DOMAINE_CFG = {
-    'Académique':    { icon:'🎓', color:'#1D4ED8', bg:'#EFF6FF', border:'#BFDBFE', light:'rgba(59,130,246,.06)' },
-    'Professionnel': { icon:'💼', color:'#B45309', bg:'#FFFBEB', border:'#FCD34D', light:'rgba(245,158,11,.06)' },
-  };
-  const DEFAULT_CFG = { icon:'📂', color:'#6D28D9', bg:'#F5F3FF', border:'#DDD6FE', light:'rgba(139,92,246,.06)' };
-
+  const DOMAINE_CFG = { 'Académique': { icon: '🎓', color: '#1D4ED8', bg: '#EFF6FF', border: '#BFDBFE' }, 'Professionnel': { icon: '💼', color: '#B45309', bg: '#FFFBEB', border: '#FCD34D' } };
+  const DEFAULT_CFG = { icon: '📂', color: '#6D28D9', bg: '#F5F3FF', border: '#DDD6FE' };
   const GROUPES_ACAD = {
-    Primaire: { icon:'📚', color:'#059669', bg:'#ECFDF5', border:'#6EE7B7',
-      niveaux:['1ère année primaire','2ème année primaire','3ème année primaire','4ème année primaire','5ème année primaire','6ème année primaire'] },
-    Collège:  { icon:'📖', color:'#2563EB', bg:'#EFF6FF', border:'#BFDBFE',
-      niveaux:['7ème année','8ème année','9ème année'] },
-    Lycée:    { icon:'🎒', color:'#7C3AED', bg:'#F5F3FF', border:'#DDD6FE',
-      niveaux:['1ère année Lycée','2ème année Lycée','3ème année Lycée','Baccalauréat'] },
+    Primaire: { icon: '📚', color: '#059669', bg: '#ECFDF5', border: '#6EE7B7', niveaux: ['1ère année primaire', '2ème année primaire', '3ème année primaire', '4ème année primaire', '5ème année primaire', '6ème année primaire'] },
+    Collège:  { icon: '📖', color: '#2563EB', bg: '#EFF6FF', border: '#BFDBFE', niveaux: ['7ème année', '8ème année', '9ème année'] },
+    Lycée:    { icon: '🎒', color: '#7C3AED', bg: '#F5F3FF', border: '#DDD6FE', niveaux: ['1ère année Lycée', '2ème année Lycée', '3ème année Lycée', 'Baccalauréat'] },
   };
 
-  const totalMats = structure.reduce((s,d)=>s+(d.niveaux?.reduce((s2,n)=>s2+(n.matieres?.length||0),0)||0),0);
-  const totalNivs = structure.reduce((s,d)=>s+(d.niveaux?.length||0),0);
+  const totalMats = structure.reduce((s, d) => s + (d.niveaux?.reduce((s2, n) => s2 + (n.matieres?.length || 0), 0) || 0), 0);
+  const totalNivs = structure.reduce((s, d) => s + (d.niveaux?.length || 0), 0);
+  const filteredStruct = useMemo(() => {
+    if (!search) return structure;
+    const q = search.toLowerCase();
+    return structure.map(d => ({ ...d, niveaux: d.niveaux?.map(n => ({ ...n, matieres: n.matieres?.filter(m => m.nom.toLowerCase().includes(q)) || [] })).filter(n => n.matieres.length > 0 || n.nom.toLowerCase().includes(q)) })).filter(d => d.niveaux?.length > 0 || d.nom.toLowerCase().includes(q));
+  }, [structure, search]);
 
-  const filteredStruct = useMemo(()=>{
-    if(!search) return structure;
-    const q=search.toLowerCase();
-    return structure.map(d=>({
-      ...d,
-      niveaux: d.niveaux?.map(n=>({
-        ...n,
-        matieres: n.matieres?.filter(m=>m.nom.toLowerCase().includes(q))||[]
-      })).filter(n=>n.matieres.length>0||n.nom.toLowerCase().includes(q))
-    })).filter(d=>d.niveaux?.length>0||d.nom.toLowerCase().includes(q));
-  },[structure,search]);
-
-  const openModal = (type,payload={}) => { setFormVal(''); setModal({type,payload}); };
-
+  const openModal = (type, payload = {}) => { setFormVal(''); setModal({ type, payload }); };
   const handleSave = async () => {
-    if(!formVal.trim()) return;
-    setSaving(true);
+    if (!formVal.trim()) return; setSaving(true);
     try {
       const { type, payload } = modal;
-      if(type==='ville')   await api.post('/api/admin/referentiel/villes',  { nom:formVal.trim() });
-      if(type==='domaine') await api.post('/api/admin/referentiel/domaines', { nom:formVal.trim() });
-      if(type==='niveau')  await api.post('/api/admin/referentiel/niveaux',  { nom:formVal.trim(), domaine_id:payload.domaineId });
-      if(type==='matiere') await api.post('/api/admin/referentiel/matieres', { nom:formVal.trim(), niveau_id:payload.niveauId });
+      if (type === 'ville') await api.post('/api/admin/referentiel/villes', { nom: formVal.trim() });
+      if (type === 'domaine') await api.post('/api/admin/referentiel/domaines', { nom: formVal.trim() });
+      if (type === 'niveau') await api.post('/api/admin/referentiel/niveaux', { nom: formVal.trim(), domaine_id: payload.domaineId });
+      if (type === 'matiere') await api.post('/api/admin/referentiel/matieres', { nom: formVal.trim(), niveau_id: payload.niveauId });
       setModal(null); onReload();
-    } catch(e) { alert(e.response?.data?.detail||'Erreur'); }
+    } catch (e) { alert(e.response?.data?.detail || 'Erreur'); }
     finally { setSaving(false); }
   };
-
   const handleDelete = async () => {
-    if(!delConf) return;
+    if (!delConf) return;
     try {
-      if(delConf.type==='matiere') await api.delete(`/api/admin/referentiel/matieres/${delConf.id}`);
-      if(delConf.type==='ville')   await api.delete(`/api/admin/referentiel/villes/${delConf.id}`);
-      if(delConf.type==='niveau')  await api.delete(`/api/admin/referentiel/niveaux/${delConf.id}`);
-      if(delConf.type==='domaine') await api.delete(`/api/admin/referentiel/domaines/${delConf.id}`);
+      if (delConf.type === 'matiere') await api.delete(`/api/admin/referentiel/matieres/${delConf.id}`);
+      if (delConf.type === 'ville') await api.delete(`/api/admin/referentiel/villes/${delConf.id}`);
+      if (delConf.type === 'niveau') await api.delete(`/api/admin/referentiel/niveaux/${delConf.id}`);
+      if (delConf.type === 'domaine') await api.delete(`/api/admin/referentiel/domaines/${delConf.id}`);
       setDelConf(null); onReload();
-    } catch(e) { alert(e.response?.data?.detail||'Erreur suppression'); }
+    } catch (e) { alert(e.response?.data?.detail || 'Erreur suppression'); }
   };
 
-  // Composant chip matière
   const MatChip = ({ m, col }) => (
-    <div style={{ display:'inline-flex', alignItems:'center', gap:6, padding:'5px 10px 5px 8px', borderRadius:20,
-      background:'#fff', border:`1.5px solid ${col.border}`, fontSize:12, fontWeight:600, color:col.color,
-      transition:'all .15s' }}
-      onMouseEnter={e=>e.currentTarget.style.background=col.bg}
-      onMouseLeave={e=>e.currentTarget.style.background='#fff'}>
-      <span style={{ width:6, height:6, borderRadius:'50%', background:col.color, flexShrink:0 }}/>
+    <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '5px 10px 5px 8px', borderRadius: 20, background: '#fff', border: `1.5px solid ${col.border}`, fontSize: 12, fontWeight: 600, color: col.color, transition: 'all .15s' }} onMouseEnter={e => e.currentTarget.style.background = col.bg} onMouseLeave={e => e.currentTarget.style.background = '#fff'}>
+      <span style={{ width: 6, height: 6, borderRadius: '50%', background: col.color, flexShrink: 0 }} />
       {m.nom}
-      <span onClick={()=>setDelConf({type:'matiere',id:m.id,nom:m.nom})}
-        style={{ width:16, height:16, borderRadius:'50%', background:'#fef2f2', border:'1px solid #fca5a5',
-          display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', fontSize:9,
-          color:'#dc2626', fontWeight:900, flexShrink:0, marginLeft:2, transition:'all .15s' }}
-        onMouseEnter={e=>e.currentTarget.style.background='#fee2e2'}
-        onMouseLeave={e=>e.currentTarget.style.background='#fef2f2'}>✕</span>
+      <span onClick={() => setDelConf({ type: 'matiere', id: m.id, nom: m.nom })} style={{ width: 16, height: 16, borderRadius: '50%', background: '#fef2f2', border: '1px solid #fca5a5', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: 9, color: '#dc2626', fontWeight: 900, flexShrink: 0, marginLeft: 2 }} onMouseEnter={e => e.currentTarget.style.background = '#fee2e2'} onMouseLeave={e => e.currentTarget.style.background = '#fef2f2'}>✕</span>
     </div>
   );
 
-  // Bloc d'un niveau (générique)
   const NiveauBloc = ({ niv, col, domNom }) => (
-    <div style={{ background:'#fff', borderRadius:14, border:`1.5px solid ${col.border}`,
-      padding:'14px 16px', transition:'box-shadow .15s' }}
-      onMouseEnter={e=>e.currentTarget.style.boxShadow=`0 4px 16px ${col.border}66`}
-      onMouseLeave={e=>e.currentTarget.style.boxShadow='none'}>
-      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:10 }}>
-        <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-          <div style={{ width:8, height:8, borderRadius:'50%', background:col.color, flexShrink:0 }}/>
-          <span style={{ fontFamily:"'Cabinet Grotesk',sans-serif", fontWeight:800, fontSize:13, color:'#0F172A' }}>{niv.nom}</span>
-          <span style={{ fontSize:10, fontWeight:800, padding:'2px 8px', borderRadius:20,
-            background:col.bg, color:col.color, border:`1px solid ${col.border}` }}>
-            {niv.matieres?.length||0} matière{(niv.matieres?.length||0)!==1?'s':''}
-          </span>
+    <div style={{ background: '#fff', borderRadius: 14, border: `1.5px solid ${col.border}`, padding: '14px 16px', transition: 'box-shadow .15s' }} onMouseEnter={e => e.currentTarget.style.boxShadow = `0 4px 16px ${col.border}66`} onMouseLeave={e => e.currentTarget.style.boxShadow = 'none'}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div style={{ width: 8, height: 8, borderRadius: '50%', background: col.color, flexShrink: 0 }} />
+          <span style={{ fontFamily: "'Cabinet Grotesk',sans-serif", fontWeight: 800, fontSize: 13, color: '#0F172A' }}>{niv.nom}</span>
+          <span style={{ fontSize: 10, fontWeight: 800, padding: '2px 8px', borderRadius: 20, background: col.bg, color: col.color, border: `1px solid ${col.border}` }}>{niv.matieres?.length || 0} matière{(niv.matieres?.length || 0) !== 1 ? 's' : ''}</span>
         </div>
-        <div style={{ display:'flex', gap:6 }}>
-          <button onClick={()=>openModal('matiere',{niveauId:niv.id,niveauName:niv.nom,domaineName:domNom})}
-            style={{ display:'flex', alignItems:'center', gap:5, padding:'5px 12px', borderRadius:8,
-              background:col.bg, color:col.color, border:`1.5px solid ${col.border}`, cursor:'pointer',
-              fontSize:11, fontWeight:700, transition:'all .15s' }}
-            onMouseEnter={e=>e.currentTarget.style.opacity='.8'}
-            onMouseLeave={e=>e.currentTarget.style.opacity='1'}>
-            + Matière
-          </button>
-          <button onClick={()=>setDelConf({type:'niveau',id:niv.id,nom:niv.nom})}
-            style={{ width:28, height:28, borderRadius:8, background:'#fef2f2', border:'1.5px solid #fca5a5',
-              color:'#dc2626', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center',
-              fontSize:12, transition:'all .15s' }}
-            onMouseEnter={e=>e.currentTarget.style.background='#fee2e2'}
-            onMouseLeave={e=>e.currentTarget.style.background='#fef2f2'}>🗑</button>
+        <div style={{ display: 'flex', gap: 6 }}>
+          <button onClick={() => openModal('matiere', { niveauId: niv.id, niveauName: niv.nom, domaineName: domNom })} style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '5px 12px', borderRadius: 8, background: col.bg, color: col.color, border: `1.5px solid ${col.border}`, cursor: 'pointer', fontSize: 11, fontWeight: 700, transition: 'all .15s' }}>+ Matière</button>
+          <button onClick={() => setDelConf({ type: 'niveau', id: niv.id, nom: niv.nom })} style={{ width: 28, height: 28, borderRadius: 8, background: '#fef2f2', border: '1.5px solid #fca5a5', color: '#dc2626', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12 }}>🗑</button>
         </div>
       </div>
-      {!niv.matieres?.length
-        ? <div style={{ fontSize:12, color:'#94a3b8', fontStyle:'italic', padding:'4px 0' }}>Aucune matière —
-            <span onClick={()=>openModal('matiere',{niveauId:niv.id,niveauName:niv.nom,domaineName:domNom})}
-              style={{ color:col.color, cursor:'pointer', fontWeight:600, marginLeft:4 }}>Ajouter</span>
-          </div>
-        : <div style={{ display:'flex', flexWrap:'wrap', gap:6 }}>
-            {niv.matieres.map(m => <MatChip key={m.id} m={m} col={col}/>)}
-          </div>
-      }
+      {!niv.matieres?.length ? <div style={{ fontSize: 12, color: '#94a3b8', fontStyle: 'italic', padding: '4px 0' }}>Aucune matière — <span onClick={() => openModal('matiere', { niveauId: niv.id, niveauName: niv.nom, domaineName: domNom })} style={{ color: col.color, cursor: 'pointer', fontWeight: 600, marginLeft: 4 }}>Ajouter</span></div> : <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>{niv.matieres.map(m => <MatChip key={m.id} m={m} col={col} />)}</div>}
     </div>
   );
 
-  // Rendu du domaine Académique avec hiérarchie
   const AcademiqueSection = ({ dom }) => {
     const cfg = DOMAINE_CFG['Académique'];
     const isOpen = expanded[dom.id] !== false;
-    const nbM = dom.niveaux?.reduce((s,n)=>s+(n.matieres?.length||0),0)||0;
+    const nbM = dom.niveaux?.reduce((s, n) => s + (n.matieres?.length || 0), 0) || 0;
     const niveauMap = {};
     dom.niveaux?.forEach(niv => { niveauMap[niv.nom] = niv; });
-    const autresNiveaux = dom.niveaux?.filter(niv =>
-      !Object.values(GROUPES_ACAD).some(g => g.niveaux.includes(niv.nom))
-    ) || [];
-
+    const autresNiveaux = dom.niveaux?.filter(niv => !Object.values(GROUPES_ACAD).some(g => g.niveaux.includes(niv.nom))) || [];
     return (
-      <div style={{ background:'#fff', borderRadius:22, border:`2px solid ${cfg.border}`,
-        overflow:'hidden', boxShadow:'0 4px 20px rgba(59,130,246,.08)' }}>
-        {/* Header domaine */}
-        <div onClick={()=>setExpanded(p=>({...p,[dom.id]:!isOpen}))}
-          style={{ display:'flex', alignItems:'center', gap:14, padding:'18px 22px', cursor:'pointer',
-            background: isOpen ? 'linear-gradient(135deg,#1e40af,#3b82f6)' : '#fff',
-            transition:'all .2s' }}>
-          <div style={{ width:46, height:46, borderRadius:14, background: isOpen?'rgba(255,255,255,.15)':'#EFF6FF',
-            border: isOpen?'1.5px solid rgba(255,255,255,.25)':'1.5px solid #BFDBFE',
-            display:'flex', alignItems:'center', justifyContent:'center', fontSize:'1.4rem', flexShrink:0 }}>
-            {cfg.icon}
+      <div style={{ background: '#fff', borderRadius: 22, border: `2px solid ${cfg.border}`, overflow: 'hidden', boxShadow: '0 4px 20px rgba(59,130,246,.08)' }}>
+        <div onClick={() => setExpanded(p => ({ ...p, [dom.id]: !isOpen }))} style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '18px 22px', cursor: 'pointer', background: isOpen ? 'linear-gradient(135deg,#1e40af,#3b82f6)' : '#fff', transition: 'all .2s' }}>
+          <div style={{ width: 46, height: 46, borderRadius: 14, background: isOpen ? 'rgba(255,255,255,.15)' : '#EFF6FF', border: isOpen ? '1.5px solid rgba(255,255,255,.25)' : '1.5px solid #BFDBFE', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.4rem', flexShrink: 0 }}>{cfg.icon}</div>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontFamily: "'Cabinet Grotesk',sans-serif", fontWeight: 900, fontSize: 16, color: isOpen ? '#fff' : '#1D4ED8' }}>{dom.nom}</div>
+            <div style={{ fontSize: 12, color: isOpen ? 'rgba(255,255,255,.7)' : '#94a3b8', marginTop: 3 }}>{dom.niveaux?.length || 0} niveaux · {nbM} matières</div>
           </div>
-          <div style={{ flex:1 }}>
-            <div style={{ fontFamily:"'Cabinet Grotesk',sans-serif", fontWeight:900, fontSize:16,
-              color: isOpen?'#fff':'#1D4ED8', letterSpacing:'-.01em' }}>{dom.nom}</div>
-            <div style={{ fontSize:12, color: isOpen?'rgba(255,255,255,.7)':'#94a3b8', marginTop:3 }}>
-              {dom.niveaux?.length||0} niveaux · {nbM} matières
-            </div>
+          <div style={{ display: 'flex', gap: 8 }} onClick={e => e.stopPropagation()}>
+            <button onClick={() => openModal('niveau', { domaineId: dom.id, domaineName: dom.nom })} style={{ padding: '7px 14px', borderRadius: 10, fontSize: 12, fontWeight: 700, cursor: 'pointer', background: isOpen ? 'rgba(255,255,255,.15)' : '#EFF6FF', color: isOpen ? '#fff' : '#1D4ED8', border: isOpen ? '1.5px solid rgba(255,255,255,.3)' : '1.5px solid #BFDBFE', transition: 'all .15s' }}>+ Niveau</button>
+            <button onClick={() => setDelConf({ type: 'domaine', id: dom.id, nom: dom.nom })} style={{ width: 32, height: 32, borderRadius: 9, background: 'rgba(220,38,38,.15)', border: '1.5px solid rgba(220,38,38,.3)', color: isOpen ? '#fca5a5' : '#dc2626', cursor: 'pointer', fontSize: 14, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>🗑</button>
           </div>
-          <div style={{ display:'flex', gap:8 }} onClick={e=>e.stopPropagation()}>
-            <button onClick={()=>openModal('niveau',{domaineId:dom.id,domaineName:dom.nom})}
-              style={{ padding:'7px 14px', borderRadius:10, fontSize:12, fontWeight:700, cursor:'pointer',
-                background: isOpen?'rgba(255,255,255,.15)':'#EFF6FF',
-                color: isOpen?'#fff':'#1D4ED8',
-                border: isOpen?'1.5px solid rgba(255,255,255,.3)':'1.5px solid #BFDBFE',
-                transition:'all .15s' }}>
-              + Niveau
-            </button>
-            <button onClick={()=>setDelConf({type:'domaine',id:dom.id,nom:dom.nom})}
-              style={{ width:32, height:32, borderRadius:9, background:'rgba(220,38,38,.15)',
-                border:'1.5px solid rgba(220,38,38,.3)', color: isOpen?'#fca5a5':'#dc2626',
-                cursor:'pointer', fontSize:14, display:'flex', alignItems:'center', justifyContent:'center' }}>🗑</button>
-          </div>
-          <div style={{ fontSize:14, color: isOpen?'rgba(255,255,255,.7)':'#94a3b8',
-            transition:'transform .2s', transform:isOpen?'rotate(180deg)':'rotate(0deg)' }}>▾</div>
+          <div style={{ fontSize: 14, color: isOpen ? 'rgba(255,255,255,.7)' : '#94a3b8', transition: 'transform .2s', transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)' }}>▾</div>
         </div>
-
-        {/* Corps avec groupes hiérarchiques */}
         {isOpen && (
-          <div style={{ padding:'20px 22px', background:'#fafbff', display:'flex', flexDirection:'column', gap:16 }}>
-
-            {/* Groupes Primaire / Collège / Lycée */}
+          <div style={{ padding: '20px 22px', background: '#fafbff', display: 'flex', flexDirection: 'column', gap: 16 }}>
             {Object.entries(GROUPES_ACAD).map(([groupeKey, groupe]) => {
               const gKey = `acad_${groupeKey}`;
               const gOpen = openGroupe[gKey] !== false;
               const niveauxDuGroupe = groupe.niveaux.map(nom => niveauMap[nom]).filter(Boolean);
-              const totalCochees = niveauxDuGroupe.reduce((s,n)=>s+(n.matieres?.length||0),0);
-
+              const totalCochees = niveauxDuGroupe.reduce((s, n) => s + (n.matieres?.length || 0), 0);
               return (
-                <div key={groupeKey} style={{ border:`1.5px solid ${groupe.border}`, borderRadius:16, overflow:'hidden' }}>
-                  <div onClick={()=>setOpenGroupe(p=>({...p,[gKey]:!gOpen}))}
-                    style={{ display:'flex', alignItems:'center', gap:12, padding:'13px 16px',
-                      background: gOpen ? groupe.bg : '#fff', cursor:'pointer', transition:'background .15s' }}
-                    onMouseEnter={e=>{ if(!gOpen) e.currentTarget.style.background=groupe.bg+'44'; }}
-                    onMouseLeave={e=>{ if(!gOpen) e.currentTarget.style.background='#fff'; }}>
-                    <div style={{ width:36, height:36, borderRadius:10, background:groupe.bg,
-                      border:`1.5px solid ${groupe.border}`, display:'flex', alignItems:'center',
-                      justifyContent:'center', fontSize:'1.1rem', flexShrink:0 }}>{groupe.icon}</div>
-                    <div style={{ flex:1 }}>
-                      <div style={{ fontFamily:"'Cabinet Grotesk',sans-serif", fontWeight:900, fontSize:14, color:groupe.color }}>{groupeKey}</div>
-                      <div style={{ fontSize:11, color:'#94a3b8', marginTop:1 }}>
-                        {niveauxDuGroupe.length} niveau{niveauxDuGroupe.length!==1?'x':''} · {totalCochees} matière{totalCochees!==1?'s':''}
-                      </div>
+                <div key={groupeKey} style={{ border: `1.5px solid ${groupe.border}`, borderRadius: 16, overflow: 'hidden' }}>
+                  <div onClick={() => setOpenGroupe(p => ({ ...p, [gKey]: !gOpen }))} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '13px 16px', background: gOpen ? groupe.bg : '#fff', cursor: 'pointer', transition: 'background .15s' }}>
+                    <div style={{ width: 36, height: 36, borderRadius: 10, background: groupe.bg, border: `1.5px solid ${groupe.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.1rem', flexShrink: 0 }}>{groupe.icon}</div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontFamily: "'Cabinet Grotesk',sans-serif", fontWeight: 900, fontSize: 14, color: groupe.color }}>{groupeKey}</div>
+                      <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 1 }}>{niveauxDuGroupe.length} niveau{niveauxDuGroupe.length !== 1 ? 'x' : ''} · {totalCochees} matière{totalCochees !== 1 ? 's' : ''}</div>
                     </div>
-                    <div style={{ fontSize:12, color:'#94a3b8', transition:'transform .2s',
-                      transform:gOpen?'rotate(180deg)':'rotate(0deg)' }}>▾</div>
+                    <div style={{ fontSize: 12, color: '#94a3b8', transition: 'transform .2s', transform: gOpen ? 'rotate(180deg)' : 'rotate(0deg)' }}>▾</div>
                   </div>
-
                   {gOpen && (
-                    <div style={{ padding:'12px 16px 16px', background:'#fff', display:'flex', flexDirection:'column', gap:10 }}>
-                      {niveauxDuGroupe.length === 0
-                        ? <div style={{ textAlign:'center', padding:'16px', color:'#94a3b8', fontSize:13, fontStyle:'italic' }}>
-                            Aucun niveau configuré pour {groupeKey}
-                          </div>
-                        : niveauxDuGroupe.map(niv => (
-                            <NiveauBloc key={niv.id} niv={niv} col={groupe} domNom={dom.nom}/>
-                          ))
-                      }
+                    <div style={{ padding: '12px 16px 16px', background: '#fff', display: 'flex', flexDirection: 'column', gap: 10 }}>
+                      {niveauxDuGroupe.length === 0 ? <div style={{ textAlign: 'center', padding: '16px', color: '#94a3b8', fontSize: 13, fontStyle: 'italic' }}>Aucun niveau configuré pour {groupeKey}</div> : niveauxDuGroupe.map(niv => <NiveauBloc key={niv.id} niv={niv} col={groupe} domNom={dom.nom} />)}
                     </div>
                   )}
                 </div>
               );
             })}
-
-            {/* Autres niveaux académiques non hiérarchisés */}
             {autresNiveaux.length > 0 && (
-              <div style={{ border:'1.5px solid #e2e8f0', borderRadius:16, overflow:'hidden' }}>
-                <div style={{ padding:'12px 16px', background:'#f8fafc', borderBottom:'1px solid #f1f5f9' }}>
-                  <span style={{ fontSize:12, fontWeight:700, color:'#64748b' }}>Autres niveaux</span>
-                </div>
-                <div style={{ padding:'12px 16px', display:'flex', flexDirection:'column', gap:8 }}>
-                  {autresNiveaux.map(niv => (
-                    <NiveauBloc key={niv.id} niv={niv} col={{color:'#6D28D9',bg:'#F5F3FF',border:'#DDD6FE'}} domNom={dom.nom}/>
-                  ))}
-                </div>
+              <div style={{ border: '1.5px solid #e2e8f0', borderRadius: 16, overflow: 'hidden' }}>
+                <div style={{ padding: '12px 16px', background: '#f8fafc', borderBottom: '1px solid #f1f5f9' }}><span style={{ fontSize: 12, fontWeight: 700, color: '#64748b' }}>Autres niveaux</span></div>
+                <div style={{ padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: 8 }}>{autresNiveaux.map(niv => <NiveauBloc key={niv.id} niv={niv} col={{ color: '#6D28D9', bg: '#F5F3FF', border: '#DDD6FE' }} domNom={dom.nom} />)}</div>
               </div>
             )}
           </div>
@@ -1859,64 +2097,28 @@ function ReferentielTab({ structure, villes, onReload }) {
     );
   };
 
-  // Rendu d'un domaine générique (Professionnel, etc.)
-  const DomaineSection = ({ dom, di }) => {
+  const DomaineSection = ({ dom }) => {
     const cfg = DOMAINE_CFG[dom.nom] || DEFAULT_CFG;
     const isOpen = expanded[dom.id] !== false;
-    const nbM = dom.niveaux?.reduce((s,n)=>s+(n.matieres?.length||0),0)||0;
-
+    const nbM = dom.niveaux?.reduce((s, n) => s + (n.matieres?.length || 0), 0) || 0;
     return (
-      <div style={{ background:'#fff', borderRadius:22, border:`2px solid ${cfg.border}`,
-        overflow:'hidden', boxShadow:`0 4px 20px ${cfg.border}44` }}>
-        {/* Header domaine */}
-        <div onClick={()=>setExpanded(p=>({...p,[dom.id]:!isOpen}))}
-          style={{ display:'flex', alignItems:'center', gap:14, padding:'18px 22px', cursor:'pointer',
-            background: isOpen ? `linear-gradient(135deg,${cfg.color},${cfg.border})` : '#fff',
-            transition:'all .2s' }}>
-          <div style={{ width:46, height:46, borderRadius:14,
-            background: isOpen?'rgba(255,255,255,.15)':cfg.bg,
-            border: isOpen?'1.5px solid rgba(255,255,255,.25)':`1.5px solid ${cfg.border}`,
-            display:'flex', alignItems:'center', justifyContent:'center', fontSize:'1.4rem', flexShrink:0 }}>
-            {cfg.icon}
+      <div style={{ background: '#fff', borderRadius: 22, border: `2px solid ${cfg.border}`, overflow: 'hidden', boxShadow: `0 4px 20px ${cfg.border}44` }}>
+        <div onClick={() => setExpanded(p => ({ ...p, [dom.id]: !isOpen }))} style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '18px 22px', cursor: 'pointer', background: isOpen ? `linear-gradient(135deg,${cfg.color},${cfg.border})` : '#fff', transition: 'all .2s' }}>
+          <div style={{ width: 46, height: 46, borderRadius: 14, background: isOpen ? 'rgba(255,255,255,.15)' : cfg.bg, border: isOpen ? '1.5px solid rgba(255,255,255,.25)' : `1.5px solid ${cfg.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.4rem', flexShrink: 0 }}>{cfg.icon}</div>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontFamily: "'Cabinet Grotesk',sans-serif", fontWeight: 900, fontSize: 16, color: isOpen ? '#fff' : cfg.color }}>{dom.nom}</div>
+            <div style={{ fontSize: 12, color: isOpen ? 'rgba(255,255,255,.7)' : '#94a3b8', marginTop: 3 }}>{dom.niveaux?.length || 0} niveaux · {nbM} matières</div>
           </div>
-          <div style={{ flex:1 }}>
-            <div style={{ fontFamily:"'Cabinet Grotesk',sans-serif", fontWeight:900, fontSize:16,
-              color: isOpen?'#fff':cfg.color, letterSpacing:'-.01em' }}>{dom.nom}</div>
-            <div style={{ fontSize:12, color: isOpen?'rgba(255,255,255,.7)':'#94a3b8', marginTop:3 }}>
-              {dom.niveaux?.length||0} niveaux · {nbM} matières
-            </div>
+          <div style={{ display: 'flex', gap: 8 }} onClick={e => e.stopPropagation()}>
+            <button onClick={() => openModal('niveau', { domaineId: dom.id, domaineName: dom.nom })} style={{ padding: '7px 14px', borderRadius: 10, fontSize: 12, fontWeight: 700, cursor: 'pointer', background: isOpen ? 'rgba(255,255,255,.15)' : cfg.bg, color: isOpen ? '#fff' : cfg.color, border: isOpen ? `1.5px solid rgba(255,255,255,.3)` : `1.5px solid ${cfg.border}`, transition: 'all .15s' }}>+ Niveau</button>
+            <button onClick={() => setDelConf({ type: 'domaine', id: dom.id, nom: dom.nom })} style={{ width: 32, height: 32, borderRadius: 9, background: 'rgba(220,38,38,.15)', border: '1.5px solid rgba(220,38,38,.3)', color: isOpen ? '#fca5a5' : '#dc2626', cursor: 'pointer', fontSize: 14, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>🗑</button>
           </div>
-          <div style={{ display:'flex', gap:8 }} onClick={e=>e.stopPropagation()}>
-            <button onClick={()=>openModal('niveau',{domaineId:dom.id,domaineName:dom.nom})}
-              style={{ padding:'7px 14px', borderRadius:10, fontSize:12, fontWeight:700, cursor:'pointer',
-                background: isOpen?'rgba(255,255,255,.15)':cfg.bg,
-                color: isOpen?'#fff':cfg.color,
-                border: isOpen?`1.5px solid rgba(255,255,255,.3)`:`1.5px solid ${cfg.border}`,
-                transition:'all .15s' }}>
-              + Niveau
-            </button>
-            <button onClick={()=>setDelConf({type:'domaine',id:dom.id,nom:dom.nom})}
-              style={{ width:32, height:32, borderRadius:9, background:'rgba(220,38,38,.15)',
-                border:'1.5px solid rgba(220,38,38,.3)', color: isOpen?'#fca5a5':'#dc2626',
-                cursor:'pointer', fontSize:14, display:'flex', alignItems:'center', justifyContent:'center' }}>🗑</button>
-          </div>
-          <div style={{ fontSize:14, color: isOpen?'rgba(255,255,255,.7)':'#94a3b8',
-            transition:'transform .2s', transform:isOpen?'rotate(180deg)':'rotate(0deg)' }}>▾</div>
+          <div style={{ fontSize: 14, color: isOpen ? 'rgba(255,255,255,.7)' : '#94a3b8', transition: 'transform .2s', transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)' }}>▾</div>
         </div>
-
         {isOpen && (
-          <div style={{ padding:'20px 22px', background:'#fffdf5', display:'flex', flexDirection:'column', gap:10 }}>
-            {(!dom.niveaux||dom.niveaux.length===0) && (
-              <div style={{ textAlign:'center', padding:'24px', color:'#94a3b8', fontSize:13, fontStyle:'italic',
-                background:'#fff', borderRadius:14, border:'1.5px dashed #e2e8f0' }}>
-                Aucun niveau —
-                <span onClick={()=>openModal('niveau',{domaineId:dom.id,domaineName:dom.nom})}
-                  style={{ color:cfg.color, cursor:'pointer', fontWeight:700, marginLeft:4 }}>Ajouter</span>
-              </div>
-            )}
-            {dom.niveaux?.map(niv => (
-              <NiveauBloc key={niv.id} niv={niv} col={cfg} domNom={dom.nom}/>
-            ))}
+          <div style={{ padding: '20px 22px', background: '#fffdf5', display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {(!dom.niveaux || dom.niveaux.length === 0) && <div style={{ textAlign: 'center', padding: '24px', color: '#94a3b8', fontSize: 13, fontStyle: 'italic', background: '#fff', borderRadius: 14, border: '1.5px dashed #e2e8f0' }}>Aucun niveau — <span onClick={() => openModal('niveau', { domaineId: dom.id, domaineName: dom.nom })} style={{ color: cfg.color, cursor: 'pointer', fontWeight: 700, marginLeft: 4 }}>Ajouter</span></div>}
+            {dom.niveaux?.map(niv => <NiveauBloc key={niv.id} niv={niv} col={cfg} domNom={dom.nom} />)}
           </div>
         )}
       </div>
@@ -1924,150 +2126,82 @@ function ReferentielTab({ structure, villes, onReload }) {
   };
 
   return (
-    <div style={{ display:'flex', flexDirection:'column', gap:22 }}>
-
-      {/* ── KPIs ── */}
-      <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:14 }}>
-        {[
-          { icon:'📍', val:villes.length,     label:'Villes',    color:'#3b82f6', bg:'#EFF6FF', border:'#BFDBFE' },
-          { icon:'🗂',  val:structure.length,  label:'Domaines',  color:'#8b5cf6', bg:'#F5F3FF', border:'#DDD6FE' },
-          { icon:'🎓', val:totalNivs,          label:'Niveaux',   color:'#f59e0b', bg:'#FFFBEB', border:'#FCD34D' },
-          { icon:'📚', val:totalMats,          label:'Matières',  color:'#10b981', bg:'#ECFDF5', border:'#6EE7B7' },
-        ].map((s,i) => (
-          <div key={s.label} className="adm-stat adm-scaleIn" style={{ animationDelay:`${i*50}ms`, borderColor:s.border }}>
-            <div className="adm-stat-accent" style={{ background:s.color }}/>
-            <div style={{ width:42, height:42, borderRadius:12, background:s.bg,
-              display:'flex', alignItems:'center', justifyContent:'center', fontSize:'1.2rem', marginBottom:14 }}>{s.icon}</div>
-            <div style={{ fontFamily:"'Cabinet Grotesk',sans-serif", fontSize:30, fontWeight:900, color:s.color, lineHeight:1, marginBottom:5 }}>{s.val}</div>
-            <div style={{ fontSize:12, color:'#94a3b8', fontWeight:600 }}>{s.label}</div>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 22 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 14 }}>
+        {[{ icon: '📍', val: villes.length, label: 'Villes', color: '#3b82f6', bg: '#EFF6FF', border: '#BFDBFE' }, { icon: '🗂', val: structure.length, label: 'Domaines', color: '#8b5cf6', bg: '#F5F3FF', border: '#DDD6FE' }, { icon: '🎓', val: totalNivs, label: 'Niveaux', color: '#f59e0b', bg: '#FFFBEB', border: '#FCD34D' }, { icon: '📚', val: totalMats, label: 'Matières', color: '#10b981', bg: '#ECFDF5', border: '#6EE7B7' }].map((s, i) => (
+          <div key={s.label} className="adm-stat adm-scaleIn" style={{ animationDelay: `${i * 50}ms`, borderColor: s.border }}>
+            <div className="adm-stat-accent" style={{ background: s.color }} />
+            <div style={{ width: 42, height: 42, borderRadius: 12, background: s.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem', marginBottom: 14 }}>{s.icon}</div>
+            <div style={{ fontFamily: "'Cabinet Grotesk',sans-serif", fontSize: 30, fontWeight: 900, color: s.color, lineHeight: 1, marginBottom: 5 }}>{s.val}</div>
+            <div style={{ fontSize: 12, color: '#94a3b8', fontWeight: 600 }}>{s.label}</div>
           </div>
         ))}
       </div>
-
-      {/* ── Villes ── */}
-      <div className="adm-card" style={{ padding:'20px 24px' }}>
-        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16 }}>
-          <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-            <div style={{ width:4, height:20, background:'linear-gradient(180deg,#3b82f6,#60a5fa)', borderRadius:2 }}/>
-            <span style={{ fontFamily:"'Cabinet Grotesk',sans-serif", fontWeight:900, fontSize:15, color:'#0F172A' }}>
-              📍 Villes actives
-            </span>
-            <span style={{ fontSize:12, color:'#94a3b8' }}>{villes.length} configurée{villes.length>1?'s':''}</span>
+      <div className="adm-card" style={{ padding: '20px 24px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div style={{ width: 4, height: 20, background: 'linear-gradient(180deg,#3b82f6,#60a5fa)', borderRadius: 2 }} />
+            <span style={{ fontFamily: "'Cabinet Grotesk',sans-serif", fontWeight: 900, fontSize: 15, color: '#0F172A' }}>📍 Villes actives</span>
+            <span style={{ fontSize: 12, color: '#94a3b8' }}>{villes.length} configurée{villes.length > 1 ? 's' : ''}</span>
           </div>
-          <button className="adm-btn adm-btn-primary adm-btn-sm" onClick={()=>openModal('ville')}>+ Ajouter une ville</button>
+          <button className="adm-btn adm-btn-primary adm-btn-sm" onClick={() => openModal('ville')}>+ Ajouter une ville</button>
         </div>
-        <div style={{ display:'flex', flexWrap:'wrap', gap:8 }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
           {villes.map(v => (
-            <div key={v.id} style={{ display:'inline-flex', alignItems:'center', gap:6, padding:'6px 12px',
-              borderRadius:20, background:'#EFF6FF', border:'1.5px solid #BFDBFE',
-              fontSize:13, fontWeight:600, color:'#1D4ED8', transition:'all .15s' }}
-              onMouseEnter={e=>e.currentTarget.style.background='#DBEAFE'}
-              onMouseLeave={e=>e.currentTarget.style.background='#EFF6FF'}>
+            <div key={v.id} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '6px 12px', borderRadius: 20, background: '#EFF6FF', border: '1.5px solid #BFDBFE', fontSize: 13, fontWeight: 600, color: '#1D4ED8', transition: 'all .15s' }} onMouseEnter={e => e.currentTarget.style.background = '#DBEAFE'} onMouseLeave={e => e.currentTarget.style.background = '#EFF6FF'}>
               📍 {v.nom}
-              <span onClick={()=>setDelConf({type:'ville',id:v.id,nom:v.nom})}
-                style={{ width:16, height:16, borderRadius:'50%', background:'#fef2f2',
-                  border:'1px solid #fca5a5', display:'flex', alignItems:'center', justifyContent:'center',
-                  cursor:'pointer', fontSize:9, color:'#dc2626', fontWeight:900, flexShrink:0,
-                  transition:'background .15s' }}
-                onMouseEnter={e=>e.currentTarget.style.background='#fee2e2'}
-                onMouseLeave={e=>e.currentTarget.style.background='#fef2f2'}>✕</span>
+              <span onClick={() => setDelConf({ type: 'ville', id: v.id, nom: v.nom })} style={{ width: 16, height: 16, borderRadius: '50%', background: '#fef2f2', border: '1px solid #fca5a5', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: 9, color: '#dc2626', fontWeight: 900, flexShrink: 0 }} onMouseEnter={e => e.currentTarget.style.background = '#fee2e2'} onMouseLeave={e => e.currentTarget.style.background = '#fef2f2'}>✕</span>
             </div>
           ))}
-          {villes.length===0 && <span style={{ fontSize:13, color:'#94a3b8', fontStyle:'italic' }}>Aucune ville configurée</span>}
+          {villes.length === 0 && <span style={{ fontSize: 13, color: '#94a3b8', fontStyle: 'italic' }}>Aucune ville configurée</span>}
         </div>
       </div>
-
-      {/* ── Header Structure ── */}
-      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
-        <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-          <div style={{ width:4, height:20, background:'linear-gradient(180deg,#8b5cf6,#6d28d9)', borderRadius:2 }}/>
-          <span style={{ fontFamily:"'Cabinet Grotesk',sans-serif", fontWeight:900, fontSize:15, color:'#0F172A' }}>
-            Structure pédagogique
-          </span>
-          <span style={{ fontSize:12, color:'#94a3b8' }}>{structure.length} domaine{structure.length>1?'s':''}</span>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div style={{ width: 4, height: 20, background: 'linear-gradient(180deg,#8b5cf6,#6d28d9)', borderRadius: 2 }} />
+          <span style={{ fontFamily: "'Cabinet Grotesk',sans-serif", fontWeight: 900, fontSize: 15, color: '#0F172A' }}>Structure pédagogique</span>
+          <span style={{ fontSize: 12, color: '#94a3b8' }}>{structure.length} domaine{structure.length > 1 ? 's' : ''}</span>
         </div>
-        <div style={{ display:'flex', gap:8 }}>
-          <div style={{ position:'relative' }}>
-            <input className="adm-input" style={{ width:220, fontSize:12, paddingLeft:30 }}
-              placeholder="Rechercher matière, niveau..."
-              value={search} onChange={e=>setSearch(e.target.value)}/>
-            <span style={{ position:'absolute', left:10, top:'50%', transform:'translateY(-50%)', fontSize:12, color:'#94a3b8' }}>🔍</span>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <div style={{ position: 'relative' }}>
+            <input className="adm-input" style={{ width: 220, fontSize: 12, paddingLeft: 30 }} placeholder="Rechercher matière, niveau..." value={search} onChange={e => setSearch(e.target.value)} />
+            <span style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', fontSize: 12, color: '#94a3b8' }}>🔍</span>
           </div>
-          <button className="adm-btn adm-btn-primary adm-btn-sm" onClick={()=>openModal('domaine')}>+ Domaine</button>
+          <button className="adm-btn adm-btn-primary adm-btn-sm" onClick={() => openModal('domaine')}>+ Domaine</button>
         </div>
       </div>
-
-      {/* ── Domaines ── */}
-      <div style={{ display:'flex', flexDirection:'column', gap:16 }}>
-        {filteredStruct.map((dom, di) =>
-          dom.nom === 'Académique'
-            ? <AcademiqueSection key={dom.id} dom={dom}/>
-            : <DomaineSection key={dom.id} dom={dom} di={di}/>
-        )}
-        {filteredStruct.length === 0 && (
-          <div style={{ textAlign:'center', padding:'48px', color:'#94a3b8' }}>
-            <div style={{ fontSize:40, marginBottom:12 }}>🔍</div>
-            <div style={{ fontFamily:"'Cabinet Grotesk',sans-serif", fontWeight:800, fontSize:15, color:'#0F172A', marginBottom:5 }}>
-              Aucun résultat
-            </div>
-            <div style={{ fontSize:13 }}>Modifiez votre recherche</div>
-          </div>
-        )}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        {filteredStruct.map((dom) => dom.nom === 'Académique' ? <AcademiqueSection key={dom.id} dom={dom} /> : <DomaineSection key={dom.id} dom={dom} />)}
+        {filteredStruct.length === 0 && <div style={{ textAlign: 'center', padding: '48px', color: '#94a3b8' }}><div style={{ fontSize: 40, marginBottom: 12 }}>🔍</div><div style={{ fontFamily: "'Cabinet Grotesk',sans-serif", fontWeight: 800, fontSize: 15, color: '#0F172A', marginBottom: 5 }}>Aucun résultat</div><div style={{ fontSize: 13 }}>Modifiez votre recherche</div></div>}
       </div>
 
-      {/* ── Modal ajout ── */}
       {modal && (
-        <div className="adm-modal-overlay" onClick={e=>{if(e.target===e.currentTarget)setModal(null);}}>
-          <div className="adm-modal" style={{ maxWidth:420 }}>
-            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:20 }}>
+        <div className="adm-modal-overlay" onClick={e => { if (e.target === e.currentTarget) setModal(null); }}>
+          <div className="adm-modal" style={{ maxWidth: 420 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
               <div>
-                <h3 style={{ fontFamily:"'Cabinet Grotesk',sans-serif", fontWeight:900, fontSize:16, color:'#0F172A', margin:'0 0 4px' }}>
-                  {modal.type==='ville'?'📍 Nouvelle ville':modal.type==='domaine'?'🗂 Nouveau domaine':modal.type==='niveau'?'🎓 Nouveau niveau':'📚 Nouvelle matière'}
-                </h3>
-                {(modal.payload?.domaineName||modal.payload?.niveauName) && (
-                  <div style={{ fontSize:12, color:'#94a3b8' }}>
-                    {modal.type==='niveau' && `Dans : ${modal.payload.domaineName}`}
-                    {modal.type==='matiere' && `${modal.payload.niveauName} · ${modal.payload.domaineName}`}
-                  </div>
-                )}
+                <h3 style={{ fontFamily: "'Cabinet Grotesk',sans-serif", fontWeight: 900, fontSize: 16, color: '#0F172A', margin: '0 0 4px' }}>{modal.type === 'ville' ? '📍 Nouvelle ville' : modal.type === 'domaine' ? '🗂 Nouveau domaine' : modal.type === 'niveau' ? '🎓 Nouveau niveau' : '📚 Nouvelle matière'}</h3>
+                {(modal.payload?.domaineName || modal.payload?.niveauName) && <div style={{ fontSize: 12, color: '#94a3b8' }}>{modal.type === 'niveau' && `Dans : ${modal.payload.domaineName}`}{modal.type === 'matiere' && `${modal.payload.niveauName} · ${modal.payload.domaineName}`}</div>}
               </div>
-              <button onClick={()=>setModal(null)}
-                style={{ width:32, height:32, borderRadius:9, background:'#f8fafc', border:'1.5px solid #e2e8f0',
-                  cursor:'pointer', color:'#64748b', display:'flex', alignItems:'center', justifyContent:'center',
-                  fontSize:13, transition:'all .15s' }}
-                onMouseEnter={e=>{e.currentTarget.style.background='#fee2e2';e.currentTarget.style.color='#dc2626';}}
-                onMouseLeave={e=>{e.currentTarget.style.background='#f8fafc';e.currentTarget.style.color='#64748b';}}>✕</button>
+              <button onClick={() => setModal(null)} style={{ width: 32, height: 32, borderRadius: 9, background: '#f8fafc', border: '1.5px solid #e2e8f0', cursor: 'pointer', color: '#64748b', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13 }}>✕</button>
             </div>
-            <input autoFocus className="adm-input" style={{ marginBottom:16 }}
-              placeholder={modal.type==='ville'?'Ex: Zaghouan…':modal.type==='domaine'?'Ex: Arts…':modal.type==='niveau'?'Ex: BTS…':'Ex: Algorithmes…'}
-              value={formVal} onChange={e=>setFormVal(e.target.value)} onKeyDown={e=>e.key==='Enter'&&handleSave()}/>
-            <div style={{ display:'flex', gap:10 }}>
-              <button className="adm-btn adm-btn-primary" style={{ flex:2, justifyContent:'center', opacity:(!formVal.trim()||saving)?.6:1 }}
-                disabled={!formVal.trim()||saving} onClick={handleSave}>
-                {saving ? 'Enregistrement…' : '✓ Enregistrer'}
-              </button>
-              <button className="adm-btn adm-btn-ghost" style={{ flex:1, justifyContent:'center' }} onClick={()=>setModal(null)}>Annuler</button>
+            <input autoFocus className="adm-input" style={{ marginBottom: 16 }} placeholder={modal.type === 'ville' ? 'Ex: Zaghouan…' : modal.type === 'domaine' ? 'Ex: Arts…' : modal.type === 'niveau' ? 'Ex: BTS…' : 'Ex: Algorithmes…'} value={formVal} onChange={e => setFormVal(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleSave()} />
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button className="adm-btn adm-btn-primary" style={{ flex: 2, justifyContent: 'center', opacity: (!formVal.trim() || saving) ? .6 : 1 }} disabled={!formVal.trim() || saving} onClick={handleSave}>{saving ? 'Enregistrement…' : '✓ Enregistrer'}</button>
+              <button className="adm-btn adm-btn-ghost" style={{ flex: 1, justifyContent: 'center' }} onClick={() => setModal(null)}>Annuler</button>
             </div>
           </div>
         </div>
       )}
-
-      {/* ── Modal suppression ── */}
       {delConf && (
-        <div className="adm-modal-overlay" onClick={e=>{if(e.target===e.currentTarget)setDelConf(null);}}>
-          <div className="adm-modal" style={{ textAlign:'center', maxWidth:360, borderColor:'#fca5a5' }}>
-            <div style={{ width:52, height:52, borderRadius:'50%', background:'#fef2f2', border:'1px solid #fca5a5',
-              display:'flex', alignItems:'center', justifyContent:'center', fontSize:24, margin:'0 auto 16px' }}>🗑</div>
-            <h3 style={{ fontFamily:"'Cabinet Grotesk',sans-serif", fontWeight:900, fontSize:16, color:'#0F172A', margin:'0 0 8px' }}>
-              Confirmer la suppression
-            </h3>
-            <p style={{ fontSize:13, color:'#64748b', margin:'0 0 20px', lineHeight:1.6 }}>
-              Supprimer <strong>"{delConf.nom}"</strong> ?<br/>
-              <span style={{ color:'#ef4444', fontSize:12 }}>Cette action est irréversible.</span>
-            </p>
-            <div style={{ display:'flex', gap:10 }}>
-              <button className="adm-btn adm-btn-danger" style={{ flex:1, justifyContent:'center' }} onClick={handleDelete}>🗑 Supprimer</button>
-              <button className="adm-btn adm-btn-ghost" style={{ flex:1, justifyContent:'center' }} onClick={()=>setDelConf(null)}>Annuler</button>
+        <div className="adm-modal-overlay" onClick={e => { if (e.target === e.currentTarget) setDelConf(null); }}>
+          <div className="adm-modal" style={{ textAlign: 'center', maxWidth: 360, borderColor: '#fca5a5' }}>
+            <div style={{ width: 52, height: 52, borderRadius: '50%', background: '#fef2f2', border: '1px solid #fca5a5', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24, margin: '0 auto 16px' }}>🗑</div>
+            <h3 style={{ fontFamily: "'Cabinet Grotesk',sans-serif", fontWeight: 900, fontSize: 16, color: '#0F172A', margin: '0 0 8px' }}>Confirmer la suppression</h3>
+            <p style={{ fontSize: 13, color: '#64748b', margin: '0 0 20px', lineHeight: 1.6 }}>Supprimer <strong>"{delConf.nom}"</strong> ?<br /><span style={{ color: '#ef4444', fontSize: 12 }}>Cette action est irréversible.</span></p>
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button className="adm-btn adm-btn-danger" style={{ flex: 1, justifyContent: 'center' }} onClick={handleDelete}>🗑 Supprimer</button>
+              <button className="adm-btn adm-btn-ghost" style={{ flex: 1, justifyContent: 'center' }} onClick={() => setDelConf(null)}>Annuler</button>
             </div>
           </div>
         </div>
@@ -2075,751 +2209,833 @@ function ReferentielTab({ structure, villes, onReload }) {
     </div>
   );
 }
-/* ════════════════════════════════════════════════
-   CALENDRIER ADMIN — Réservations confirmées
-════════════════════════════════════════════════ */
 
+// ─── CALENDRIER TAB (identique à l'original) ─────────────────────────────────
 const CAL_CSS3 = `
 @keyframes c3-in  { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:none} }
-@keyframes c3-pop { from{opacity:0;transform:scale(.95)translateY(4px)} to{opacity:1;transform:none} }
-
-.c3 {
-  font-family:'Instrument Sans',system-ui,sans-serif;
-  color:#0f172a; background:#f8fafc; min-height:100vh; padding:28px;
-  animation:c3-in .35s ease both;
-}
-
-/* ─── Header ─── */
-.c3-header {
-  background:#fff; border:1.5px solid #e2e8f0; border-radius:20px;
-  padding:20px 26px; margin-bottom:22px;
-  box-shadow:0 2px 12px rgba(0,0,0,.04);
-}
-.c3-hicon {
-  width:50px; height:50px; border-radius:14px; flex-shrink:0;
-  background:linear-gradient(135deg,#1e40af,#7c3aed);
-  display:flex; align-items:center; justify-content:center;
-  font-size:24px; box-shadow:0 4px 16px rgba(59,130,246,.28);
-}
-.c3-htitle { font-family:'Cabinet Grotesk',sans-serif; font-weight:900; font-size:20px; color:#0f172a; margin:0 0 2px; }
-.c3-hsub   { font-size:13px; color:#64748b; margin:0; font-weight:500; }
-
-/* ─── Contrôles ─── */
-.c3-nav { display:flex; align-items:center; gap:4px; background:#f8fafc; border:1.5px solid #e2e8f0; border-radius:12px; padding:4px; }
-.c3-nbtn { width:34px; height:34px; border-radius:9px; border:none; background:transparent; color:#64748b; cursor:pointer; display:flex; align-items:center; justify-content:center; font-size:18px; transition:all .14s; }
-.c3-nbtn:hover { background:#fff; color:#3b82f6; box-shadow:0 2px 8px rgba(0,0,0,.07); }
-.c3-period { font-family:'Cabinet Grotesk',sans-serif; font-weight:800; font-size:14px; color:#0f172a; padding:0 14px; min-width:160px; text-align:center; }
-.c3-today { padding:8px 16px; border-radius:10px; border:1.5px solid #e2e8f0; background:#fff; color:#64748b; font-size:13px; font-weight:700; cursor:pointer; transition:all .14s; font-family:'Cabinet Grotesk',sans-serif; }
-.c3-today:hover { border-color:#3b82f6; color:#3b82f6; background:#eff6ff; }
-.c3-toggle { display:flex; gap:3px; background:#f8fafc; border:1.5px solid #e2e8f0; border-radius:12px; padding:4px; }
-.c3-tvbtn { padding:7px 16px; border-radius:9px; border:none; background:transparent; color:#64748b; font-size:13px; font-weight:700; cursor:pointer; transition:all .16s; font-family:'Cabinet Grotesk',sans-serif; display:flex; align-items:center; gap:6px; }
-.c3-tvbtn.on { background:#fff; color:#1d4ed8; box-shadow:0 2px 8px rgba(59,130,246,.13); border:1.5px solid rgba(59,130,246,.2); }
-
-/* ─── KPIs ─── */
-.c3-kpis { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-bottom:22px; }
-.c3-kpi  { background:#fff; border:1.5px solid #f1f5f9; border-radius:16px; padding:18px 20px; position:relative; overflow:hidden; transition:all .18s; }
-.c3-kpi::before { content:''; position:absolute; top:0; left:0; right:0; height:3px; background:var(--kc,#3b82f6); border-radius:16px 16px 0 0; }
-.c3-kpi:hover { transform:translateY(-2px); box-shadow:0 8px 24px rgba(0,0,0,.07); }
-.c3-kico { font-size:22px; margin-bottom:11px; }
-.c3-kval { font-family:'Cabinet Grotesk',sans-serif; font-size:28px; font-weight:900; color:var(--kc,#3b82f6); line-height:1; margin-bottom:4px; }
-.c3-klbl { font-size:12px; color:#64748b; font-weight:600; }
-
-/* ─── Légende occupation ─── */
-.c3-legend {
-  display:flex; align-items:center; gap:10px; flex-wrap:wrap;
-  padding:12px 18px; background:#fff; border:1.5px solid #f1f5f9;
-  border-radius:13px; margin-top:14px;
-}
-.c3-leg { display:flex; align-items:center; gap:7px; font-size:12px; font-weight:700; padding:4px 12px; border-radius:20px; border:1.5px solid; }
-
-/* ─── Grille mensuelle ─── */
-.c3-grid { background:#fff; border:1.5px solid #e2e8f0; border-radius:20px; overflow:hidden; box-shadow:0 2px 14px rgba(0,0,0,.05); }
-.c3-wdays { display:grid; grid-template-columns:repeat(7,1fr); background:linear-gradient(135deg,#00153d,#1e3a8a); }
-.c3-wday  { padding:13px 6px; text-align:center; font-family:'Cabinet Grotesk',sans-serif; font-weight:900; font-size:11px; color:rgba(255,255,255,.82); text-transform:uppercase; letter-spacing:.08em; }
-.c3-days  { display:grid; grid-template-columns:repeat(7,1fr); }
-.c3-day   { min-height:122px; border-right:1px solid #f1f5f9; border-bottom:1px solid #f1f5f9; padding:9px 7px 7px; background:#fff; cursor:pointer; position:relative; transition:background .12s; }
+@keyframes c3-pop { from{opacity:0;transform:scale(.95) translateY(4px)} to{opacity:1;transform:none} }
+.c3 { font-family:'Instrument Sans',system-ui,sans-serif; color:#0f172a; background:#f8fafc; min-height:100vh; padding:28px; animation:c3-in .35s ease both; }
+.c3-header { background:#fff; border:1.5px solid #e2e8f0; border-radius:20px; padding:20px 26px; margin-bottom:22px; box-shadow:0 2px 12px rgba(0,0,0,.04); }
+.c3-hicon { width:50px;height:50px;border-radius:14px;flex-shrink:0;background:linear-gradient(135deg,#1e40af,#7c3aed);display:flex;align-items:center;justify-content:center;font-size:24px;box-shadow:0 4px 16px rgba(59,130,246,.28); }
+.c3-htitle { font-family:'Cabinet Grotesk',sans-serif;font-weight:900;font-size:20px;color:#0f172a;margin:0 0 2px; }
+.c3-hsub { font-size:13px;color:#64748b;margin:0;font-weight:500; }
+.c3-nav { display:flex;align-items:center;gap:4px;background:#f8fafc;border:1.5px solid #e2e8f0;border-radius:12px;padding:4px; }
+.c3-nbtn { width:34px;height:34px;border-radius:9px;border:none;background:transparent;color:#64748b;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:18px;transition:all .14s; }
+.c3-nbtn:hover { background:#fff;color:#3b82f6;box-shadow:0 2px 8px rgba(0,0,0,.07); }
+.c3-period { font-family:'Cabinet Grotesk',sans-serif;font-weight:800;font-size:14px;color:#0f172a;padding:0 14px;min-width:160px;text-align:center; }
+.c3-today { padding:8px 16px;border-radius:10px;border:1.5px solid #e2e8f0;background:#fff;color:#64748b;font-size:13px;font-weight:700;cursor:pointer;transition:all .14s;font-family:'Cabinet Grotesk',sans-serif; }
+.c3-today:hover { border-color:#3b82f6;color:#3b82f6;background:#eff6ff; }
+.c3-toggle { display:flex;gap:3px;background:#f8fafc;border:1.5px solid #e2e8f0;border-radius:12px;padding:4px; }
+.c3-tvbtn { padding:7px 16px;border-radius:9px;border:none;background:transparent;color:#64748b;font-size:13px;font-weight:700;cursor:pointer;transition:all .16s;font-family:'Cabinet Grotesk',sans-serif;display:flex;align-items:center;gap:6px; }
+.c3-tvbtn.on { background:#fff;color:#1d4ed8;box-shadow:0 2px 8px rgba(59,130,246,.13);border:1.5px solid rgba(59,130,246,.2); }
+.c3-kpis { display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:22px; }
+.c3-kpi { background:#fff;border:1.5px solid #f1f5f9;border-radius:16px;padding:18px 20px;position:relative;overflow:hidden;transition:all .18s; }
+.c3-kpi::before { content:'';position:absolute;top:0;left:0;right:0;height:3px;background:var(--kc,#3b82f6);border-radius:16px 16px 0 0; }
+.c3-kpi:hover { transform:translateY(-2px);box-shadow:0 8px 24px rgba(0,0,0,.07); }
+.c3-kico { font-size:22px;margin-bottom:11px; }
+.c3-kval { font-family:'Cabinet Grotesk',sans-serif;font-size:28px;font-weight:900;color:var(--kc,#3b82f6);line-height:1;margin-bottom:4px; }
+.c3-klbl { font-size:12px;color:#64748b;font-weight:600; }
+.c3-legend { display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:12px 18px;background:#fff;border:1.5px solid #f1f5f9;border-radius:13px;margin-top:14px; }
+.c3-leg { display:flex;align-items:center;gap:7px;font-size:12px;font-weight:700;padding:4px 12px;border-radius:20px;border:1.5px solid; }
+.c3-grid { background:#fff;border:1.5px solid #e2e8f0;border-radius:20px;overflow:hidden;box-shadow:0 2px 14px rgba(0,0,0,.05); }
+.c3-wdays { display:grid;grid-template-columns:repeat(7,1fr);background:linear-gradient(135deg,#00153d,#1e3a8a); }
+.c3-wday { padding:13px 6px;text-align:center;font-family:'Cabinet Grotesk',sans-serif;font-weight:900;font-size:11px;color:rgba(255,255,255,.82);text-transform:uppercase;letter-spacing:.08em; }
+.c3-days { display:grid;grid-template-columns:repeat(7,1fr); }
+.c3-day { min-height:122px;border-right:1px solid #f1f5f9;border-bottom:1px solid #f1f5f9;padding:9px 7px 7px;background:#fff;cursor:pointer;position:relative;transition:background .12s; }
 .c3-day:nth-child(7n) { border-right:none; }
 .c3-day:hover { background:#f8faff; }
-.c3-day.other  { background:#fafbfc; }
+.c3-day.other { background:#fafbfc; }
 .c3-day.other .c3-dnum { color:#cbd5e1; }
-.c3-day.today  { background:linear-gradient(135deg,#eff6ff,#f0fdf4); }
-.c3-day.today::after { content:''; position:absolute; inset:0; border:2px solid #3b82f6; pointer-events:none; }
-.c3-dnum { width:28px; height:28px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-family:'Cabinet Grotesk',sans-serif; font-weight:700; font-size:13px; color:#0f172a; }
-.c3-day.today .c3-dnum { background:#3b82f6; color:#fff; }
-.c3-dbadge { font-size:10px; font-weight:900; color:#fff; padding:2px 7px; border-radius:8px; background:#3b82f6; font-family:'Cabinet Grotesk',sans-serif; }
-
-/* ─── Pill séance ─── */
-.c3-pill {
-  display:flex; align-items:center; gap:5px; padding:5px 8px;
-  border-radius:9px; margin-bottom:3px; cursor:pointer;
-  transition:transform .12s,filter .12s; border:1.5px solid transparent;
-  white-space:nowrap; overflow:hidden; position:relative;
-}
-.c3-pill:hover { transform:translateX(2px); filter:brightness(.94); }
-.c3-pill-dot  { width:7px; height:7px; border-radius:50%; flex-shrink:0; }
-.c3-pill-info { display:flex; flex-direction:column; gap:1px; overflow:hidden; flex:1; min-width:0; }
-.c3-pill-top  { display:flex; align-items:center; gap:4px; }
-.c3-pill-time { font-size:9px; font-weight:800; opacity:.8; flex-shrink:0; }
-.c3-pill-mat  { font-size:10px; font-weight:800; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-.c3-pill-prof { font-size:9px; opacity:.75; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-.c3-pill-cap  { display:flex; align-items:center; gap:4px; margin-top:2px; }
-.c3-pill-bar  { flex:1; height:3px; border-radius:2px; background:rgba(0,0,0,.12); overflow:hidden; }
-.c3-pill-fill { height:100%; border-radius:2px; }
-.c3-pill-cnt  { font-size:8px; font-weight:900; flex-shrink:0; }
-.c3-more { font-size:10px; font-weight:700; color:#94a3b8; padding:2px 7px; background:#f1f5f9; border-radius:6px; display:inline-block; cursor:pointer; margin-top:1px; transition:all .12s; }
-.c3-more:hover { color:#3b82f6; background:#eff6ff; }
-
-/* ─── Grille semaine ─── */
-.c3-week { background:#fff; border:1.5px solid #e2e8f0; border-radius:20px; overflow:hidden; box-shadow:0 2px 14px rgba(0,0,0,.05); }
-.c3-wk-head { display:grid; grid-template-columns:58px repeat(7,1fr); background:linear-gradient(135deg,#00153d,#1e3a8a); }
-.c3-wk-ch   { padding:12px 6px; text-align:center; border-right:1px solid rgba(255,255,255,.08); }
-.c3-wk-ch .wd { font-family:'Cabinet Grotesk',sans-serif; font-weight:900; font-size:10px; color:rgba(255,255,255,.65); text-transform:uppercase; letter-spacing:.08em; margin-bottom:4px; }
-.c3-wk-ch .dm { font-family:'Cabinet Grotesk',sans-serif; font-weight:900; font-size:20px; color:#fff; line-height:1; }
-.c3-wk-ch .wn { font-size:10px; color:rgba(255,255,255,.5); font-weight:700; margin-top:3px; }
-.c3-wk-ch.tc .dm { background:#3b82f6; width:32px; height:32px; border-radius:50%; display:flex; align-items:center; justify-content:center; margin:0 auto; font-size:14px; }
-.c3-wk-body { display:grid; grid-template-columns:58px repeat(7,1fr); }
-.c3-tcol { border-right:1.5px solid #f1f5f9; background:#fafbfc; }
-.c3-tcell { height:84px; display:flex; align-items:flex-start; justify-content:flex-end; padding:6px 8px 0; border-bottom:1px solid #f1f5f9; }
-.c3-tlbl  { font-size:10px; font-weight:700; color:#94a3b8; }
+.c3-day.today { background:linear-gradient(135deg,#eff6ff,#f0fdf4); }
+.c3-day.today::after { content:'';position:absolute;inset:0;border:2px solid #3b82f6;pointer-events:none; }
+.c3-dnum { width:28px;height:28px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-family:'Cabinet Grotesk',sans-serif;font-weight:700;font-size:13px;color:#0f172a; }
+.c3-day.today .c3-dnum { background:#3b82f6;color:#fff; }
+.c3-dbadge { font-size:10px;font-weight:900;color:#fff;padding:2px 7px;border-radius:8px;background:#3b82f6;font-family:'Cabinet Grotesk',sans-serif; }
+.c3-pill { display:flex;align-items:center;gap:5px;padding:5px 8px;border-radius:9px;margin-bottom:3px;cursor:pointer;transition:transform .12s,filter .12s;border:1.5px solid transparent;white-space:nowrap;overflow:hidden; }
+.c3-pill:hover { transform:translateX(2px);filter:brightness(.94); }
+.c3-pill-dot { width:7px;height:7px;border-radius:50%;flex-shrink:0; }
+.c3-pill-info { display:flex;flex-direction:column;gap:1px;overflow:hidden;flex:1;min-width:0; }
+.c3-pill-top { display:flex;align-items:center;gap:4px; }
+.c3-pill-time { font-size:9px;font-weight:800;opacity:.8;flex-shrink:0; }
+.c3-pill-mat { font-size:10px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis; }
+.c3-pill-prof { font-size:9px;opacity:.75;white-space:nowrap;overflow:hidden;text-overflow:ellipsis; }
+.c3-pill-cap { display:flex;align-items:center;gap:4px;margin-top:2px; }
+.c3-pill-bar { flex:1;height:3px;border-radius:2px;background:rgba(0,0,0,.12);overflow:hidden; }
+.c3-pill-fill { height:100%;border-radius:2px; }
+.c3-pill-cnt { font-size:8px;font-weight:900;flex-shrink:0; }
+.c3-more { font-size:10px;font-weight:700;color:#94a3b8;padding:2px 7px;background:#f1f5f9;border-radius:6px;display:inline-block;cursor:pointer;margin-top:1px;transition:all .12s; }
+.c3-more:hover { color:#3b82f6;background:#eff6ff; }
+.c3-week { background:#fff;border:1.5px solid #e2e8f0;border-radius:20px;overflow:hidden;box-shadow:0 2px 14px rgba(0,0,0,.05); }
+.c3-wk-head { display:grid;grid-template-columns:58px repeat(7,1fr);background:linear-gradient(135deg,#00153d,#1e3a8a); }
+.c3-wk-ch { padding:12px 6px;text-align:center;border-right:1px solid rgba(255,255,255,.08); }
+.c3-wk-ch .wd { font-family:'Cabinet Grotesk',sans-serif;font-weight:900;font-size:10px;color:rgba(255,255,255,.65);text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px; }
+.c3-wk-ch .dm { font-family:'Cabinet Grotesk',sans-serif;font-weight:900;font-size:20px;color:#fff;line-height:1; }
+.c3-wk-ch .wn { font-size:10px;color:rgba(255,255,255,.5);font-weight:700;margin-top:3px; }
+.c3-wk-ch.tc .dm { background:#3b82f6;width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto;font-size:14px; }
+.c3-wk-body { display:grid;grid-template-columns:58px repeat(7,1fr); }
+.c3-tcol { border-right:1.5px solid #f1f5f9;background:#fafbfc; }
+.c3-tcell { height:84px;display:flex;align-items:flex-start;justify-content:flex-end;padding:6px 8px 0;border-bottom:1px solid #f1f5f9; }
+.c3-tlbl { font-size:10px;font-weight:700;color:#94a3b8; }
 .c3-wk-day { border-right:1px solid #f1f5f9; }
 .c3-wk-day:last-child { border-right:none; }
-.c3-wk-slot { height:84px; border-bottom:1px solid #f1f5f9; padding:4px 5px; }
-
-/* Event semaine */
-.c3-ev {
-  border-radius:10px; padding:7px 9px; cursor:pointer; transition:all .15s;
-  border:1.5px solid transparent; margin-bottom:3px; overflow:hidden;
-}
-.c3-ev:hover { transform:scale(1.02); box-shadow:0 3px 12px rgba(0,0,0,.1); z-index:5; position:relative; }
-.c3-ev-time { font-size:9px; font-weight:800; opacity:.8; margin-bottom:2px; }
-.c3-ev-mat  { font-size:11px; font-weight:800; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-.c3-ev-prof { font-size:10px; opacity:.8; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-.c3-ev-bar  { margin-top:4px; height:4px; border-radius:2px; background:rgba(0,0,0,.1); overflow:hidden; }
-.c3-ev-fill { height:100%; border-radius:2px; }
-
-/* ─── Tooltip ─── */
-.c3-tt {
-  position:fixed; z-index:9999; pointer-events:none;
-  background:#fff; border:1.5px solid #e2e8f0; border-radius:14px;
-  min-width:270px; max-width:310px;
-  box-shadow:0 6px 28px rgba(0,0,0,.13);
-  animation:c3-pop .14s ease both; overflow:hidden;
-}
-.c3-tt-head { padding:11px 15px; display:flex; align-items:center; gap:9px; border-bottom:1px solid #f1f5f9; }
-.c3-tt-ico  { width:34px; height:34px; border-radius:9px; display:flex; align-items:center; justify-content:center; font-size:16px; flex-shrink:0; }
-.c3-tt-name { font-family:'Cabinet Grotesk',sans-serif; font-weight:900; font-size:13px; color:#0f172a; }
-.c3-tt-sub2 { font-size:10px; font-weight:700; margin-top:2px; padding:2px 8px; border-radius:20px; display:inline-block; }
-.c3-tt-body { padding:10px 15px; display:flex; flex-direction:column; gap:6px; }
-.c3-tt-row  { display:flex; align-items:flex-start; gap:8px; }
-.c3-tt-ico2 { width:24px; height:24px; border-radius:7px; background:#f8fafc; display:flex; align-items:center; justify-content:center; font-size:11px; flex-shrink:0; margin-top:1px; }
-.c3-tt-info label { display:block; font-size:9px; color:#94a3b8; font-weight:700; text-transform:uppercase; letter-spacing:.05em; line-height:1; }
-.c3-tt-info value { display:block; font-size:12px; color:#0f172a; font-weight:700; line-height:1.3; }
-.c3-tt-caprow { margin-top:2px; }
-.c3-tt-capbar { height:6px; background:#e2e8f0; border-radius:3px; overflow:hidden; margin-top:4px; }
-.c3-tt-capfill { height:100%; border-radius:3px; }
-
-/* ─── Modal jour ─── */
-.c3-mo { position:fixed; inset:0; background:rgba(15,23,42,.42); backdrop-filter:blur(4px); z-index:2000; display:flex; align-items:center; justify-content:center; padding:20px; animation:c3-in .16s ease; }
-.c3-mbox { background:#fff; border-radius:22px; border:1.5px solid #e2e8f0; width:100%; max-width:520px; max-height:82vh; overflow:hidden; box-shadow:0 32px 80px rgba(0,0,0,.16); animation:c3-pop .2s ease; display:flex; flex-direction:column; }
-.c3-mhead { padding:20px 24px; border-bottom:1.5px solid #f1f5f9; display:flex; justify-content:space-between; align-items:center; }
-.c3-mhead h2 { font-family:'Cabinet Grotesk',sans-serif; font-weight:900; font-size:17px; color:#0f172a; margin:0; text-transform:capitalize; }
-.c3-mbody { padding:14px 22px 20px; overflow-y:auto; display:flex; flex-direction:column; gap:10px; }
-.c3-mcard { display:flex; gap:14px; padding:16px; border-radius:14px; border:1.5px solid; transition:transform .12s; }
+.c3-wk-slot { height:84px;border-bottom:1px solid #f1f5f9;padding:4px 5px; }
+.c3-ev { border-radius:10px;padding:7px 9px;cursor:pointer;transition:all .15s;border:1.5px solid transparent;margin-bottom:3px;overflow:hidden; }
+.c3-ev:hover { transform:scale(1.02);box-shadow:0 3px 12px rgba(0,0,0,.1);z-index:5;position:relative; }
+.c3-ev-time { font-size:9px;font-weight:800;opacity:.8;margin-bottom:2px; }
+.c3-ev-mat { font-size:11px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis; }
+.c3-ev-prof { font-size:10px;opacity:.8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis; }
+.c3-ev-bar { margin-top:4px;height:4px;border-radius:2px;background:rgba(0,0,0,.1);overflow:hidden; }
+.c3-ev-fill { height:100%;border-radius:2px; }
+.c3-tt { position:fixed;z-index:9999;pointer-events:none;background:#fff;border:1.5px solid #e2e8f0;border-radius:14px;min-width:270px;max-width:310px;box-shadow:0 6px 28px rgba(0,0,0,.13);overflow:hidden; }
+.c3-tt-head { padding:11px 15px;display:flex;align-items:center;gap:9px;border-bottom:1px solid #f1f5f9; }
+.c3-tt-ico { width:34px;height:34px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0; }
+.c3-tt-name { font-family:'Cabinet Grotesk',sans-serif;font-weight:900;font-size:13px;color:#0f172a; }
+.c3-tt-sub2 { font-size:10px;font-weight:700;margin-top:2px;padding:2px 8px;border-radius:20px;display:inline-block; }
+.c3-tt-body { padding:10px 15px;display:flex;flex-direction:column;gap:6px; }
+.c3-tt-row { display:flex;align-items:flex-start;gap:8px; }
+.c3-tt-ico2 { width:24px;height:24px;border-radius:7px;background:#f8fafc;display:flex;align-items:center;justify-content:center;font-size:11px;flex-shrink:0;margin-top:1px; }
+.c3-tt-info label { display:block;font-size:9px;color:#94a3b8;font-weight:700;text-transform:uppercase;letter-spacing:.05em;line-height:1; }
+.c3-tt-info value { display:block;font-size:12px;color:#0f172a;font-weight:700;line-height:1.3; }
+.c3-tt-capbar { height:6px;background:#e2e8f0;border-radius:3px;overflow:hidden;margin-top:4px; }
+.c3-tt-capfill { height:100%;border-radius:3px; }
+.c3-mo { position:fixed;inset:0;background:rgba(15,23,42,.42);backdrop-filter:blur(4px);z-index:2000;display:flex;align-items:center;justify-content:center;padding:20px; }
+.c3-mbox { background:#fff;border-radius:22px;border:1.5px solid #e2e8f0;width:100%;max-width:520px;max-height:82vh;overflow:hidden;box-shadow:0 32px 80px rgba(0,0,0,.16);display:flex;flex-direction:column; }
+.c3-mhead { padding:20px 24px;border-bottom:1.5px solid #f1f5f9;display:flex;justify-content:space-between;align-items:center; }
+.c3-mhead h2 { font-family:'Cabinet Grotesk',sans-serif;font-weight:900;font-size:17px;color:#0f172a;margin:0;text-transform:capitalize; }
+.c3-mbody { padding:14px 22px 20px;overflow-y:auto;display:flex;flex-direction:column;gap:10px; }
+.c3-mcard { display:flex;gap:14px;padding:16px;border-radius:14px;border:1.5px solid;transition:transform .12s; }
 .c3-mcard:hover { transform:translateX(3px); }
-.c3-mc-time { width:54px; text-align:center; flex-shrink:0; padding-top:2px; }
-.c3-mc-start { font-family:'Cabinet Grotesk',sans-serif; font-weight:900; font-size:17px; color:#0f172a; display:block; line-height:1; }
-.c3-mc-end   { font-size:11px; color:#64748b; display:block; margin-top:2px; }
-.c3-mc-sep   { width:1px; background:#f1f5f9; flex-shrink:0; }
-.c3-mc-data  { flex:1; min-width:0; }
-.c3-mc-mat   { font-family:'Cabinet Grotesk',sans-serif; font-weight:900; font-size:14px; color:#0f172a; margin-bottom:5px; }
-.c3-mc-prof  { font-size:12px; color:#64748b; margin-bottom:8px; }
-.c3-mc-tags  { display:flex; gap:6px; flex-wrap:wrap; align-items:center; }
-.c3-mc-tag   { font-size:11px; font-weight:700; padding:3px 9px; border-radius:8px; background:#f8fafc; color:#64748b; border:1px solid #f1f5f9; }
+.c3-mc-time { width:54px;text-align:center;flex-shrink:0;padding-top:2px; }
+.c3-mc-start { font-family:'Cabinet Grotesk',sans-serif;font-weight:900;font-size:17px;color:#0f172a;display:block;line-height:1; }
+.c3-mc-end { font-size:11px;color:#64748b;display:block;margin-top:2px; }
+.c3-mc-sep { width:1px;background:#f1f5f9;flex-shrink:0; }
+.c3-mc-data { flex:1;min-width:0; }
+.c3-mc-mat { font-family:'Cabinet Grotesk',sans-serif;font-weight:900;font-size:14px;color:#0f172a;margin-bottom:5px; }
+.c3-mc-prof { font-size:12px;color:#64748b;margin-bottom:8px; }
+.c3-mc-tags { display:flex;gap:6px;flex-wrap:wrap;align-items:center; }
+.c3-mc-tag { font-size:11px;font-weight:700;padding:3px 9px;border-radius:8px;background:#f8fafc;color:#64748b;border:1px solid #f1f5f9; }
 .c3-mc-caprow { margin-top:8px; }
-.c3-mc-caplbl { display:flex; justify-content:space-between; margin-bottom:4px; }
-.c3-mc-capbar { height:6px; background:#e2e8f0; border-radius:3px; overflow:hidden; }
-.c3-mc-capfill { height:100%; border-radius:3px; transition:width .4s; }
-
-/* Empty */
-.c3-empty { text-align:center; padding:56px 20px; background:#fff; border-radius:20px; border:1.5px solid #f1f5f9; margin-top:4px; }
+.c3-mc-caplbl { display:flex;justify-content:space-between;margin-bottom:4px; }
+.c3-mc-capbar { height:6px;background:#e2e8f0;border-radius:3px;overflow:hidden; }
+.c3-mc-capfill { height:100%;border-radius:3px;transition:width .4s; }
+.c3-empty { text-align:center;padding:56px 20px;background:#fff;border-radius:20px;border:1.5px solid #f1f5f9;margin-top:4px; }
 `;
 
 function injectCalCSS3() {
   if (!document.getElementById('c3-css')) {
-    const s = document.createElement('style'); s.id='c3-css'; s.textContent=CAL_CSS3;
+    const s = document.createElement('style'); s.id = 'c3-css'; s.textContent = CAL_CSS3;
     document.head.appendChild(s);
   }
 }
 
-/* ── helpers ── */
-function occClass(nb, max) {
-  if (!max || max <= 0) return 'libre';
-  const r = nb / max;
-  if (r >= 1)    return 'full';
-  if (r >= 0.75) return 'warn';
-  return 'libre';
-}
-function occColor(cls) {
-  if (cls === 'full') return '#ef4444';
-  if (cls === 'warn') return '#f97316';
-  return '#10b981';
-}
-function occBg(cls) {
-  if (cls === 'full') return { bg:'#fef2f2', border:'#fca5a5', text:'#991b1b' };
-  if (cls === 'warn') return { bg:'#fff7ed', border:'#fed7aa', text:'#9a3412' };
-  return { bg:'#ecfdf5', border:'#6ee7b7', text:'#065f46' };
-}
-function occLabel(cls) {
-  if (cls === 'full') return '🔴 Complet';
-  if (cls === 'warn') return '🟠 Presque complet';
-  return '🟢 Disponible';
-}
+function occClass(nb, max) { if (!max || max <= 0) return 'libre'; const r = nb / max; if (r >= 1) return 'full'; if (r >= 0.75) return 'warn'; return 'libre'; }
+function occColor(cls) { if (cls === 'full') return '#ef4444'; if (cls === 'warn') return '#f97316'; return '#10b981'; }
+function occBg(cls) { if (cls === 'full') return { bg: '#fef2f2', border: '#fca5a5', text: '#991b1b' }; if (cls === 'warn') return { bg: '#fff7ed', border: '#fed7aa', text: '#9a3412' }; return { bg: '#ecfdf5', border: '#6ee7b7', text: '#065f46' }; }
+function occLabel(cls) { if (cls === 'full') return '🔴 Complet'; if (cls === 'warn') return '🟠 Presque complet'; return '🟢 Disponible'; }
 
-const DAYS_W   = ['Lun','Mar','Mer','Jeu','Ven','Sam','Dim'];
-const MOIS_FR  = ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
-const MOIS_S   = ['jan.','fév.','mars','avr.','mai','juin','juil.','août','sept.','oct.','nov.','déc.'];
-const HOURS    = ['08h','09h','10h','11h','12h','13h','14h','15h','16h','17h','18h','19h','20h'];
-const HOUR_N   = [8,9,10,11,12,13,14,15,16,17,18,19,20];
+const DAYS_W  = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
+const MOIS_FR = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'];
+const MOIS_S  = ['jan.', 'fév.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.'];
+const HOURS   = ['08h', '09h', '10h', '11h', '12h', '13h', '14h', '15h', '16h', '17h', '18h', '19h', '20h'];
+const HOUR_N  = [8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20];
 
 function CalendrierTab({ reservations, allProfs }) {
   const today = new Date();
-  const [year,  setYear]  = useState(today.getFullYear());
+  const [year, setYear]   = useState(today.getFullYear());
   const [month, setMonth] = useState(today.getMonth());
-  const [view,  setView]  = useState('month');
-  const [tt,    setTT]    = useState(null);   // { ev, x, y }
-  const [modal, setModal] = useState(null);   // { day } ou { weekDay }
-  const [ws, setWs] = useState(()=>{
-    const d=new Date(today); const dow=(d.getDay()+6)%7;
-    d.setDate(d.getDate()-dow); d.setHours(0,0,0,0); return d;
-  });
+  const [view, setView]   = useState('month');
+  const [tt, setTT]       = useState(null);
+  const [modal, setModal] = useState(null);
+  const [ws, setWs]       = useState(() => { const d = new Date(today); const dow = (d.getDay() + 6) % 7; d.setDate(d.getDate() - dow); d.setHours(0, 0, 0, 0); return d; });
 
-  useEffect(()=>{ injectCalCSS3(); },[]);
+  useEffect(() => { injectCalCSS3(); }, []);
 
-  /* ─── Construire les événements enrichis ───
-     On prend UNIQUEMENT les réservations confirmées
-     et on les enrichit via allProfs (matière principale du prof, dispos correspondantes)
-  */
-  const events = useMemo(()=>{
-    if(!reservations||!allProfs) return [];
-
-    // Index des profs par nom pour retrouver matières et dispos
+  const events = useMemo(() => {
+    if (!reservations || !allProfs) return [];
     const profIndex = {};
-    (allProfs||[]).forEach(p=>{
-      const nm = `${p.user_prenom||''} ${p.user_nom||''}`.trim().toLowerCase();
-      profIndex[nm] = p;
-    });
+    (allProfs || []).forEach(p => { const nm = `${p.user_prenom || ''} ${p.user_nom || ''}`.trim().toLowerCase(); profIndex[nm] = p; });
+    return reservations.filter(r => r.statut === 'confirmé').map(r => {
+      const prof = profIndex[(r.prof_nom || '').toLowerCase().trim()] || null;
+      const mats = prof?.tarifs_matieres ? [...new Set(prof.tarifs_matieres.map(t => t.nom_matiere))].slice(0, 2).join(' / ') : '—';
+      // niveau vient de la SÉANCE (disponibilite.niveau_id → niveaux.nom), pas du profil
+      const niveauSeance = r.niveau_nom || null;
+      const dispo = (prof?.disponibilites || []).find(d => d.date_specifique === r.date_cours && (d.heure_debut || '').slice(0, 5) === (r.heure_debut || '').slice(0, 5)) || null;
+      const nb = dispo?.nb_inscrits ?? 1; const max = dispo?.nb_max_etudiants ?? 0;
+      const cls = occClass(nb, max); const pal = occBg(cls);
+      return { id: r.id, date: r.date_cours, hDebut: (r.heure_debut || '').slice(0, 5), hFin: (r.heure_fin || '').slice(0, 5), prof: r.prof_nom || '—', profEmail: r.prof_email || null, etudiant: r.etudiant_nom || '—', etudiantEmail: r.etudiant_email || null, matieres: mats, niveau: niveauSeance, mode: r.mode_seance || 'presentiel', tarif: r.tarif_applique || 0, nb, max, cls, pal };
+    }).sort((a, b) => a.hDebut.localeCompare(b.hDebut));
+  }, [reservations, allProfs]);
 
-    return reservations
-      .filter(r => r.statut === 'confirmé')
-      .map(r => {
-        // Retrouver le prof correspondant
-        const profNmKey = (r.prof_nom||'').toLowerCase().trim();
-        const prof = profIndex[profNmKey] || null;
+  const evsMois = useMemo(() => events.filter(e => { if (!e.date) return false; const d = new Date(e.date + 'T00:00:00'); return d.getFullYear() === year && d.getMonth() === month; }), [events, year, month]);
+  const weDays = useMemo(() => Array.from({ length: 7 }, (_, i) => { const d = new Date(ws); d.setDate(d.getDate() + i); return d; }), [ws]);
+  const evsSemaine = useMemo(() => { const end = new Date(ws); end.setDate(end.getDate() + 7); return events.filter(e => { if (!e.date) return false; const d = new Date(e.date + 'T00:00:00'); return d >= ws && d < end; }); }, [events, ws]);
+  const src = view === 'week' ? evsSemaine : evsMois;
+  const kpis = useMemo(() => ({ total: src.length, libres: src.filter(e => e.cls === 'libre').length, warn: src.filter(e => e.cls === 'warn').length, full: src.filter(e => e.cls === 'full').length }), [src]);
+  const byDay = useMemo(() => { const m = {}; evsMois.forEach(e => { const d = new Date(e.date + 'T00:00:00').getDate(); if (!m[d]) m[d] = []; m[d].push(e); }); return m; }, [evsMois]);
+  const byWD = useMemo(() => { const m = {}; weDays.forEach((wd, i) => { m[i] = evsSemaine.filter(e => e.date === wd.toISOString().slice(0, 10)); }); return m; }, [evsSemaine, weDays]);
 
-        // Matière principale du prof (1ère matière de tarifs_matieres)
-        const mats = prof?.tarifs_matieres
-          ? [...new Set(prof.tarifs_matieres.map(t=>t.nom_matiere))].slice(0,2).join(' / ')
-          : '—';
+  const prevM = () => { if (month === 0) { setMonth(11); setYear(y => y - 1); } else setMonth(m => m - 1); };
+  const nextM = () => { if (month === 11) { setMonth(0); setYear(y => y + 1); } else setMonth(m => m + 1); };
+  const prevW = () => { const d = new Date(ws); d.setDate(d.getDate() - 7); setWs(d); };
+  const nextW = () => { const d = new Date(ws); d.setDate(d.getDate() + 7); setWs(d); };
+  const goToday = () => { setYear(today.getFullYear()); setMonth(today.getMonth()); const d = new Date(today); const dow = (d.getDay() + 6) % 7; d.setDate(d.getDate() - dow); d.setHours(0, 0, 0, 0); setWs(d); };
 
-        // Trouver la dispo correspondante (même date + heure_debut)
-        const dispo = (prof?.disponibilites||[]).find(d=>{
-          const ds = d.date_specifique;
-          const hd = (d.heure_debut||'').slice(0,5);
-          const rh = (r.heure_debut||'').slice(0,5);
-          return ds===r.date_cours && hd===rh;
-        }) || null;
+  const showTT = (e, ev) => { const rect = e.currentTarget.getBoundingClientRect(); const TW = 290, TH = 240; let x = rect.left + rect.width / 2 - TW / 2; let y = rect.top - TH - 8; if (y < 10) y = rect.bottom + 8; if (x < 10) x = 10; if (x + TW > window.innerWidth - 10) x = window.innerWidth - TW - 10; if (y + TH > window.innerHeight - 10) y = window.innerHeight - TH - 10; setTT({ ev, x, y }); };
+  const hideTT = () => setTT(null);
 
-        const nb  = dispo?.nb_inscrits  ?? 1;
-        const max = dispo?.nb_max_etudiants ?? 0;
-        const cls = occClass(nb, max);
-        const pal = occBg(cls);
+  const firstDay = new Date(year, month, 1).getDay(); const offset = (firstDay + 6) % 7; const dim = new Date(year, month + 1, 0).getDate(); const prevDim = new Date(year, month, 0).getDate(); const cells = [];
+  for (let i = 0; i < 42; i++) { const d = i - offset + 1; if (d < 1) cells.push({ day: prevDim + d, type: 'prev' }); else if (d > dim) cells.push({ day: d - dim, type: 'next' }); else cells.push({ day: d, type: 'cur' }); }
+  const isToday = d => d === today.getDate() && month === today.getMonth() && year === today.getFullYear();
 
-        return {
-          id:       r.id,
-          date:     r.date_cours,
-          hDebut:   (r.heure_debut||'').slice(0,5),
-          hFin:     (r.heure_fin||'').slice(0,5),
-          prof:     r.prof_nom||'—',
-          etudiant: r.etudiant_nom||'—',
-          matieres: mats,
-          mode:     r.mode_seance||'presentiel',
-          tarif:    r.tarif_applique||0,
-          nb, max, cls, pal,
-        };
-      })
-      .sort((a,b)=>(a.hDebut).localeCompare(b.hDebut));
-  },[reservations, allProfs]);
+  const [seanceModal, setSeanceModal] = useState(null);
 
-  /* ─── Mois ─── */
-  const evsMois = useMemo(()=>events.filter(e=>{
-    if(!e.date) return false;
-    const d=new Date(e.date+'T00:00:00');
-    return d.getFullYear()===year && d.getMonth()===month;
-  }),[events,year,month]);
-
-  /* ─── Semaine ─── */
-  const weDays = useMemo(()=>Array.from({length:7},(_,i)=>{
-    const d=new Date(ws); d.setDate(d.getDate()+i); return d;
-  }),[ws]);
-
-  const evsSemaine = useMemo(()=>{
-    const end=new Date(ws); end.setDate(end.getDate()+7);
-    return events.filter(e=>{
-      if(!e.date) return false;
-      const d=new Date(e.date+'T00:00:00');
-      return d>=ws && d<end;
-    });
-  },[events,ws]);
-
-  /* ─── KPIs ─── */
-  const src = view==='week'?evsSemaine:evsMois;
-  const kpis = useMemo(()=>({
-    total:   src.length,
-    libres:  src.filter(e=>e.cls==='libre').length,
-    warn:    src.filter(e=>e.cls==='warn').length,
-    full:    src.filter(e=>e.cls==='full').length,
-  }),[src]);
-
-  /* ─── Grille mensuelle : byDay ─── */
-  const byDay = useMemo(()=>{
-    const m={};
-    evsMois.forEach(e=>{
-      const d=new Date(e.date+'T00:00:00').getDate();
-      if(!m[d]) m[d]=[];
-      m[d].push(e);
-    });
-    return m;
-  },[evsMois]);
-
-  /* ─── Semaine : byWeekDay ─── */
-  const byWD = useMemo(()=>{
-    const m={};
-    weDays.forEach((wd,i)=>{
-      const key=wd.toISOString().slice(0,10);
-      m[i]=evsSemaine.filter(e=>e.date===key);
-    });
-    return m;
-  },[evsSemaine,weDays]);
-
-  /* ─── Navigation ─── */
-  const prevM=()=>{ if(month===0){setMonth(11);setYear(y=>y-1);}else setMonth(m=>m-1); };
-  const nextM=()=>{ if(month===11){setMonth(0);setYear(y=>y+1);}else setMonth(m=>m+1); };
-  const prevW=()=>{ const d=new Date(ws); d.setDate(d.getDate()-7); setWs(d); };
-  const nextW=()=>{ const d=new Date(ws); d.setDate(d.getDate()+7); setWs(d); };
-  const goToday=()=>{
-    setYear(today.getFullYear()); setMonth(today.getMonth());
-    const d=new Date(today); const dow=(d.getDay()+6)%7; d.setDate(d.getDate()-dow); d.setHours(0,0,0,0); setWs(d);
-  };
-
-  /* ─── Tooltip : juste au-dessus/côté du curseur ─── */
-  const showTT=(e,ev)=>{
-    const rect=e.currentTarget.getBoundingClientRect();
-    const TW=290, TH=240;
-    // Positionner juste au-dessus de l'élément, centré
-    let x = rect.left + rect.width/2 - TW/2;
-    let y = rect.top - TH - 8;
-    // Si ça dépasse en haut, mettre en-dessous
-    if(y < 10) y = rect.bottom + 8;
-    // Ajustements horizontaux
-    if(x < 10) x = 10;
-    if(x+TW > window.innerWidth-10) x = window.innerWidth-TW-10;
-    if(y+TH > window.innerHeight-10) y = window.innerHeight-TH-10;
-    setTT({ev,x,y});
-  };
-  const hideTT=()=>setTT(null);
-
-  /* ─── Cells mensuel ─── */
-  const firstDay=new Date(year,month,1).getDay();
-  const offset=(firstDay+6)%7;
-  const dim=new Date(year,month+1,0).getDate();
-  const prevDim=new Date(year,month,0).getDate();
-  const cells=[];
-  for(let i=0;i<42;i++){
-    const d=i-offset+1;
-    if(d<1)     cells.push({day:prevDim+d,type:'prev'});
-    else if(d>dim) cells.push({day:d-dim,type:'next'});
-    else        cells.push({day:d,type:'cur'});
-  }
-  const isToday=d=>d===today.getDate()&&month===today.getMonth()&&year===today.getFullYear();
-
-  /* ─── Pill (vue mois) ─── */
-  const Pill=({ev})=>{
-    const col=occColor(ev.cls);
-    const {bg,border,text}=ev.pal;
-    const pct=ev.max>0?Math.min(100,Math.round(ev.nb/ev.max*100)):0;
+  // Pill = pastille couleur pure, clic → modal, pas de tooltip
+  const Pill = ({ ev }) => {
+    const col = occColor(ev.cls);
+    const { bg, border } = ev.pal;
     return (
-      <div className="c3-pill" style={{background:bg,borderColor:border,color:text}}
-        onMouseEnter={e=>showTT(e,ev)} onMouseLeave={hideTT}
-        onClick={e=>e.stopPropagation()}>
-        <div className="c3-pill-dot" style={{background:col}}/>
-        <div className="c3-pill-info">
-          <div className="c3-pill-top">
-            {ev.hDebut&&<span className="c3-pill-time">{ev.hDebut}</span>}
-            <span className="c3-pill-mat">{ev.matieres}</span>
-          </div>
-          <span className="c3-pill-prof">👨‍🏫 {ev.prof.split(' ')[0]}</span>
-          {ev.max>0&&(
-            <div className="c3-pill-cap">
-              <div className="c3-pill-bar"><div className="c3-pill-fill" style={{width:`${pct}%`,background:col}}/></div>
-              <span className="c3-pill-cnt" style={{color:col}}>{ev.nb}/{ev.max}</span>
-            </div>
-          )}
-        </div>
+      <div
+        onClick={e => { e.stopPropagation(); setSeanceModal(ev); }}
+        title={`${ev.hDebut} ${ev.matieres}`}
+        style={{
+          display: 'flex', alignItems: 'center', gap: 4,
+          padding: '3px 7px', borderRadius: 8, marginBottom: 2,
+          background: bg, border: `1.5px solid ${border}`,
+          cursor: 'pointer', transition: 'filter .12s, transform .12s',
+          width: '100%', boxSizing: 'border-box',
+        }}
+        onMouseEnter={e => { e.currentTarget.style.filter = 'brightness(.93)'; e.currentTarget.style.transform = 'translateX(2px)'; }}
+        onMouseLeave={e => { e.currentTarget.style.filter = 'none'; e.currentTarget.style.transform = 'none'; }}
+      >
+        <span style={{ width: 8, height: 8, borderRadius: '50%', background: col, flexShrink: 0, display: 'inline-block' }} />
+        <span style={{ fontSize: 9, fontWeight: 800, color: col, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+          {ev.hDebut}
+        </span>
       </div>
     );
   };
 
-  /* ─── Tooltip ─── */
-  const TTComp=()=>{
-    if(!tt) return null;
-    const {ev,x,y}=tt;
-    const col=occColor(ev.cls);
-    const {bg,border,text}=ev.pal;
-    const pct=ev.max>0?Math.min(100,Math.round(ev.nb/ev.max*100)):0;
+  // ── Modal séance centrée ──
+  const SeanceModal = () => {
+    if (!seanceModal) return null;
+    const ev = seanceModal;
+    const col = occColor(ev.cls);
+    const { bg, border } = ev.pal;
+    const pct = ev.max > 0 ? Math.min(100, Math.round(ev.nb / ev.max * 100)) : 0;
+    const modeIcon  = ev.mode === 'en_ligne' ? '🌐' : '🏫';
+    const modeLabel = ev.mode === 'en_ligne' ? 'En ligne' : 'Présentiel';
+    // Tous les étudiants inscrits à cette même séance (même date + même heure + même prof)
+    const tousInscrits = (reservations || []).filter(r =>
+      r.statut === 'confirmé' &&
+      r.prof_nom === ev.prof &&
+      r.date_cours === ev.date &&
+      (r.heure_debut || '').slice(0, 5) === ev.hDebut
+    );
     return (
-      <div className="c3-tt" style={{left:x,top:y}}>
-        <div className="c3-tt-head" style={{background:bg}}>
-          <div className="c3-tt-ico" style={{background:'rgba(255,255,255,.7)',color:col,fontSize:18}}>📚</div>
-          <div>
-            <div className="c3-tt-name">{ev.matieres}</div>
-            <span className="c3-tt-sub2" style={{background:border+'55',color:text}}>{occLabel(ev.cls)}</span>
-          </div>
-        </div>
-        <div className="c3-tt-body">
-          {[
-            ['🕐','Horaire',  `${ev.hDebut} → ${ev.hFin}`],
-            ['👨‍🏫','Formateur', ev.prof],
-            ['👤','Étudiant',  ev.etudiant],
-            ['📡','Mode',      ev.mode==='en_ligne'?'🌐 En ligne':'🏫 Présentiel'],
-            ...(ev.tarif>0?[['💰','Prix',`${ev.tarif} DT/h`]]:[]),
-          ].map(([ic,lb,vl])=>(
-            <div key={lb} className="c3-tt-row">
-              <div className="c3-tt-ico2">{ic}</div>
-              <div className="c3-tt-info"><label>{lb}</label><value>{vl}</value></div>
-            </div>
-          ))}
-          {ev.max>0&&(
-            <div className="c3-tt-caprow">
-              <div className="c3-tt-row" style={{marginBottom:4}}>
-                <div className="c3-tt-ico2">👥</div>
-                <div className="c3-tt-info">
-                  <label>Inscrits / Capacité</label>
-                  <value style={{color:col}}>{ev.nb} / {ev.max} places ({pct}%)</value>
+      <div style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.65)', backdropFilter: 'blur(10px)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}
+        onClick={e => e.target === e.currentTarget && setSeanceModal(null)}>
+        <div style={{ background: '#fff', borderRadius: 24, width: '100%', maxWidth: 560, maxHeight: '88vh', display: 'flex', flexDirection: 'column', boxShadow: '0 32px 80px rgba(0,0,0,0.22)', overflow: 'hidden', animation: 'adm-modalIn .26s cubic-bezier(.34,1.56,.64,1)' }}>
+
+          {/* ── Header coloré ── */}
+          <div style={{ background: bg, borderBottom: `2px solid ${border}`, padding: '20px 24px 16px', flexShrink: 0 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+              <div>
+                <div style={{ fontFamily: "'Cabinet Grotesk',sans-serif", fontWeight: 900, fontSize: 18, color: '#0F172A', marginBottom: 4 }}>📚 {ev.matieres}</div>
+                {ev.niveau && (
+                  <span style={{ display:'inline-flex', alignItems:'center', gap:5, fontSize:11, fontWeight:700, padding:'3px 10px', borderRadius:20, background:'rgba(255,255,255,.7)', color:'#4f46e5', border:'1.5px solid rgba(79,70,229,.25)', marginTop:2 }}>
+                    🎓 {ev.niveau}
+                  </span>
+                )}
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                  <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 20, background: 'rgba(255,255,255,.75)', color: col, border: `1.5px solid ${border}` }}>{occLabel(ev.cls)}</span>
+                  <span style={{ fontSize: 12, color: '#64748b', fontWeight: 600 }}>🕐 {ev.hDebut} → {ev.hFin}</span>
+                  <span style={{ fontSize: 12, color: '#64748b', fontWeight: 600 }}>📅 {new Date((ev.date || '') + 'T00:00:00').toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' })}</span>
                 </div>
               </div>
-              <div className="c3-tt-capbar" style={{marginLeft:32}}>
-                <div className="c3-tt-capfill" style={{width:`${pct}%`,background:col}}/>
+              <button onClick={() => setSeanceModal(null)}
+                style={{ width: 34, height: 34, borderRadius: 10, border: '1.5px solid rgba(0,0,0,0.1)', background: 'rgba(255,255,255,.6)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, color: '#64748b', flexShrink: 0 }}>✕</button>
+            </div>
+          </div>
+
+          {/* ── Corps scrollable ── */}
+          <div style={{ overflowY: 'auto', flex: 1, padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 16, scrollbarWidth: 'thin', scrollbarColor: '#e2e8f0 transparent' }}>
+
+            {/* Mode */}
+            <div style={{ padding: '12px 16px', background: ev.mode === 'en_ligne' ? '#eff6ff' : '#ecfdf5', border: `1.5px solid ${ev.mode === 'en_ligne' ? '#bfdbfe' : '#6ee7b7'}`, borderRadius: 12, display: 'flex', alignItems: 'center', gap: 10 }}>
+              <span style={{ fontSize: 20 }}>{modeIcon}</span>
+              <div>
+                <div style={{ fontSize: 10, fontWeight: 800, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '.08em', marginBottom: 2 }}>Mode</div>
+                <div style={{ fontFamily: "'Cabinet Grotesk',sans-serif", fontWeight: 800, fontSize: 14, color: ev.mode === 'en_ligne' ? '#1d4ed8' : '#065f46' }}>{modeLabel}</div>
+              </div>
+              {ev.tarif > 0 && <span style={{ marginLeft: 'auto', fontFamily: "'Cabinet Grotesk',sans-serif", fontWeight: 900, color: '#059669', fontSize: 15 }}>💰 {ev.tarif} DT/séance</span>}
+            </div>
+
+            {/* Professeur */}
+            <div style={{ padding: '14px 16px', background: '#f8fafc', border: '1.5px solid #e2e8f0', borderRadius: 12 }}>
+              <div style={{ fontSize: 10, fontWeight: 800, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '.08em', marginBottom: 8 }}>👨‍🏫 Formateur</div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <div style={{ width: 38, height: 38, borderRadius: '50%', background: 'linear-gradient(135deg,#00153D,#1E3A8A)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 900, color: '#fff', flexShrink: 0 }}>
+                  {(ev.prof || 'P')[0].toUpperCase()}
+                </div>
+                <div>
+                  <div style={{ fontFamily: "'Cabinet Grotesk',sans-serif", fontWeight: 800, fontSize: 14, color: '#0F172A' }}>{ev.prof}</div>
+                  {ev.profEmail && <div style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>✉️ {ev.profEmail}</div>}
+                </div>
               </div>
             </div>
-          )}
-        </div>
-      </div>
-    );
-  };
 
-  /* ─── Modal jour ─── */
-  const ModalJour=()=>{
-    if(!modal) return null;
-    const list=(byDay[modal.day]||[]).slice().sort((a,b)=>a.hDebut.localeCompare(b.hDebut));
-    const lbl=new Date(year,month,modal.day).toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
-    return (
-      <div className="c3-mo" onClick={e=>e.target===e.currentTarget&&setModal(null)}>
-        <div className="c3-mbox">
-          <div className="c3-mhead">
-            <h2>{lbl}</h2>
-            <div style={{display:'flex',alignItems:'center',gap:10}}>
-              <span style={{fontSize:12,color:'#64748b',fontWeight:700}}>{list.length} séance{list.length>1?'s':''}</span>
-              <button onClick={()=>setModal(null)} style={{width:32,height:32,borderRadius:9,border:'1.5px solid #e2e8f0',background:'#f8fafc',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',fontSize:15,color:'#64748b',transition:'all .15s'}}
-                onMouseEnter={e=>{e.currentTarget.style.background='#fef2f2';e.currentTarget.style.color='#ef4444';}}
-                onMouseLeave={e=>{e.currentTarget.style.background='#f8fafc';e.currentTarget.style.color='#64748b';}}>✕</button>
+            {/* Étudiants inscrits */}
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+                <div style={{ fontSize: 10, fontWeight: 800, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '.08em' }}>👥 Étudiants inscrits</div>
+                <span style={{ fontSize: 11, fontWeight: 800, padding: '3px 10px', borderRadius: 20, background: bg, color: col, border: `1.5px solid ${border}` }}>
+                  {tousInscrits.length} {ev.max > 0 ? `/ ${ev.max} places` : 'inscrits'}
+                  {ev.max > 0 && ` · ${pct}%`}
+                </span>
+              </div>
+              {tousInscrits.length === 0 ? (
+                <div style={{ padding: '16px', textAlign: 'center', background: '#f8fafc', borderRadius: 12, color: '#94a3b8', fontSize: 13 }}>Aucune donnée disponible</div>
+              ) : (
+                <div style={{ border: '1.5px solid #e2e8f0', borderRadius: 12, overflow: 'hidden' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                    <thead>
+                      <tr style={{ background: '#f8fafc', borderBottom: '1.5px solid #f1f5f9' }}>
+                        <th style={{ padding: '9px 14px', textAlign: 'left', fontSize: 10, fontWeight: 800, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '.06em' }}>Nom</th>
+                        <th style={{ padding: '9px 14px', textAlign: 'left', fontSize: 10, fontWeight: 800, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '.06em' }}>Email</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {tousInscrits.map((r, i) => (
+                        <tr key={r.id} style={{ borderBottom: i < tousInscrits.length - 1 ? '1px solid #f8fafc' : 'none' }}>
+                          <td style={{ padding: '10px 14px', fontWeight: 700, color: '#0F172A', fontFamily: "'Cabinet Grotesk',sans-serif" }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                              <div style={{ width: 26, height: 26, borderRadius: '50%', background: 'linear-gradient(135deg,#4C1D95,#6D28D9)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 900, color: '#fff', flexShrink: 0 }}>
+                                {(r.etudiant_nom || 'E')[0].toUpperCase()}
+                              </div>
+                              {r.etudiant_nom || '—'}
+                            </div>
+                          </td>
+                          <td style={{ padding: '10px 14px', fontSize: 12, color: '#64748b' }}>{r.etudiant_email || '—'}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+              {ev.max > 0 && (
+                <div style={{ marginTop: 8, height: 6, background: '#f1f5f9', borderRadius: 4, overflow: 'hidden' }}>
+                  <div style={{ height: '100%', width: `${pct}%`, background: col, borderRadius: 4, transition: 'width .5s ease' }}/>
+                </div>
+              )}
             </div>
           </div>
-          <div className="c3-mbody">
-            {list.map(ev=>{
-              const col=occColor(ev.cls);
-              const {bg,border}=ev.pal;
-              const pct=ev.max>0?Math.min(100,Math.round(ev.nb/ev.max*100)):0;
-              return (
-                <div key={ev.id} className="c3-mcard" style={{background:bg,borderColor:border}}>
-                  <div className="c3-mc-time">
-                    <span className="c3-mc-start">{ev.hDebut}</span>
-                    <span className="c3-mc-end">→ {ev.hFin}</span>
-                  </div>
-                  <div className="c3-mc-sep"/>
-                  <div className="c3-mc-data">
-                    <div className="c3-mc-mat">{ev.matieres}</div>
-                    <div className="c3-mc-prof">👨‍🏫 {ev.prof} &nbsp;·&nbsp; 👤 {ev.etudiant}</div>
-                    <div className="c3-mc-tags">
-                      <span className="c3-mc-tag">{ev.mode==='en_ligne'?'🌐 En ligne':'🏫 Présentiel'}</span>
-                      {ev.tarif>0&&<span className="c3-mc-tag" style={{color:'#059669',fontWeight:800}}>💰 {ev.tarif} DT/h</span>}
-                    </div>
-                    {ev.max>0&&(
-                      <div className="c3-mc-caprow">
-                        <div className="c3-mc-caplbl">
-                          <span style={{fontSize:11,fontWeight:700,color:'#94a3b8'}}>Inscrits / Capacité</span>
-                          <span style={{fontSize:11,fontWeight:900,color:col}}>{ev.nb}/{ev.max} · {pct}%</span>
-                        </div>
-                        <div className="c3-mc-capbar"><div className="c3-mc-capfill" style={{width:`${pct}%`,background:col}}/></div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
         </div>
       </div>
     );
   };
 
-  /* ─── Période label ─── */
-  const weEnd=new Date(ws); weEnd.setDate(weEnd.getDate()+6);
-  const periodLabel = view==='month'
-    ? `${MOIS_FR[month]} ${year}`
-    : `${ws.getDate()} ${MOIS_S[ws.getMonth()]} – ${weEnd.getDate()} ${MOIS_S[weEnd.getMonth()]} ${weEnd.getFullYear()}`;
+  // Tooltip supprimé — remplacé par modal centrée au clic
+  const TTComp = () => null;
+
+  const ModalJour = () => { if (!modal) return null; const list = (byDay[modal.day] || []).slice().sort((a, b) => a.hDebut.localeCompare(b.hDebut)); const lbl = new Date(year, month, modal.day).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }); return (<div className="c3-mo" onClick={e => e.target === e.currentTarget && setModal(null)}><div className="c3-mbox"><div className="c3-mhead"><h2>{lbl}</h2><div style={{ display: 'flex', alignItems: 'center', gap: 10 }}><span style={{ fontSize: 12, color: '#64748b', fontWeight: 700 }}>{list.length} séance{list.length > 1 ? 's' : ''}</span><button onClick={() => setModal(null)} style={{ width: 32, height: 32, borderRadius: 9, border: '1.5px solid #e2e8f0', background: '#f8fafc', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, color: '#64748b' }}>✕</button></div></div><div className="c3-mbody">{list.map(ev => { const col = occColor(ev.cls); const { bg, border } = ev.pal; const pct = ev.max > 0 ? Math.min(100, Math.round(ev.nb / ev.max * 100)) : 0; return (<div key={ev.id} className="c3-mcard" style={{ background: bg, borderColor: border }}><div className="c3-mc-time"><span className="c3-mc-start">{ev.hDebut}</span><span className="c3-mc-end">→ {ev.hFin}</span></div><div className="c3-mc-sep" /><div className="c3-mc-data"><div className="c3-mc-mat">{ev.matieres}</div><div className="c3-mc-prof">👨‍🏫 {ev.prof} · 👤 {ev.etudiant}</div><div className="c3-mc-tags"><span className="c3-mc-tag">{ev.mode === 'en_ligne' ? '🌐 En ligne' : '🏫 Présentiel'}</span>{ev.tarif > 0 && <span className="c3-mc-tag" style={{ color: '#059669', fontWeight: 800 }}>💰 {ev.tarif} DT/séance</span>}</div>{ev.max > 0 && <div className="c3-mc-caprow"><div className="c3-mc-caplbl"><span style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8' }}>Inscrits / Capacité</span><span style={{ fontSize: 11, fontWeight: 900, color: col }}>{ev.nb}/{ev.max} · {pct}%</span></div><div className="c3-mc-capbar"><div className="c3-mc-capfill" style={{ width: `${pct}%`, background: col }} /></div></div>}</div></div>); })}</div></div></div>); };
+
+  const weEnd = new Date(ws); weEnd.setDate(weEnd.getDate() + 6);
+  const periodLabel = view === 'month' ? `${MOIS_FR[month]} ${year}` : `${ws.getDate()} ${MOIS_S[ws.getMonth()]} – ${weEnd.getDate()} ${MOIS_S[weEnd.getMonth()]} ${weEnd.getFullYear()}`;
 
   return (
     <div className="c3">
-
-      {/* ── HEADER ── */}
       <div className="c3-header">
-        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:14,marginBottom:14}}>
-          <div style={{display:'flex',alignItems:'center',gap:14}}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 14, marginBottom: 14 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
             <div className="c3-hicon">🗓</div>
-            <div>
-              <div className="c3-htitle">Calendrier des réservations confirmées</div>
-              <div className="c3-hsub">Matière · Formateur · Mode · Inscrits/Capacité · Prix — par mois ou par semaine</div>
-            </div>
+            <div><div className="c3-htitle">Calendrier des réservations confirmées</div><div className="c3-hsub">Matière · Formateur · Mode · Inscrits/Capacité · Prix</div></div>
           </div>
-          <div style={{display:'flex',alignItems:'center',gap:10,flexWrap:'wrap'}}>
-            <div className="c3-toggle">
-              <button className={`c3-tvbtn${view==='month'?' on':''}`} onClick={()=>setView('month')}>📅 Mensuel</button>
-              <button className={`c3-tvbtn${view==='week'?' on':''}`}  onClick={()=>setView('week')}>📆 Semaine</button>
-            </div>
-            <div className="c3-nav">
-              <button className="c3-nbtn" onClick={view==='month'?prevM:prevW}>‹</button>
-              <span className="c3-period">{periodLabel}</span>
-              <button className="c3-nbtn" onClick={view==='month'?nextM:nextW}>›</button>
-            </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+            <div className="c3-toggle"><button className={`c3-tvbtn${view === 'month' ? ' on' : ''}`} onClick={() => setView('month')}>📅 Mensuel</button><button className={`c3-tvbtn${view === 'week' ? ' on' : ''}`} onClick={() => setView('week')}>📆 Semaine</button></div>
+            <div className="c3-nav"><button className="c3-nbtn" onClick={view === 'month' ? prevM : prevW}>‹</button><span className="c3-period">{periodLabel}</span><button className="c3-nbtn" onClick={view === 'month' ? nextM : nextW}>›</button></div>
             <button className="c3-today" onClick={goToday}>Aujourd'hui</button>
           </div>
         </div>
-
-        {/* Légende occupation */}
         <div className="c3-legend">
-          <span style={{fontSize:11,fontWeight:700,color:'#94a3b8',marginRight:4}}>Occupation :</span>
-          {[
-            {col:'#10b981',bg:'#ecfdf5',border:'#6ee7b7',text:'#065f46',l:'Disponible (< 75%)'},
-            {col:'#f97316',bg:'#fff7ed',border:'#fed7aa',text:'#9a3412',l:'Presque complet (≥ 75%)'},
-            {col:'#ef4444',bg:'#fef2f2',border:'#fca5a5',text:'#991b1b',l:'Complet (100%)'},
-          ].map(s=>(
-            <div key={s.l} className="c3-leg" style={{background:s.bg,borderColor:s.border,color:s.text}}>
-              <div style={{width:8,height:8,borderRadius:2,background:s.col,flexShrink:0}}/>
-              <span style={{fontSize:12,fontWeight:700}}>{s.l}</span>
-            </div>
-          ))}
+          <span style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', marginRight: 4 }}>Occupation :</span>
+          {[{ col: '#10b981', bg: '#ecfdf5', border: '#6ee7b7', text: '#065f46', l: 'Disponible (< 75%)' }, { col: '#f97316', bg: '#fff7ed', border: '#fed7aa', text: '#9a3412', l: 'Presque complet (≥ 75%)' }, { col: '#ef4444', bg: '#fef2f2', border: '#fca5a5', text: '#991b1b', l: 'Complet (100%)' }].map(s => (<div key={s.l} className="c3-leg" style={{ background: s.bg, borderColor: s.border, color: s.text }}><div style={{ width: 8, height: 8, borderRadius: 2, background: s.col, flexShrink: 0 }} /><span style={{ fontSize: 12, fontWeight: 700 }}>{s.l}</span></div>))}
         </div>
       </div>
-
-      {/* ── KPIs ── */}
       <div className="c3-kpis">
-        {[
-          {ico:'📋',val:kpis.total, lbl:'Séances confirmées',  c:'#3b82f6'},
-          {ico:'🟢',val:kpis.libres,lbl:'Disponibles',          c:'#10b981'},
-          {ico:'🟠',val:kpis.warn,  lbl:'Presque complet',      c:'#f97316'},
-          {ico:'🔴',val:kpis.full,  lbl:'Complet',              c:'#ef4444'},
-        ].map((k,i)=>(
-          <div key={i} className="c3-kpi" style={{'--kc':k.c}}>
-            <div className="c3-kico">{k.ico}</div>
-            <div className="c3-kval">{k.val}</div>
-            <div className="c3-klbl">{k.lbl}</div>
-          </div>
-        ))}
+        {[{ ico: '📋', val: kpis.total, lbl: 'Séances confirmées', c: '#3b82f6' }, { ico: '🟢', val: kpis.libres, lbl: 'Disponibles', c: '#10b981' }, { ico: '🟠', val: kpis.warn, lbl: 'Presque complet', c: '#f97316' }, { ico: '🔴', val: kpis.full, lbl: 'Complet', c: '#ef4444' }].map((k, i) => (<div key={i} className="c3-kpi" style={{ '--kc': k.c }}><div className="c3-kico">{k.ico}</div><div className="c3-kval">{k.val}</div><div className="c3-klbl">{k.lbl}</div></div>))}
       </div>
-
-      {/* ══ VUE MENSUELLE ══ */}
-      {view==='month'&&(
+      {view === 'month' && (
         <div className="c3-grid">
-          <div className="c3-wdays">{DAYS_W.map(d=><div key={d} className="c3-wday">{d}</div>)}</div>
+          <div className="c3-wdays">{DAYS_W.map(d => <div key={d} className="c3-wday">{d}</div>)}</div>
           <div className="c3-days">
-            {cells.map((cell,i)=>{
-              const isCur=cell.type==='cur';
-              const isTod=isCur&&isToday(cell.day);
-              const list=isCur?(byDay[cell.day]||[]):[];
-              const MAX=3;
-              const vis=list.slice(0,MAX);
-              const hid=list.length-MAX;
-              return (
-                <div key={i} className={`c3-day${!isCur?' other':''}${isTod?' today':''}`}
-                  onClick={()=>isCur&&list.length>0&&setModal({day:cell.day})}>
-                  <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:5}}>
-                    <div className="c3-dnum">{cell.day}</div>
-                    {list.length>0&&<span className="c3-dbadge">{list.length}</span>}
-                  </div>
-                  {vis.map((ev,idx)=><Pill key={idx} ev={ev}/>)}
-                  {hid>0&&<span className="c3-more" onClick={e=>{e.stopPropagation();setModal({day:cell.day});}}> +{hid} de plus</span>}
-                </div>
-              );
+            {cells.map((cell, i) => {
+              const isCur = cell.type === 'cur'; const isTod = isCur && isToday(cell.day); const list = isCur ? (byDay[cell.day] || []) : []; const MAX = 3; const vis = list.slice(0, MAX); const hid = list.length - MAX;
+              return (<div key={i} className={`c3-day${!isCur ? ' other' : ''}${isTod ? ' today' : ''}`} onClick={() => isCur && list.length > 0 && setModal({ day: cell.day })}><div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 5 }}><div className="c3-dnum">{cell.day}</div>{list.length > 0 && <span className="c3-dbadge">{list.length}</span>}</div>{vis.map((ev, idx) => <Pill key={idx} ev={ev} />)}{hid > 0 && <span className="c3-more" onClick={e => { e.stopPropagation(); setModal({ day: cell.day }); }}>+{hid} de plus</span>}</div>);
             })}
           </div>
         </div>
       )}
-
-      {/* ══ VUE HEBDOMADAIRE ══ */}
-      {view==='week'&&(
+      {view === 'week' && (
         <div className="c3-week">
           <div className="c3-wk-head">
-            <div style={{padding:'12px 6px'}}/>
-            {weDays.map((wd,i)=>{
-              const isTodWd=wd.toDateString()===today.toDateString();
-              const nb=byWD[i]?.length||0;
-              return (
-                <div key={i} className={`c3-wk-ch${isTodWd?' tc':''}`}>
-                  <div className="wd">{DAYS_W[i]}</div>
-                  <div className="dm">{wd.getDate()}</div>
-                  {nb>0&&<div className="wn">{nb} séance{nb>1?'s':''}</div>}
-                </div>
-              );
-            })}
+            <div style={{ padding: '12px 6px' }} />
+            {weDays.map((wd, i) => { const isTodWd = wd.toDateString() === today.toDateString(); const nb = byWD[i]?.length || 0; return (<div key={i} className={`c3-wk-ch${isTodWd ? ' tc' : ''}`}><div className="wd">{DAYS_W[i]}</div><div className="dm">{wd.getDate()}</div>{nb > 0 && <div className="wn">{nb} séance{nb > 1 ? 's' : ''}</div>}</div>); })}
           </div>
           <div className="c3-wk-body">
-            <div className="c3-tcol">
-              {HOURS.map(h=><div key={h} className="c3-tcell"><span className="c3-tlbl">{h}</span></div>)}
-            </div>
-            {weDays.map((wd,di)=>(
+            <div className="c3-tcol">{HOURS.map(h => <div key={h} className="c3-tcell"><span className="c3-tlbl">{h}</span></div>)}</div>
+            {weDays.map((wd, di) => (
               <div key={di} className="c3-wk-day">
-                {HOUR_N.map(h=>{
-                  const inSlot=(byWD[di]||[]).filter(ev=>{
-                    const hh=parseInt((ev.hDebut||'00').split(':')[0],10);
-                    return hh===h;
-                  });
-                  return (
-                    <div key={h} className="c3-wk-slot">
-                      {inSlot.map((ev,si)=>{
-                        const col=occColor(ev.cls);
-                        const {bg,border,text}=ev.pal;
-                        const pct=ev.max>0?Math.min(100,Math.round(ev.nb/ev.max*100)):0;
-                        return (
-                          <div key={si} className="c3-ev"
-                            style={{background:bg,borderColor:border,color:text}}
-                            onMouseEnter={e=>showTT(e,ev)} onMouseLeave={hideTT}>
-                            <div className="c3-ev-time">{ev.hDebut} – {ev.hFin}</div>
-                            <div className="c3-ev-mat">{ev.matieres}</div>
-                            <div className="c3-ev-prof">👨‍🏫 {ev.prof.split(' ')[0]}</div>
-                            {ev.max>0&&(
-                              <div className="c3-ev-bar">
-                                <div className="c3-ev-fill" style={{width:`${pct}%`,background:col}}/>
-                              </div>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  );
-                })}
+                {HOUR_N.map(h => { const inSlot = (byWD[di] || []).filter(ev => parseInt((ev.hDebut || '00').split(':')[0], 10) === h); return (<div key={h} className="c3-wk-slot">{inSlot.map((ev, si) => { const col = occColor(ev.cls); const { bg, border, text } = ev.pal; const pct = ev.max > 0 ? Math.min(100, Math.round(ev.nb / ev.max * 100)) : 0; return (<div key={si} className="c3-ev" style={{ background: bg, borderColor: border, color: text, cursor: 'pointer' }} onClick={e => { e.stopPropagation(); setSeanceModal(ev); }}><div className="c3-ev-time">{ev.hDebut} – {ev.hFin}</div><div className="c3-ev-mat">{ev.matieres}</div>{ev.max > 0 && <div className="c3-ev-bar"><div className="c3-ev-fill" style={{ width: `${pct}%`, background: col }} /></div>}</div>); })}</div>); })}
               </div>
             ))}
           </div>
         </div>
       )}
-
-      {/* ── EMPTY ── */}
-      {src.length===0&&(
+      {src.length === 0 && (
         <div className="c3-empty">
-          <div style={{width:68,height:68,borderRadius:18,background:'#f8fafc',display:'flex',alignItems:'center',justifyContent:'center',fontSize:30,margin:'0 auto 14px',border:'1.5px solid #e2e8f0'}}>📅</div>
-          <div style={{fontFamily:'Cabinet Grotesk,sans-serif',fontWeight:900,fontSize:15,color:'#0f172a',marginBottom:5}}>Aucune séance confirmée</div>
-          <div style={{fontSize:13,color:'#94a3b8'}}>Aucune réservation confirmée pour cette période.</div>
+          <div style={{ width: 68, height: 68, borderRadius: 18, background: '#f8fafc', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 30, margin: '0 auto 14px', border: '1.5px solid #e2e8f0' }}>📅</div>
+          <div style={{ fontFamily: 'Cabinet Grotesk,sans-serif', fontWeight: 900, fontSize: 15, color: '#0f172a', marginBottom: 5 }}>Aucune séance confirmée</div>
+          <div style={{ fontSize: 13, color: '#94a3b8' }}>Aucune réservation confirmée pour cette période.</div>
         </div>
       )}
-
-      <TTComp/>
-      <ModalJour/>
+      <TTComp /><ModalJour /><SeanceModal />
     </div>
   );
 }
 
-const TABS = [{k:'overview',l:"Vue d'ensemble"},{k:'analytiques',l:'Analytiques'},{k:'profs',l:'Formateurs'},{k:'demandes',l:'Demandes'},{k:'referentiel',l:'Referentiel'},{k:'calendrier',l:'📆 Calendrier'},{k:'finances',l:'💳 Finances'}];
+// ─── TABS CONFIGURATION ───────────────────────────────────────────────────────
+const TABS = [
+  { k: 'overview',     l: "Vue d'ensemble" },
+  { k: 'analytiques',  l: 'Analytiques' },
+  { k: 'profs',        l: 'Candidatures' },
+  { k: 'demandes',     l: 'Demandes matières' },
+  { k: 'signalements', l: '🚨 Signalements' },
+  { k: 'users',        l: '👥 Utilisateurs' },
+  { k: 'referentiel',  l: 'Référentiel' },
+  { k: 'calendrier',   l: '📆 Calendrier' },
+  { k: 'finances',     l: '💳 Finances' },
+];
 
+// ─── COMPOSANT CLOCHE NOTIFICATIONS ADMIN ────────────────────────────────────
+function AdminNotifBell({ signalements, demandes, allProfs, onNavigate }) {
+  const [open, setOpen] = useState(false);
+  const [readIds, setReadIds] = useState(() => {
+    try { return new Set(JSON.parse(localStorage.getItem('adm_notif_read') || '[]')); } catch { return new Set(); }
+  });
+  const ref = useRef(null);
+
+  useEffect(() => {
+    const handler = e => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  const notifs = useMemo(() => {
+    const list = [];
+    // Nouveaux signalements
+    (signalements || []).filter(s => s.statut === 'nouveau').forEach(s => {
+      list.push({
+        id: `sig-${s.id}`,
+        icon: '🚨',
+        type: 'Signalement',
+        typeColor: '#dc2626',
+        typeBg: '#fef2f2',
+        typeBorder: '#fca5a5',
+        title: `${s.etudiant_nom} a signalé ${s.prof_nom}`,
+        detail: s.raison?.length > 60 ? s.raison.slice(0, 60) + '…' : s.raison,
+        date: s.created_at,
+        tab: 'signalements',
+      });
+    });
+    // Demandes matières en attente
+    (demandes || []).filter(d => d.statut === 'en_attente').forEach(d => {
+      list.push({
+        id: `dem-${d.id}`,
+        icon: '💡',
+        type: 'Demande matière',
+        typeColor: '#d97706',
+        typeBg: '#fffbeb',
+        typeBorder: '#fcd34d',
+        title: `${d.prof_nom} demande "${d.nom_matiere}"`,
+        detail: `Niveau : ${d.nom_niveau || '—'}`,
+        date: d.created_at,
+        tab: 'demandes',
+      });
+    });
+    // Profs en attente de validation
+    (allProfs || []).filter(p => p.statut_validation === 'en_attente').slice(0, 5).forEach(p => {
+      const nom = `${p.user_prenom || ''} ${p.user_nom || ''}`.trim();
+      list.push({
+        id: `prof-${p.id}`,
+        icon: '👨‍🏫',
+        type: 'Validation profil',
+        typeColor: '#7c3aed',
+        typeBg: '#f5f3ff',
+        typeBorder: '#ddd6fe',
+        title: `${nom} attend une validation`,
+        detail: p.ville ? `Ville : ${p.ville}` : 'Profil soumis',
+        date: null,
+        tab: 'profs',
+      });
+    });
+    return list.sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
+  }, [signalements, demandes, allProfs]);
+
+  const unread = notifs.filter(n => !readIds.has(n.id));
+  const unreadCount = unread.length;
+
+  const markAllRead = () => {
+    const newSet = new Set(notifs.map(n => n.id));
+    setReadIds(newSet);
+    try { localStorage.setItem('adm_notif_read', JSON.stringify([...newSet])); } catch {}
+  };
+
+  return (
+    <div ref={ref} style={{ position: 'relative' }}>
+      <button
+        onClick={() => { setOpen(v => !v); if (!open) markAllRead(); }}
+        style={{ width: 42, height: 42, borderRadius: 12, background: unreadCount > 0 ? '#fef2f2' : '#f8fafc', border: `1.5px solid ${unreadCount > 0 ? '#fca5a5' : '#e2e8f0'}`, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.15rem', position: 'relative', transition: 'all .18s' }}
+        title="Notifications"
+        onMouseEnter={e => e.currentTarget.style.boxShadow = '0 4px 14px rgba(0,0,0,.1)'}
+        onMouseLeave={e => e.currentTarget.style.boxShadow = 'none'}
+      >
+        🔔
+        {unreadCount > 0 && (
+          <span style={{ position: 'absolute', top: 5, right: 5, width: 16, height: 16, background: '#ef4444', borderRadius: '50%', fontSize: 9, fontWeight: 900, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px solid #fff' }}>
+            {unreadCount > 9 ? '9+' : unreadCount}
+          </span>
+        )}
+      </button>
+
+      {open && (
+        <div style={{ position: 'absolute', top: 50, right: 0, width: 380, background: '#fff', border: '1.5px solid #e2e8f0', borderRadius: 20, boxShadow: '0 20px 60px rgba(0,0,0,.14)', zIndex: 9999, overflow: 'hidden', animation: 'adm-modalIn .22s ease both' }}>
+          <div style={{ padding: '14px 18px', borderBottom: '1.5px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#fafbfc' }}>
+            <div style={{ fontFamily: "'Cabinet Grotesk',sans-serif", fontWeight: 900, fontSize: 14, color: '#0F172A' }}>
+              🔔 Notifications
+              {unreadCount > 0 && <span style={{ fontSize: 11, fontWeight: 800, padding: '2px 7px', borderRadius: 10, background: '#ef4444', color: '#fff', marginLeft: 8 }}>{unreadCount} non lues</span>}
+            </div>
+            <button onClick={() => setOpen(false)} style={{ width: 26, height: 26, borderRadius: 7, background: '#f1f5f9', border: '1px solid #e2e8f0', cursor: 'pointer', fontSize: 11, color: '#64748b' }}>✕</button>
+          </div>
+          <div style={{ maxHeight: 380, overflowY: 'auto' }}>
+            {notifs.length === 0 ? (
+              <div style={{ padding: '32px 18px', textAlign: 'center', color: '#94a3b8' }}>
+                <div style={{ fontSize: 26, marginBottom: 8 }}>✅</div>
+                <div style={{ fontSize: 13, fontWeight: 600 }}>Aucune notification</div>
+              </div>
+            ) : notifs.map(n => {
+              const isRead = readIds.has(n.id);
+              return (
+                <div key={n.id}
+                  onClick={() => { onNavigate(n.tab); setOpen(false); }}
+                  style={{ padding: '12px 18px', borderBottom: '1px solid #f8fafc', background: isRead ? '#fff' : '#fafbff', cursor: 'pointer', transition: 'background .15s' }}
+                  onMouseEnter={e => e.currentTarget.style.background = '#f0f4ff'}
+                  onMouseLeave={e => e.currentTarget.style.background = isRead ? '#fff' : '#fafbff'}
+                >
+                  <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+                    <div style={{ width: 34, height: 34, borderRadius: 9, background: n.typeBg, border: `1.5px solid ${n.typeBorder}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1rem', flexShrink: 0 }}>{n.icon}</div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3 }}>
+                        <span style={{ fontSize: 10, fontWeight: 800, padding: '2px 7px', borderRadius: 10, background: n.typeBg, color: n.typeColor, border: `1px solid ${n.typeBorder}` }}>{n.type}</span>
+                        {n.date && <span style={{ fontSize: 10, color: '#94a3b8' }}>{new Date(n.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}</span>}
+                        {!isRead && <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#3b82f6', marginLeft: 'auto', flexShrink: 0 }}/>}
+                      </div>
+                      <div style={{ fontSize: 12, fontWeight: isRead ? 500 : 700, color: '#0F172A', lineHeight: 1.4, marginBottom: 2 }}>{n.title}</div>
+                      {n.detail && <div style={{ fontSize: 11, color: '#64748b', lineHeight: 1.4, fontStyle: 'italic' }}>{n.detail}</div>}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          {notifs.length > 0 && (
+            <div style={{ padding: '10px 18px', borderTop: '1.5px solid #f1f5f9', background: '#fafbfc', textAlign: 'center' }}>
+              <button onClick={() => { markAllRead(); setOpen(false); }}
+                style={{ fontSize: 11, fontWeight: 700, color: '#64748b', background: 'none', border: 'none', cursor: 'pointer', padding: '4px 12px', borderRadius: 8, transition: 'all .15s' }}
+                onMouseEnter={e => e.currentTarget.style.color = '#0F172A'}
+                onMouseLeave={e => e.currentTarget.style.color = '#64748b'}>
+                ✓ Tout marquer comme lu
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── COMPOSANT PRINCIPAL Admin() ─────────────────────────────────────────────
 export default function Admin() {
   const location = useLocation();
-  const [tab,setTab]=useState(()=>{
-    const p = new URLSearchParams(window.location.search);
-    return p.get('tab')||'overview';
-  });
-  const [stats,setStats]=useState({});
-  const [allProfs,setAllProfs]=useState([]);
-  const [structure,setStructure]=useState([]);
-  const [villes,setVilles]=useState([]);
-  const [demandes,setDemandes]=useState([]);
-  const [chartData,setChartData]=useState({});
-  const [loading,setLoading]=useState(true);
-  const [selectedProf,setSelectedProf]=useState(null);
-  const [reservations,setReservations]=useState([]);
-  useEffect(()=>{injectCSS();loadAll();},[]);
-  useEffect(()=>{
+
+  const [tab, setTab]               = useState(() => { const p = new URLSearchParams(window.location.search); return p.get('tab') || 'overview'; });
+  const admRootRef    = React.useRef(null);
+  const tabContentRef = React.useRef(null);
+  const handleTabChange = React.useCallback((k) => {
+    setTab(k);
+    setTimeout(() => {
+      if (admRootRef.current) {
+        // Calcul position absolue du div racine admin → scroll window vers ce point
+        const rect = admRootRef.current.getBoundingClientRect();
+        const absTop = rect.top + window.scrollY - 8; // -8px de marge
+        window.scrollTo({ top: absTop, behavior: 'smooth' });
+      } else {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+    }, 0);
+  }, []);
+  const [stats, setStats]           = useState({});
+  const [allProfs, setAllProfs]     = useState([]);
+  const [structure, setStructure]   = useState([]);
+  const [villes, setVilles]         = useState([]);
+  const [demandes, setDemandes]     = useState([]);
+  const [chartData, setChartData]   = useState({});
+  const [reservations, setReservations] = useState([]);
+  const [signalements, setSignalements] = useState([]);
+  const [allUsers, setAllUsers]     = useState([]);
+  const [loading, setLoading]       = useState(true);
+  const [selectedProf, setSelectedProf] = useState(null);
+
+  // ── PATCH : Modal refus avec raison ──
+  const [refusModal, setRefusModal]   = useState(null); // { profId, nom }
+  const [refusRaison, setRefusRaison] = useState('');
+  const [refusSaving, setRefusSaving] = useState(false);
+
+  // Sync tab depuis URL
+  useEffect(() => {
     const p = new URLSearchParams(location.search);
     const t = p.get('tab');
-    if(t) setTab(t);
-  },[location.search]);
-  const loadAll=async()=>{
+    if (t) setTab(t);
+  }, [location.search]);
+
+  useEffect(() => { injectCSS(); loadAll(); }, []);
+
+  const loadAll = async () => {
     setLoading(true);
     const safe = (promise, fallback) => promise.catch(err => {
       const status = err?.response?.status;
-      console.warn('[Admin] API error:', status, err?.config?.url);
-      // 401 = token expiré → recharger la page pour re-login
-      if (status === 401) { window.location.reload(); }
+      if (status === 401) window.location.reload();
       return { data: fallback };
     });
-    try{
-      const[s,allP,struct,v,dem,cd,resa]=await Promise.all([
-        safe(api.get('/api/admin/stats'),             {}),
-        safe(api.get('/api/admin/professeurs/all'),   []),
+    try {
+      const [s, allP, struct, v, dem, cd, resa, sigs, usrs] = await Promise.all([
+        safe(api.get('/api/admin/stats'), {}),
+        safe(api.get('/api/admin/professeurs/all'), []),
         safe(api.get('/api/admin/referentiel/structure'), []),
         safe(api.get('/api/admin/referentiel/villes'), []),
         safe(api.get('/api/admin/demandes-matieres'), []),
-        safe(api.get('/api/admin/stats/charts'),      {}),
-        safe(api.get('/api/admin/reservations/all'),   []),
+        safe(api.get('/api/admin/stats/charts'), {}),
+        safe(api.get('/api/admin/reservations/all'), []),
+        safe(api.get('/api/admin/signalements'), []),
+        safe(api.get('/api/admin/users/all'), []),
       ]);
-      setStats(s.data||{});
-      setAllProfs(Array.isArray(allP.data)?allP.data:[]);
-      setStructure(Array.isArray(struct.data)?struct.data:[]);
-      setVilles(Array.isArray(v.data)?v.data:[]);
-      setDemandes(Array.isArray(dem.data)?dem.data:[]);
-      setChartData(cd.data||{});
-      setReservations(Array.isArray(resa.data)?resa.data:[]);
-    }catch(e){console.error('loadAll fatal error:',e);}finally{setLoading(false);}
+      setStats(s.data || {});
+      setAllProfs(Array.isArray(allP.data) ? allP.data : []);
+      setStructure(Array.isArray(struct.data) ? struct.data : []);
+      setVilles(Array.isArray(v.data) ? v.data : []);
+      setDemandes(Array.isArray(dem.data) ? dem.data : []);
+      setChartData(cd.data || {});
+      setReservations(Array.isArray(resa.data) ? resa.data : []);
+      setSignalements(Array.isArray(sigs.data) ? sigs.data : []);
+      setAllUsers(Array.isArray(usrs.data) ? usrs.data : []);
+    } catch (e) { console.error('loadAll error:', e); }
+    finally { setLoading(false); }
   };
-  const handleValider=async(id)=>{await api.put(`/api/admin/professeurs/${id}/valider`);alert('Professeur valide');loadAll();};
-  const handleRefuser=async(id)=>{if(!window.confirm('Refuser ce professeur ?'))return;await api.put(`/api/admin/professeurs/${id}/refuser`);loadAll();};
-  const handleApprouverDemande=async(id)=>{try{await api.put(`/api/admin/demandes-matieres/${id}/approuver`);loadAll();}catch(e){alert(e.response?.data?.detail||e.message);}};
-  const handleRefuserDemande=async(id)=>{if(!window.confirm('Refuser ?'))return;try{await api.put(`/api/admin/demandes-matieres/${id}/refuser`);loadAll();}catch(e){alert(e.response?.data?.detail||e.message);}};
-  const counts=useMemo(()=>({tous:allProfs.length,'validé':allProfs.filter(p=>p.statut_validation==='validé').length,en_attente:allProfs.filter(p=>p.statut_validation==='en_attente').length,'refusé':allProfs.filter(p=>p.statut_validation==='refusé').length}),[allProfs]);
-  const demandesPending=demandes.filter(d=>d.statut==='en_attente').length;
-  const STAT_CARDS=[{icon:'U',val:stats.total_users||0,label:'Utilisateurs',color:'#3b82f6',delay:0},{icon:'v',val:counts['validé']||0,label:'Profs valides',color:'#10b981',delay:50},{icon:'.',val:counts.en_attente||0,label:'En attente',color:'#f59e0b',delay:100},{icon:'C',val:stats.total_reservations||0,label:'Reservations',color:'#8b5cf6',delay:150},{icon:'!',val:stats.demandes_matieres_pending||0,label:'Demandes matieres',color:'#ef4444',delay:200}];
-  if(loading)return<div className="adm" style={{display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',minHeight:'60vh',gap:16}}><div className="adm-loader" style={{width:36,height:36}}/><span style={{fontSize:13,color:'#94a3b8',fontWeight:600}}>Chargement...</span></div>;
-  return(
-    <div className="adm" style={{padding:'36px 40px'}}>
-      <div style={{marginBottom:32}} className="adm-fadeUp">
-        <div style={{display:'flex',alignItems:'center',gap:7,marginBottom:6}}><span style={{fontSize:10,fontWeight:700,letterSpacing:'.1em',textTransform:'uppercase',color:'#94a3b8'}}>Dashboard</span><span style={{color:'#e2e8f0'}}>.</span><span style={{fontSize:10,fontWeight:700,letterSpacing:'.1em',textTransform:'uppercase',color:'#3b82f6'}}>Administration</span></div>
-        <div style={{display:'flex',alignItems:'flex-end',justifyContent:'space-between',gap:16}}>
-          <div><h1 style={{fontFamily:'Cabinet Grotesk,sans-serif',fontWeight:900,fontSize:28,color:'#0F172A',margin:'0 0 4px',letterSpacing:'-.03em'}}>EduMatch Admin</h1><p style={{color:'#94a3b8',margin:0,fontSize:13}}>Bienvenue -- etat de la plateforme en temps reel</p></div>
-          <button className="adm-btn adm-btn-ghost adm-btn-sm" onClick={loadAll} style={{flexShrink:0}}>Actualiser</button>
+
+  // ── Valider un professeur ──
+  const handleValider = async (id) => {
+    try {
+      await api.put(`/api/admin/professeurs/${id}/valider`);
+      loadAll();
+    } catch (e) { alert(e.response?.data?.detail || 'Erreur lors de la validation'); }
+  };
+
+  // ── Ouvrir la modal de refus (PATCH : remplace confirm()) ──
+  const handleRefuser = (id, nom) => {
+    setRefusRaison('');
+    setRefusModal({ profId: id, nom: nom || `Prof #${id}` });
+  };
+
+  // ── Confirmer le refus avec la raison saisie ──
+  const handleRefuserConfirm = async () => {
+    if (!refusModal) return;
+    setRefusSaving(true);
+    try {
+      await api.put(`/api/admin/professeurs/${refusModal.profId}/refuser`, { raison: refusRaison });
+      setRefusModal(null);
+      setRefusRaison('');
+      loadAll();
+    } catch (e) { alert(e.response?.data?.detail || 'Erreur lors du refus'); }
+    finally { setRefusSaving(false); }
+  };
+
+  // ── Demandes de matières ──
+  const handleApprouverDemande = async (id) => {
+    try { await api.put(`/api/admin/demandes-matieres/${id}/approuver`); loadAll(); }
+    catch (e) { alert(e.response?.data?.detail || e.message); }
+  };
+  const handleRefuserDemande = async (id) => {
+    if (!window.confirm('Refuser cette demande ?')) return;
+    try { await api.put(`/api/admin/demandes-matieres/${id}/refuser`); loadAll(); }
+    catch (e) { alert(e.response?.data?.detail || e.message); }
+  };
+
+  const counts = useMemo(() => ({
+    tous:       allProfs.length,
+    'validé':   allProfs.filter(p => p.statut_validation === 'validé').length,
+    en_attente: allProfs.filter(p => p.statut_validation === 'en_attente').length,
+    'refusé':   allProfs.filter(p => p.statut_validation === 'refusé').length,
+    'bloqué':   allProfs.filter(p => p.user_statut === 'bloqué').length,
+  }), [allProfs]);
+
+  const demandesPending      = demandes.filter(d => d.statut === 'en_attente').length;
+  const signalementsNouveaux = signalements.filter(s => s.statut === 'nouveau').length;
+
+  const STAT_CARDS = [
+    { icon: '👥', val: stats.total_users || 0,       label: 'Utilisateurs',     color: '#3b82f6', bg: '#eff6ff', delay: 0 },
+    { icon: '✓',  val: counts['validé'] || 0,        label: 'Profs validés',    color: '#10b981', bg: '#ecfdf5', delay: 50 },
+    { icon: '⏳', val: counts.en_attente || 0,        label: 'En attente',       color: '#f59e0b', bg: '#fffbeb', delay: 100 },
+    { icon: '📅', val: stats.total_reservations || 0, label: 'Réservations',     color: '#8b5cf6', bg: '#f5f3ff', delay: 150 },
+    { icon: '🚨', val: signalementsNouveaux || 0,     label: 'Signalements',     color: '#ef4444', bg: '#fef2f2', delay: 200 },
+  ];
+
+  if (loading) return (
+    <div className="adm" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '60vh', gap: 16 }}>
+      <div className="adm-loader" style={{ width: 36, height: 36 }} />
+      <span style={{ fontSize: 13, color: '#94a3b8', fontWeight: 600 }}>Chargement du dashboard...</span>
+    </div>
+  );
+
+  return (
+    <div ref={admRootRef} className="adm" style={{ padding: '36px 40px' }}>
+
+      {/* ── En-tête ── */}
+      <div style={{ marginBottom: 32 }} className="adm-fadeUp">
+        <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 6 }}>
+          <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: '#94a3b8' }}>Dashboard</span>
+          <span style={{ color: '#e2e8f0' }}>·</span>
+          <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: '#3b82f6' }}>Administration</span>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 16 }}>
+          <div>
+            <h1 style={{ fontFamily: 'Cabinet Grotesk,sans-serif', fontWeight: 900, fontSize: 28, color: '#0F172A', margin: '0 0 4px', letterSpacing: '-.03em' }}>EduMatch Admin</h1>
+            <p style={{ color: '#94a3b8', margin: 0, fontSize: 13 }}>Bienvenue — état de la plateforme en temps réel</p>
+          </div>
+          <button className="adm-btn adm-btn-ghost adm-btn-sm" onClick={loadAll} style={{ flexShrink: 0 }}>↻ Actualiser</button>
         </div>
       </div>
-      <div style={{display:'grid',gridTemplateColumns:'repeat(5,1fr)',gap:14,marginBottom:28}}>
-        {STAT_CARDS.map(s=><div key={s.label} className="adm-stat adm-scaleIn" style={{animationDelay:`${s.delay}ms`}}><div className="adm-stat-accent" style={{background:s.color}}/><div style={{width:42,height:42,borderRadius:12,background:`${s.color}12`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:18,marginBottom:14}}>{s.icon}</div><div style={{fontFamily:'Cabinet Grotesk,sans-serif',fontSize:32,fontWeight:900,color:s.color,lineHeight:1,marginBottom:5}}>{s.val}</div><div style={{fontSize:11,color:'#94a3b8',fontWeight:500}}>{s.label}</div></div>)}
+
+      {/* ── Barre de navigation par onglets — AVANT les KPIs ── */}
+      <div style={{ position: 'sticky', top: 0, zIndex: 400, background: 'white', paddingTop: 10, paddingBottom: 10, marginBottom: 20, borderBottom: '1px solid #f1f5f9', marginLeft: -40, marginRight: -40, paddingLeft: 40, paddingRight: 40 }}>
+        <div className="adm-tab-bar">
+          {TABS.map(({ k, l }) => (
+            <button key={k} className={`adm-tab${tab === k ? ' active' : ''}`} onClick={() => handleTabChange(k)}>
+              {l}
+              {k === 'demandes'     && demandesPending > 0      && <span className="adm-tab-badge">{demandesPending}</span>}
+              {k === 'profs'        && counts.en_attente > 0    && <span className="adm-tab-badge" style={{ background: '#f59e0b' }}>{counts.en_attente}</span>}
+              {k === 'signalements' && signalementsNouveaux > 0 && <span className="adm-tab-badge">{signalementsNouveaux}</span>}
+            </button>
+          ))}
+        </div>
       </div>
-      <div className="adm-tab-bar" style={{marginBottom:28}}>
-        {TABS.map(({k,l})=><button key={k} className={`adm-tab${tab===k?' active':''}`} onClick={()=>setTab(k)}>{l}{k==='demandes'&&demandesPending>0&&<span className="adm-tab-badge">{demandesPending}</span>}{k==='profs'&&counts.en_attente>0&&<span className="adm-tab-badge" style={{background:'#f59e0b'}}>{counts.en_attente}</span>}</button>)}
+
+      {/* ── KPIs globaux ── */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: 14, marginBottom: 28 }}>
+        {STAT_CARDS.map(s => (
+          <div key={s.label} className="adm-stat adm-scaleIn" style={{ animationDelay: `${s.delay}ms` }}>
+            <div className="adm-stat-accent" style={{ background: s.color }} />
+            <div style={{ width: 42, height: 42, borderRadius: 12, background: s.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, marginBottom: 14 }}>{s.icon}</div>
+            <div style={{ fontFamily: 'Cabinet Grotesk,sans-serif', fontSize: 32, fontWeight: 900, color: s.color, lineHeight: 1, marginBottom: 5 }}>{s.val}</div>
+            <div style={{ fontSize: 11, color: '#94a3b8', fontWeight: 500 }}>{s.label}</div>
+          </div>
+        ))}
       </div>
-      {tab==='overview'    &&<OverviewTab    stats={stats} allProfs={allProfs} demandes={demandes} counts={counts} onTabChange={setTab} onViewProf={p=>{setSelectedProf(p);}} chartData={chartData}/>}
-      {tab==='analytiques' &&<AnalytiquesTab stats={stats} allProfs={allProfs} chartData={chartData} onTabChange={setTab}/>}
-      {tab==='profs'       &&<ProfsTab       allProfs={allProfs} structure={structure} onView={setSelectedProf} onValider={handleValider} onRefuser={handleRefuser}/>}
-      {tab==='demandes'    &&<DemandesTab    demandes={demandes} onApprouver={handleApprouverDemande} onRefuser={handleRefuserDemande}/>}
-      {tab==='referentiel' &&<ReferentielTab structure={structure} villes={villes} onReload={loadAll}/>}
-      {tab==='calendrier'  &&<CalendrierTab reservations={reservations} allProfs={allProfs}/>}
-      {tab==='finances'    &&<FinancesTab/>}
-      <ProfDrawer prof={selectedProf} onClose={()=>setSelectedProf(null)} onValider={handleValider} onRefuser={handleRefuser}/>
+
+      {/* ── Contenu des onglets ── */}
+      <div ref={tabContentRef} style={{ scrollMarginTop: 8 }} />
+      {tab === 'overview'     && <OverviewTab stats={stats} allProfs={allProfs} demandes={demandes} counts={counts} onTabChange={handleTabChange} onViewProf={p => setSelectedProf(p)} chartData={chartData} />}
+      {tab === 'analytiques'  && <AnalytiquesTab stats={stats} allProfs={allProfs} chartData={chartData} onTabChange={handleTabChange} signalements={signalements} users={allUsers} />}
+      {tab === 'profs'        && <ProfsTab allProfs={allProfs} structure={structure} onView={setSelectedProf} onValider={handleValider} onRefuser={handleRefuser} />}
+      {tab === 'demandes'     && <DemandesTab demandes={demandes} onApprouver={handleApprouverDemande} onRefuser={handleRefuserDemande} />}
+      {tab === 'signalements' && <SignalementsTab signalements={signalements} onReload={loadAll} />}
+      {tab === 'users'        && <UsersTab onReload={loadAll} />}
+      {tab === 'referentiel'  && <ReferentielTab structure={structure} villes={villes} onReload={loadAll} />}
+      {tab === 'calendrier'   && <CalendrierTab reservations={reservations} allProfs={allProfs} />}
+      {tab === 'finances'     && <FinancesTab />}
+
+      {/* ── Drawer profil prof ── */}
+      <ProfDrawer
+        prof={selectedProf}
+        onClose={() => setSelectedProf(null)}
+        onValider={handleValider}
+        onRefuser={handleRefuser}
+      />
+
+      {/* ── PATCH : Modal refus avec saisie de la raison ── */}
+      {refusModal && (
+        <div className="adm-modal-overlay" onClick={e => { if (e.target === e.currentTarget) setRefusModal(null); }}>
+          <div className="adm-modal" style={{ maxWidth: 460 }}>
+
+            {/* Header */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 }}>
+              <div>
+                <h3 style={{ fontFamily: "'Cabinet Grotesk',sans-serif", fontWeight: 900, fontSize: 17, color: '#0F172A', margin: '0 0 5px' }}>
+                  ❌ Refuser ce professeur
+                </h3>
+                <div style={{ fontSize: 13, color: '#64748b', display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span style={{ width: 22, height: 22, borderRadius: 6, background: '#fef2f2', border: '1px solid #fca5a5', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 12 }}>👨‍🏫</span>
+                  {refusModal.nom}
+                </div>
+              </div>
+              <button
+                onClick={() => setRefusModal(null)}
+                style={{ width: 32, height: 32, borderRadius: 9, background: '#f8fafc', border: '1.5px solid #e2e8f0', cursor: 'pointer', color: '#64748b', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, flexShrink: 0, marginLeft: 12 }}
+              >✕</button>
+            </div>
+
+            {/* Info */}
+            <div style={{ padding: '10px 14px', background: '#fffbeb', border: '1.5px solid #fcd34d', borderRadius: 10, marginBottom: 18, fontSize: 12, color: '#b45309', lineHeight: 1.6 }}>
+              ⚠️ La raison sera visible par le professeur dans son tableau de bord. Il pourra corriger son profil et resoumettre sa candidature.
+            </div>
+
+            {/* Textarea raison */}
+            <label className="adm-label">
+              Raison du refus <span style={{ color: '#94a3b8', fontWeight: 400 }}>(optionnel mais recommandé)</span>
+            </label>
+            <textarea
+              autoFocus
+              className="adm-input adm-textarea"
+              placeholder="Ex: Documents manquants, profil incomplet, diplômes non vérifiables..."
+              value={refusRaison}
+              onChange={e => setRefusRaison(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter' && e.ctrlKey) handleRefuserConfirm(); }}
+              rows={4}
+            />
+            <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 6, marginBottom: 20 }}>
+              Ctrl+Entrée pour confirmer rapidement
+            </div>
+
+            {/* Actions */}
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button
+                className="adm-btn adm-btn-danger"
+                style={{ flex: 2, justifyContent: 'center', opacity: refusSaving ? .6 : 1 }}
+                disabled={refusSaving}
+                onClick={handleRefuserConfirm}
+              >
+                {refusSaving ? '⏳ Refus en cours...' : '❌ Confirmer le refus'}
+              </button>
+              <button
+                className="adm-btn adm-btn-ghost"
+                style={{ flex: 1, justifyContent: 'center' }}
+                onClick={() => setRefusModal(null)}
+              >
+                Annuler
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

@@ -1,13 +1,14 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, GraduationCap, Sparkles, CheckCircle2, ArrowUpRight, Star, BookOpen, Calendar } from 'lucide-react';
+import { X, GraduationCap, Sparkles, CheckCircle2, ArrowUpRight, Star, BookOpen, Calendar, Phone, Mail } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 /* Mascotte Formateurs - Groupe de blobs */
 const TeacherGroupMascot = () => (
   <svg viewBox="0 0 500 400" xmlns="http://www.w3.org/2000/svg" className="w-full h-full">
     {/* Fond */}
     <rect x="0" y="0" width="500" height="400" rx="20" fill="#F0F9FF"/>
-    
+
     {/* Écrans flottants en arrière-plan */}
     <g opacity="0.3">
       <rect x="40" y="40" width="100" height="70" rx="10" fill="#E0F2FE" stroke="#BAE6FD" strokeWidth="2"/>
@@ -27,12 +28,12 @@ const TeacherGroupMascot = () => (
           <stop offset="100%" stopColor="#0284C7"/>
         </radialGradient>
       </defs>
-      
+
       {/* Béret */}
       <ellipse cx="50" cy="55" rx="35" ry="12" fill="#1E293B"/>
       <path d="M20 55 Q50 25 80 55" fill="#1E293B"/>
       <rect x="75" y="50" width="8" height="15" fill="#1E293B"/>
-      
+
       {/* Lunettes rondes */}
       <circle cx="38" cy="85" r="14" fill="none" stroke="#1E293B" strokeWidth="2.5"/>
       <circle cx="62" cy="85" r="14" fill="none" stroke="#1E293B" strokeWidth="2.5"/>
@@ -41,14 +42,14 @@ const TeacherGroupMascot = () => (
       <circle cx="62" cy="85" r="8" fill="#1E293B"/>
       <circle cx="40" cy="83" r="3" fill="white"/>
       <circle cx="64" cy="83" r="3" fill="white"/>
-      
+
       {/* Bouche souriante */}
       <path d="M40 105 Q50 115 60 105" stroke="#1E293B" strokeWidth="2.5" fill="none" strokeLinecap="round"/>
-      
+
       {/* Joues */}
       <ellipse cx="25" cy="95" rx="10" ry="6" fill="#FDA4AF" opacity="0.4"/>
       <ellipse cx="75" cy="95" rx="10" ry="6" fill="#FDA4AF" opacity="0.4"/>
-      
+
       {/* Tablette */}
       <rect x="25" y="115" width="50" height="35" rx="5" fill="#1E293B"/>
       <rect x="28" y="118" width="44" height="29" rx="3" fill="#0F172A"/>
@@ -155,7 +156,7 @@ const TeacherProfileMascot = () => (
     {/* Fond circulaire */}
     <circle cx="200" cy="200" r="180" fill="#F0F9FF" opacity="0.5"/>
     <circle cx="200" cy="200" r="150" fill="#E0F2FE" opacity="0.3"/>
-    
+
     {/* Mascotte centrale avec béret */}
     <g transform="translate(120, 80)">
       {/* Corps */}
@@ -167,42 +168,42 @@ const TeacherProfileMascot = () => (
           <stop offset="100%" stopColor="#0284C7"/>
         </radialGradient>
       </defs>
-      
+
       {/* Reflet */}
       <ellipse cx="55" cy="140" rx="20" ry="12" fill="white" opacity="0.25" transform="rotate(-15)"/>
-      
+
       {/* Béret */}
       <ellipse cx="80" cy="85" rx="45" ry="15" fill="#1E293B"/>
       <path d="M40 85 Q80 50 120 85" fill="#1E293B"/>
       <rect x="115" y="80" width="10" height="20" fill="#1E293B"/>
-      
+
       {/* Lunettes rondes stylées */}
       <circle cx="65" cy="115" r="18" fill="none" stroke="#1E293B" strokeWidth="3"/>
       <circle cx="95" cy="115" r="18" fill="none" stroke="#1E293B" strokeWidth="3"/>
       <line x1="83" y1="115" x2="77" y2="115" stroke="#1E293B" strokeWidth="2.5"/>
       <line x1="47" y1="112" x2="30" y2="108" stroke="#1E293B" strokeWidth="2"/>
       <line x1="113" y1="112" x2="130" y2="108" stroke="#1E293B" strokeWidth="2"/>
-      
+
       {/* Verres */}
       <circle cx="65" cy="115" r="14" fill="#BAE6FD" opacity="0.4"/>
       <circle cx="95" cy="115" r="14" fill="#BAE6FD" opacity="0.4"/>
-      
+
       {/* Yeux */}
       <circle cx="65" cy="115" r="8" fill="#1E293B"/>
       <circle cx="95" cy="115" r="8" fill="#1E293B"/>
       <circle cx="67" cy="113" r="3" fill="white"/>
       <circle cx="97" cy="113" r="3" fill="white"/>
-      
+
       {/* Sourire confiant */}
       <path d="M65 140 Q80 155 95 140" stroke="#1E293B" strokeWidth="3" fill="none" strokeLinecap="round"/>
-      
+
       {/* Joues */}
       <ellipse cx="45" cy="125" rx="12" ry="8" fill="#FDA4AF" opacity="0.35"/>
       <ellipse cx="115" cy="125" rx="12" ry="8" fill="#FDA4AF" opacity="0.35"/>
-      
+
       {/* Moustache fine */}
       <path d="M75 132 Q80 130 85 132" stroke="#1E293B" strokeWidth="1.5" fill="none" opacity="0.5"/>
-      
+
       {/* Tablette avec graphiques */}
       <rect x="45" y="165" width="70" height="50" rx="6" fill="#1E293B"/>
       <rect x="48" y="168" width="64" height="44" rx="4" fill="#0F172A"/>
@@ -211,7 +212,7 @@ const TeacherProfileMascot = () => (
       <rect x="80" y="172" width="28" height="15" rx="2" fill="#10B981" opacity="0.6"/>
       <rect x="52" y="190" width="56" height="8" rx="2" fill="#F59E0B" opacity="0.4"/>
       <rect x="52" y="200" width="40" height="6" rx="2" fill="#EF4444" opacity="0.4"/>
-      
+
       {/* Main droite pointant */}
       <ellipse cx="140" cy="160" rx="18" ry="12" fill="#0EA5E9" transform="rotate(30)"/>
       <circle cx="152" cy="152" r="6" fill="#7DD3FC"/>
@@ -223,13 +224,13 @@ const TeacherProfileMascot = () => (
     <circle cx="340" cy="80" r="6" fill="#F59E0B" opacity="0.4"/>
     <circle cx="320" cy="320" r="10" fill="#10B981" opacity="0.3"/>
     <circle cx="80" cy="300" r="7" fill="#8B5CF6" opacity="0.3"/>
-    
+
     {/* Badges flottants */}
     <g transform="translate(280, 120)">
       <rect x="0" y="0" width="80" height="30" rx="15" fill="#FEF3C7" stroke="#F59E0B" strokeWidth="1.5"/>
       <text x="40" y="20" fontSize="11" fill="#B45309" textAnchor="middle" fontWeight="bold" fontFamily="sans-serif">★ 4.9/5</text>
     </g>
-    
+
     <g transform="translate(40, 220)">
       <rect x="0" y="0" width="90" height="30" rx="15" fill="#DBEAFE" stroke="#3B82F6" strokeWidth="1.5"/>
       <text x="45" y="20" fontSize="11" fill="#1E40AF" textAnchor="middle" fontWeight="bold" fontFamily="sans-serif">Expert</text>
@@ -242,7 +243,7 @@ const IntegrationMascot = () => (
   <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" className="w-full h-full">
     <circle cx="100" cy="100" r="90" fill="#F0F9FF"/>
     <circle cx="100" cy="100" r="70" fill="#E0F2FE" opacity="0.5"/>
-    
+
     {/* Mascotte miniature */}
     <ellipse cx="100" cy="110" rx="35" ry="32" fill="url(#intGrad)"/>
     <defs>
@@ -252,26 +253,26 @@ const IntegrationMascot = () => (
         <stop offset="100%" stopColor="#0284C7"/>
       </radialGradient>
     </defs>
-    
+
     {/* Toque */}
     <polygon points="100,65 125,85 75,85" fill="#1E3A8A"/>
     <rect x="75" y="83" width="50" height="8" rx="2" fill="#1E3A8A"/>
-    
+
     {/* Lunettes */}
     <circle cx="90" cy="95" r="8" fill="none" stroke="#1E293B" strokeWidth="2"/>
     <circle cx="110" cy="95" r="8" fill="none" stroke="#1E293B" strokeWidth="2"/>
     <line x1="98" y1="95" x2="102" y2="95" stroke="#1E293B" strokeWidth="1.5"/>
     <circle cx="90" cy="95" r="4" fill="#1E293B"/>
     <circle cx="110" cy="95" r="4" fill="#1E293B"/>
-    
+
     {/* Sourire */}
     <path d="M92 108 Q100 114 108 108" stroke="#1E293B" strokeWidth="2" fill="none" strokeLinecap="round"/>
-    
+
     {/* Diplôme */}
     <rect x="70" y="125" width="25" height="30" rx="3" fill="#FEF3C7" stroke="#F59E0B" strokeWidth="1.5"/>
     <line x1="75" y1="132" x2="90" y2="132" stroke="#F59E0B" strokeWidth="1"/>
     <line x1="75" y1="138" x2="90" y2="138" stroke="#F59E0B" strokeWidth="1"/>
-    
+
     {/* Graphique */}
     <g transform="translate(115, 125)">
       <rect x="0" y="0" width="30" height="25" rx="3" fill="white" stroke="#E2E8F0"/>
@@ -281,23 +282,25 @@ const IntegrationMascot = () => (
 );
 
 const TeacherModal = ({ isOpen, onClose }) => {
+  const navigate = useNavigate();
+
   const features = [
     {
       icon: "https://images.unsplash.com/photo-1434030216411-0b793f4b4173?w=200&h=200&fit=crop",
       title: "Gestion simplifiée",
-      desc: "Gérez votre calendrier, vos disponibilités et vos revenus depuis un tableau de bord intuitif.",
+      desc: "Gérez votre calendrier, vos disponibilités et vos revenus depuis un tableau de bord intuitif dédié aux formateurs.",
       color: "from-blue-400 to-indigo-400"
     },
     {
       icon: "https://images.unsplash.com/photo-1552664730-d307ca884978?w=200&h=200&fit=crop",
       title: "Visibilité accrue",
-      desc: "Profitez d'une audience qualifiée et d'un référencement optimisé pour développer votre clientèle.",
+      desc: "Profitez d'une audience qualifiée en Tunisie et d'un référencement optimisé par notre algorithme de matching IA.",
       color: "from-violet-400 to-purple-400"
     },
     {
       icon: "https://images.unsplash.com/photo-1521791136064-7986c2920216?w=200&h=200&fit=crop",
       title: "Support dédié",
-      desc: "Bénéficiez d'un accompagnement technique et pédagogique pour maximiser l'impact de vos cours.",
+      desc: "Bénéficiez d'un accompagnement technique et pédagogique par l'équipe EduMatch pour maximiser l'impact de vos cours.",
       color: "from-emerald-400 to-teal-400"
     }
   ];
@@ -311,17 +314,17 @@ const TeacherModal = ({ isOpen, onClose }) => {
     {
       icon: "briefcase",
       title: "Expérience",
-      desc: "Plusieurs années d'expérience en entreprise, direction de projets d'envergure, et de nombreuses heures d'enseignement tant en présentiel qu'en ligne."
+      desc: "Plusieurs années d'expérience en entreprise, direction de projets d'envergure, et de nombreuses heures d'enseignement tant en présentiel qu'en ligne sur la plateforme EduMatch."
     },
     {
       icon: "award",
       title: "Compétences clés",
-      desc: "Expertise technique pointue, maîtrise des outils de pointe, accompagnement sur des projets réels et capacité d'adaptation aux besoins spécifiques de chaque apprenant."
+      desc: "Expertise technique pointue, maîtrise des outils de pointe, accompagnement sur des projets réels et capacité d'adaptation aux besoins spécifiques de chaque apprenant tunisien."
     },
     {
       icon: "book-open",
       title: "Approche pédagogique",
-      desc: "Méthode active basée sur la pratique, sessions interactives, supports de cours modernes et suivi personnalisé pour garantir la réussite de chaque parcours."
+      desc: "Méthode active basée sur la pratique, sessions interactives, supports de cours modernes et suivi personnalisé pour garantir la réussite de chaque parcours sur EduMatch."
     }
   ];
 
@@ -329,25 +332,25 @@ const TeacherModal = ({ isOpen, onClose }) => {
     {
       phase: "Phase 1 : Inscription et Validation",
       items: [
-        { num: 1, title: "Inscription", desc: "Création du compte initial sur la plateforme.", img: "https://images.unsplash.com/photo-1611746872915-64382b5c76da?w=300&h=200&fit=crop" },
-        { num: 2, title: "Confirmation Mail", desc: "Vérification de l'adresse électronique pour sécuriser l'accès.", img: "https://images.unsplash.com/photo-1557200134-90327ee9fafa?w=300&h=200&fit=crop" },
-        { num: 3, title: "Tableau de Bord & Simulation", desc: "Accès à l'interface de gestion et réalisation d'une séance test.", img: "https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=300&h=200&fit=crop" }
+        { num: 1, title: "Inscription", desc: "Créez votre compte formateur sur EduMatch Tunisia avec votre email et vos informations professionnelles.", img: "https://images.unsplash.com/photo-1611746872915-64382b5c76da?w=300&h=200&fit=crop" },
+        { num: 2, title: "Confirmation Mail", desc: "Vérifiez votre adresse électronique pour sécuriser l'accès à votre espace formateur.", img: "https://images.unsplash.com/photo-1557200134-90327ee9fafa?w=300&h=200&fit=crop" },
+        { num: 3, title: "Tableau de Bord", desc: "Accédez à votre interface de gestion et configurez votre profil pédagogique.", img: "https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=300&h=200&fit=crop" }
       ]
     },
     {
       phase: "Phase 2 : Configuration du Profil",
       items: [
-        { num: 4, title: "Compléter le Profil", desc: "Matières IT, Finance, Marketing, etc. et tarifs horaires.", img: "https://images.unsplash.com/photo-1507238691740-187a5b1d37b8?w=300&h=200&fit=crop" },
-        { num: 5, title: "Attente de Confirmation", desc: "Validation du profil par l'équipe administrative Onyono.", img: "https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=300&h=200&fit=crop" }
+        { num: 4, title: "Compléter le Profil", desc: "Ajoutez vos matières (Maths, Physique, Programmation, etc.), vos tarifs horaires et votre ville en Tunisie.", img: "https://images.unsplash.com/photo-1507238691740-187a5b1d37b8?w=300&h=200&fit=crop" },
+        { num: 5, title: "Validation EduMatch", desc: "Votre profil est examiné par notre équipe pédagogique pour garantir la qualité.", img: "https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=300&h=200&fit=crop" }
       ]
     },
     {
       phase: "Phase 3 : Enseignement et Rémunération",
       items: [
-        { num: 6, title: "Séance Gratuite", desc: "Mini-séances d'essai pour convaincre les nouveaux apprenants.", img: "https://images.unsplash.com/photo-1524178232363-1fb2b075b655?w=300&h=200&fit=crop" },
-        { num: 7, title: "Référencer l'Apprenant", desc: "Suivi pédagogique et enregistrement des élèves réguliers.", img: "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=300&h=200&fit=crop" },
-        { num: 8, title: "Collecte du Solde", desc: "Accumulation des revenus après chaque séance effectuée.", img: "https://images.unsplash.com/photo-1554224155-6726b3ff858f?w=300&h=200&fit=crop" },
-        { num: 9, title: "Demande de Virement", desc: "Transfert des fonds vers votre compte bancaire personnel.", img: "https://images.unsplash.com/photo-1563013544-824ae1b704d3?w=300&h=200&fit=crop" }
+        { num: 6, title: "Séance Gratuite", desc: "Offrez une mini-séance d'essai pour convaincre les nouveaux apprenants et gagner en visibilité.", img: "https://images.unsplash.com/photo-1524178232363-1fb2b075b655?w=300&h=200&fit=crop" },
+        { num: 7, title: "Gérer les Réservations", desc: "Acceptez ou refusez les demandes de cours depuis votre tableau de bord en temps réel.", img: "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=300&h=200&fit=crop" },
+        { num: 8, title: "Collecte du Solde", desc: "Accumulez vos revenus après chaque séance effectuée et validée par l'apprenant.", img: "https://images.unsplash.com/photo-1554224155-6726b3ff858f?w=300&h=200&fit=crop" },
+        { num: 9, title: "Demande de Virement", desc: "Transférez vos fonds vers votre compte bancaire tunisien (CBE, BIAT, Attijari, etc.).", img: "https://images.unsplash.com/photo-1563013544-824ae1b704d3?w=300&h=200&fit=crop" }
       ]
     }
   ];
@@ -355,12 +358,12 @@ const TeacherModal = ({ isOpen, onClose }) => {
   const testimonials = [
     {
       name: "Sami K.",
-      text: "Une pédagogie exceptionnelle. Le formateur a su simplifier des concepts complexes avec des cas pratiques réels.",
+      text: "Une pédagogie exceptionnelle. Le formateur a su simplifier des concepts complexes en algèbre avec des cas pratiques réels pour le bac.",
       rating: 5
     },
     {
       name: "Ines R.",
-      text: "Accompagnement rigoureux et bienveillant. J'ai pu monter en compétence très rapidement sur le Cloud.",
+      text: "Accompagnement rigoureux et bienveillant. J'ai pu monter en compétence très rapidement sur le développement web grâce à EduMatch.",
       rating: 5
     }
   ];
@@ -377,8 +380,8 @@ const TeacherModal = ({ isOpen, onClose }) => {
             onClick={onClose}
             className="fixed inset-0 bg-white z-[200]"
           />
-          
-          {/* Container plein écran - MODIFIÉ */}
+
+          {/* Container plein écran */}
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
@@ -394,12 +397,13 @@ const TeacherModal = ({ isOpen, onClose }) => {
                 </div>
                 <div>
                   <h2 className="text-2xl md:text-3xl font-black text-[#00153D] tracking-tight">Pour les Formateurs</h2>
-                  <p className="text-sm text-gray-500 font-medium">Partagez votre expertise et monétisez votre savoir</p>
+                  <p className="text-sm text-gray-500 font-medium">Partagez votre expertise et monétisez votre savoir avec EduMatch Tunisia</p>
                 </div>
               </div>
               <button 
                 onClick={onClose}
                 className="w-12 h-12 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center transition-colors group"
+                aria-label="Fermer"
               >
                 <X size={24} className="text-gray-500 group-hover:text-gray-700" />
               </button>
@@ -407,25 +411,25 @@ const TeacherModal = ({ isOpen, onClose }) => {
 
             {/* Content */}
             <div className="max-w-7xl mx-auto p-6 md:p-8 lg:p-12 space-y-16">
-              
+
               {/* Section Hero */}
               <section className="grid lg:grid-cols-2 gap-12 items-center">
                 <div className="space-y-6">
                   <div className="inline-flex items-center gap-2 px-4 py-2 bg-violet-50 rounded-full">
                     <Sparkles size={16} className="text-violet-500" />
-                    <span className="text-sm font-bold text-violet-600 uppercase tracking-wider">Pour les Formateurs</span>
+                    <span className="text-sm font-bold text-violet-600 uppercase tracking-wider">EduMatch TN</span>
                   </div>
                   <h3 className="text-4xl md:text-5xl font-black text-[#00153D] leading-tight">
                     Partagez votre expertise et monétisez votre savoir
                   </h3>
                   <p className="text-lg text-gray-600 leading-relaxed">
-                    Rejoignez une communauté d'experts passionnés. Onyono vous offre les outils nécessaires pour gérer vos sessions, interagir avec vos apprenants et développer votre activité de formation en ligne.
+                    Rejoignez une communauté d'experts passionnés en Tunisie. EduMatch vous offre les outils nécessaires pour gérer vos sessions, interagir avec vos apprenants et développer votre activité de formation en ligne et en présentiel.
                   </p>
                   <div className="space-y-4 pt-4">
                     {[
-                      "Gestion simplifiée de votre calendrier et de vos paiements.",
-                      "Visibilité accrue auprès d'une audience qualifiée.",
-                      "Support technique et pédagogique dédié."
+                      "Gestion simplifiée de votre calendrier, disponibilités et revenus.",
+                      "Visibilité accrue auprès de 2,000+ apprenants qualifiés en Tunisie.",
+                      "Support technique et pédagogique dédié par l'équipe EduMatch."
                     ].map((item, i) => (
                       <div key={i} className="flex items-start gap-3">
                         <div className="w-6 h-6 rounded-full bg-violet-600 flex items-center justify-center flex-shrink-0 mt-0.5">
@@ -435,12 +439,18 @@ const TeacherModal = ({ isOpen, onClose }) => {
                       </div>
                     ))}
                   </div>
-                  <div className="flex gap-4 pt-4">
-                    <button className="bg-[#00153D] text-white px-8 py-4 rounded-2xl font-bold flex items-center gap-3 hover:bg-blue-700 transition-colors group">
+                  <div className="flex flex-wrap gap-4 pt-4">
+                    <button 
+                      onClick={() => { onClose(); navigate('/register'); }}
+                      className="bg-[#00153D] text-white px-8 py-4 rounded-2xl font-bold flex items-center gap-3 hover:bg-blue-700 transition-colors group"
+                    >
                       Devenir Formateur
                       <ArrowUpRight size={20} className="group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" />
                     </button>
-                    <button className="border-2 border-gray-200 text-gray-700 px-8 py-4 rounded-2xl font-bold flex items-center gap-3 hover:border-violet-300 hover:text-violet-600 transition-colors">
+                    <button 
+                      onClick={() => { onClose(); navigate('/formateurs'); }}
+                      className="border-2 border-gray-200 text-gray-700 px-8 py-4 rounded-2xl font-bold flex items-center gap-3 hover:border-violet-300 hover:text-violet-600 transition-colors"
+                    >
                       Découvrir Nos Formateurs
                       <ArrowUpRight size={20} />
                     </button>
@@ -451,13 +461,38 @@ const TeacherModal = ({ isOpen, onClose }) => {
                 </div>
               </section>
 
+              {/* Section Features */}
+              <section className="space-y-8">
+                <div className="text-center space-y-4">
+                  <h3 className="text-3xl md:text-4xl font-black text-[#00153D]">Pourquoi enseigner sur EduMatch ?</h3>
+                  <p className="text-gray-500 text-lg max-w-2xl mx-auto">Une plateforme pensée pour les formateurs tunisiens, du primaire au professionnel.</p>
+                </div>
+                <div className="grid md:grid-cols-3 gap-6">
+                  {features.map((feature, i) => (
+                    <motion.div
+                      key={i}
+                      whileHover={{ y: -8 }}
+                      className="bg-white border border-gray-100 rounded-[30px] p-6 shadow-lg shadow-gray-100/50 hover:shadow-xl transition-all group"
+                    >
+                      <div className={`w-20 h-20 mx-auto mb-4 rounded-full bg-gradient-to-br ${feature.color} p-1`}>
+                        <div className="w-full h-full rounded-full bg-white flex items-center justify-center overflow-hidden">
+                          <img src={feature.icon} alt={feature.title} className="w-full h-full object-cover" />
+                        </div>
+                      </div>
+                      <h4 className="text-xl font-black text-center text-[#00153D] mb-3">{feature.title}</h4>
+                      <p className="text-gray-500 text-sm text-center leading-relaxed">{feature.desc}</p>
+                    </motion.div>
+                  ))}
+                </div>
+              </section>
+
               {/* Section Profil Formateur */}
               <section className="space-y-8">
                 <div className="text-center space-y-4 max-w-2xl mx-auto">
                   <h3 className="text-3xl md:text-4xl font-black text-[#00153D]">Un profil clair pour une relation de confiance.</h3>
-                  <p className="text-gray-500 text-lg">Découvrez l'excellence de notre corps professoral et leur engagement pour votre réussite.</p>
+                  <p className="text-gray-500 text-lg">Découvrez l'excellence de notre corps professoral et leur engagement pour la réussite des apprenants tunisiens.</p>
                 </div>
-                
+
                 <div className="grid lg:grid-cols-3 gap-8 items-center">
                   {/* Colonne gauche */}
                   <div className="space-y-6">
@@ -529,7 +564,7 @@ const TeacherModal = ({ isOpen, onClose }) => {
                 <div className="grid lg:grid-cols-3 gap-8 items-center">
                   <div>
                     <h3 className="text-3xl font-black text-[#00153D] mb-4">Avis apprenants</h3>
-                    <p className="text-gray-500 leading-relaxed">Découvrez ce que disent nos apprenants sur l'expertise et l'accompagnement de nos formateurs.</p>
+                    <p className="text-gray-500 leading-relaxed">Découvrez ce que disent nos apprenants sur l'expertise et l'accompagnement de nos formateurs certifiés en Tunisie.</p>
                   </div>
                   {testimonials.map((testimonial, i) => (
                     <motion.div
@@ -553,13 +588,15 @@ const TeacherModal = ({ isOpen, onClose }) => {
               <section className="space-y-12">
                 <div className="text-center space-y-4">
                   <div className="inline-flex items-center gap-2 px-4 py-2 bg-violet-50 rounded-full">
-                    <IntegrationMascot />
+                    <div className="w-8 h-8">
+                      <IntegrationMascot />
+                    </div>
                     <span className="text-sm font-bold text-violet-600">Parcours d'Intégration du Formateur</span>
                   </div>
                   <h3 className="text-3xl md:text-4xl font-black text-[#00153D]">Comment devenir formateur ?</h3>
-                  <p className="text-gray-500 text-lg">Un processus simple et structuré en trois phases clés.</p>
+                  <p className="text-gray-500 text-lg">Un processus simple et structuré en trois phases clés pour rejoindre EduMatch Tunisia.</p>
                 </div>
-                
+
                 <div className="space-y-12">
                   {steps.map((phase, phaseIdx) => (
                     <div key={phaseIdx} className="space-y-6">
@@ -595,18 +632,74 @@ const TeacherModal = ({ isOpen, onClose }) => {
                 </div>
               </section>
 
-              {/* Section CTA */}
+              {/* Section Contact Rapide */}
+              <section className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-[40px] p-8 md:p-12">
+                <div className="grid lg:grid-cols-2 gap-12 items-center">
+                  <div className="space-y-6">
+                    <h3 className="text-3xl font-black text-[#00153D]">Besoin d'aide pour commencer ?</h3>
+                    <p className="text-gray-600 text-lg leading-relaxed">
+                      Notre équipe pédagogique est disponible pour répondre à vos questions et vous accompagner dans votre inscription sur EduMatch Tunisia.
+                    </p>
+                    <div className="space-y-4">
+                      <a href="tel:+21694249424" className="flex items-center gap-4 bg-white p-4 rounded-2xl shadow-sm hover:shadow-md transition-all">
+                        <div className="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center text-green-600">
+                          <Phone size={24} />
+                        </div>
+                        <div>
+                          <div className="font-bold text-[#00153D]">+216 94 24 94 24</div>
+                          <div className="text-sm text-gray-500">Lun-Ven, 9h-18h</div>
+                        </div>
+                      </a>
+                      <a href="mailto:contact@edumatch.tn" className="flex items-center gap-4 bg-white p-4 rounded-2xl shadow-sm hover:shadow-md transition-all">
+                        <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center text-blue-600">
+                          <Mail size={24} />
+                        </div>
+                        <div>
+                          <div className="font-bold text-[#00153D]">contact@edumatch.tn</div>
+                          <div className="text-sm text-gray-500">Réponse sous 24h</div>
+                        </div>
+                      </a>
+                    </div>
+                  </div>
+                  <div className="flex flex-col gap-4">
+                    <button 
+                      onClick={() => { onClose(); navigate('/register'); }}
+                      className="bg-[#00153D] text-white px-8 py-5 rounded-2xl font-bold hover:bg-blue-700 transition-colors flex items-center justify-center gap-3 text-lg"
+                    >
+                      <BookOpen size={24} />
+                      Créer mon compte formateur
+                    </button>
+                    <button 
+                      onClick={() => { onClose(); navigate('/contact'); }}
+                      className="border-2 border-[#00153D] text-[#00153D] px-8 py-5 rounded-2xl font-bold hover:bg-blue-50 transition-colors flex items-center justify-center gap-3 text-lg"
+                    >
+                      <Calendar size={24} />
+                      Réserver un appel découverte
+                    </button>
+                  </div>
+                </div>
+              </section>
+
+              {/* Section CTA Final */}
               <section className="text-center py-12 bg-gradient-to-r from-violet-600 to-purple-600 rounded-[40px] px-8">
                 <h3 className="text-3xl md:text-4xl font-black text-white mb-4">Prêt à partager votre expertise ?</h3>
-                <p className="text-violet-100 text-lg mb-8 max-w-2xl mx-auto">Rejoignez notre communauté de formateurs et commencez à enseigner dès aujourd'hui.</p>
+                <p className="text-violet-100 text-lg mb-8 max-w-2xl mx-auto">
+                  Rejoignez notre communauté de formateurs en Tunisie et commencez à enseigner dès aujourd'hui. Plus de 2,000 apprenants vous attendent.
+                </p>
                 <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                  <button className="bg-white text-violet-600 px-8 py-4 rounded-2xl font-bold hover:bg-violet-50 transition-colors flex items-center justify-center gap-2">
+                  <button 
+                    onClick={() => { onClose(); navigate('/register'); }}
+                    className="bg-white text-violet-600 px-8 py-4 rounded-2xl font-bold hover:bg-violet-50 transition-colors flex items-center justify-center gap-2"
+                  >
                     <BookOpen size={20} />
                     Devenir Formateur
                   </button>
-                  <button className="bg-violet-700 text-white px-8 py-4 rounded-2xl font-bold hover:bg-violet-800 transition-colors flex items-center justify-center gap-2">
-                    <Calendar size={20} />
-                    Réserver un appel
+                  <button 
+                    onClick={() => { onClose(); navigate('/formateurs'); }}
+                    className="bg-violet-700 text-white px-8 py-4 rounded-2xl font-bold hover:bg-violet-800 transition-colors flex items-center justify-center gap-2"
+                  >
+                    <GraduationCap size={20} />
+                    Voir les formateurs actuels
                   </button>
                 </div>
               </section>

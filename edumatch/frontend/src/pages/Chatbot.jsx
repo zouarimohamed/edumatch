@@ -17,9 +17,9 @@ function Stars({ n }) {
 }
 
 function ScorePill({ score }) {
-  const cfg = score>=80 ? {color:'#16a34a',bg:'rgba(22,163,74,0.1)',border:'rgba(22,163,74,0.25)',label:'Excellent'}
-    : score>=65 ? {color:'#6c63ff',bg:'rgba(108,99,255,0.1)',border:'rgba(108,99,255,0.25)',label:'Très bon'}
-    : score>=50 ? {color:'#d97706',bg:'rgba(217,119,6,0.1)',border:'rgba(217,119,6,0.25)',label:'Bon'}
+  const cfg = score>=85 ? {color:'#16a34a',bg:'rgba(22,163,74,0.1)',border:'rgba(22,163,74,0.25)',label:'Excellent'}
+    : score>=70 ? {color:'#6c63ff',bg:'rgba(108,99,255,0.1)',border:'rgba(108,99,255,0.25)',label:'Très bon'}
+    : score>=55 ? {color:'#d97706',bg:'rgba(217,119,6,0.1)',border:'rgba(217,119,6,0.25)',label:'Bon'}
     : {color:'#dc2626',bg:'rgba(220,38,38,0.1)',border:'rgba(220,38,38,0.25)',label:'Possible'};
   return (
     <span style={{ display:'inline-flex',alignItems:'center',gap:4,padding:'2px 9px',borderRadius:20,background:cfg.bg,border:`1px solid ${cfg.border}`,fontSize:11,fontWeight:700,color:cfg.color }}>
@@ -87,7 +87,9 @@ function ProfCard({ prof, rank, onView }) {
       <div style={{ marginBottom:10 }}>
         <div style={{ display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:5 }}>
           <span style={{ fontSize:11,color:'var(--text2)',fontWeight:600 }}>Score de matching</span>
-          <ScorePill score={score}/>
+          <div style={{ display:'flex', gap:5, alignItems:'center' }}>
+            <ScorePill score={score}/>
+          </div>
         </div>
         <div style={{ height:5,background:'var(--surface2)',borderRadius:3,overflow:'hidden' }}>
           <div style={{ height:'100%',width:`${score}%`,background:barColor,borderRadius:3,transition:'width .8s ease' }}/>
@@ -108,7 +110,7 @@ function ProfCard({ prof, rank, onView }) {
             return (
               <span key={c.key} title={`${c.key}: ${val}/${c.max}`}
                 style={{ fontSize:10,color,fontWeight:700,padding:'2px 7px',borderRadius:20,background:full?'rgba(22,163,74,0.09)':partial?'rgba(217,119,6,0.09)':'rgba(220,38,38,0.06)',border:`1px solid ${color}30`,display:'inline-flex',alignItems:'center',gap:3 }}>
-                {c.icon} {val}/{c.max}
+                {c.icon}
               </span>
             );
           })}
@@ -125,18 +127,117 @@ function ProfCard({ prof, rank, onView }) {
         </div>
       )}
       {prof.bio&&<p style={{ fontSize:12,color:'var(--text2)',lineHeight:1.5,margin:'0 0 10px',overflow:'hidden',display:'-webkit-box',WebkitLineClamp:2,WebkitBoxOrient:'vertical' }}>{prof.bio}</p>}
+      {/* ── Message jaune si pas de séance correspondant au besoin ── */}
+      {(prof.description_score === 0 || prof.description_score === undefined) && (
+        <div style={{
+          marginBottom:10, padding:'8px 12px',
+          background:'rgba(245,158,11,0.09)',
+          border:'1px solid rgba(245,158,11,0.3)',
+          borderRadius:10,
+          display:'flex', gap:8, alignItems:'flex-start'
+        }}>
+          <span style={{ fontSize:15, flexShrink:0 }}>💡</span>
+          <span style={{ fontSize:11, color:'#92400e', lineHeight:1.55 }}>
+            {(() => {
+                const matiere = prof?.tarifs_matieres?.[0]?.nom_matiere || null;
+                return matiere
+                  ? `Ce formateur enseigne ${matiere} au niveau demandé. Contactez-le pour convenir d'une séance adaptée à votre besoin.`
+                  : "Ce formateur correspond à votre profil. Contactez-le pour convenir d'une séance adaptée à votre besoin.";
+              })()}
+          </span>
+        </div>
+      )}
+
       {/* Créneaux disponibles */}
       {prof.disponibilites && prof.disponibilites.length > 0 ? (
         <div style={{ marginBottom:10 }}>
-          {prof.disponibilites.slice(0,2).map((d,i) => (
-            <div key={i} style={{ fontSize:11,color:'var(--text)',padding:'5px 9px',background:'rgba(22,163,74,0.07)',border:'1px solid rgba(22,163,74,0.2)',borderRadius:8,marginBottom:4,display:'flex',alignItems:'center',gap:6 }}>
-              <span>📅</span>
-              <span style={{ fontWeight:700 }}>{new Date(d.date).toLocaleDateString('fr-FR',{weekday:'short',day:'numeric',month:'short'})}</span>
-              <span style={{ color:'var(--text2)' }}>{d.heure_debut}–{d.heure_fin}</span>
-              <span style={{ marginLeft:'auto',fontSize:10,color:d.mode==='en_ligne'?'#0ea5e9':'#16a34a',fontWeight:600 }}>{d.mode==='en_ligne'?'🌐':'🏫'}</span>
-              {d.nb_places > 0 && <span style={{ fontSize:10,color:'#16a34a' }}>{d.nb_places} place{d.nb_places>1?'s':''}</span>}
-            </div>
-          ))}
+          {prof.disponibilites.slice(0,2).map((d,i) => {
+            const matchScore = d.description_match_score || 0;
+            const isMyNeed   = matchScore >= 4 && i === 0; // 1er créneau seulement
+            return (
+              <div key={i} style={{
+                marginBottom: 7,
+                borderRadius: 11,
+                overflow: 'hidden',
+                border: isMyNeed
+                  ? '2px solid #6c63ff'
+                  : '1px solid rgba(22,163,74,0.25)',
+                boxShadow: isMyNeed
+                  ? '0 4px 16px rgba(108,99,255,0.18)'
+                  : '0 1px 3px rgba(0,0,0,0.04)',
+              }}>
+
+                {/* ── En-tête créneau ── */}
+                <div style={{
+                  display:'flex', alignItems:'center', gap:6,
+                  padding:'7px 11px',
+                  background: isMyNeed
+                    ? 'linear-gradient(90deg,#6c63ff,#8b5cf6)'
+                    : 'rgba(22,163,74,0.07)',
+                  fontSize:11,
+                  color: isMyNeed ? '#fff' : 'var(--text)',
+                }}>
+                  <span>{d.hors_date ? '⚠️' : '📅'}</span>
+                  <span style={{ fontWeight:700 }}>
+                    {new Date(d.date).toLocaleDateString('fr-FR',{weekday:'short',day:'numeric',month:'short'})}
+                  </span>
+                  <span style={{ opacity: isMyNeed ? 0.85 : 1, color: isMyNeed ? '#e0deff' : 'var(--text2)' }}>
+                    {d.heure_debut}–{d.heure_fin}
+                  </span>
+                  {isMyNeed && (
+                    <span style={{
+                      marginLeft:'auto', fontSize:9, fontWeight:800,
+                      background:'rgba(255,255,255,0.22)', borderRadius:20,
+                      padding:'2px 8px', letterSpacing:'.05em', textTransform:'uppercase',
+                    }}>
+                      ✓ Votre besoin
+                    </span>
+                  )}
+                  {!isMyNeed && (
+                    <>
+                      <span style={{ marginLeft:'auto', fontSize:10, color:'#16a34a', fontWeight:600 }}>
+                        {d.mode==='en_ligne'?'🌐':'🏫'}
+                      </span>
+                      {d.nb_places > 0 && (
+                        <span style={{ fontSize:10, color:'#16a34a', fontWeight:600 }}>
+                          {d.nb_places} place{d.nb_places>1?'s':''}
+                        </span>
+                      )}
+                    </>
+                  )}
+                  {isMyNeed && (
+                    <span style={{ fontSize:10, color:'rgba(255,255,255,0.8)', fontWeight:600, marginLeft:4 }}>
+                      {d.mode==='en_ligne'?'🌐':'🏫'} {d.nb_places>0?`${d.nb_places} place${d.nb_places>1?'s':''}`:'' }
+                    </span>
+                  )}
+                </div>
+
+                {/* ── Description séance ── */}
+                {d.description && (
+                  <div style={{
+                    padding: '8px 12px 10px',
+                    background: isMyNeed
+                      ? 'linear-gradient(135deg,rgba(108,99,255,0.07),rgba(108,99,255,0.02))'
+                      : 'var(--surface2)',
+                    borderTop: isMyNeed
+                      ? '1px solid rgba(108,99,255,0.15)'
+                      : '1px solid var(--border)',
+                  }}>
+                    <div style={{
+                      fontSize: isMyNeed ? 11.5 : 10.5,
+                      color: isMyNeed ? 'var(--text)' : 'var(--text2)',
+                      lineHeight: 1.6,
+                      fontWeight: isMyNeed ? 500 : 400,
+                      display:'-webkit-box', WebkitLineClamp: isMyNeed ? 4 : 2,
+                      WebkitBoxOrient:'vertical', overflow:'hidden',
+                    }}>
+                      {d.description}
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
       ) : (
         <div style={{ fontSize:11,color:'var(--text3)',padding:'5px 9px',background:'var(--surface2)',borderRadius:8,marginBottom:10,textAlign:'center' }}>
@@ -183,41 +284,74 @@ function ProfCard({ prof, rank, onView }) {
 /* ─── Bulle message ── */
 function Message({ msg, onViewProf }) {
   const isUser = msg.role==='user';
+  const hasProfs = !isUser && msg.profs && msg.profs.length > 0;
+
+  // Rendu markdown simple : **gras**
+  const renderContent = (text) => {
+    if (!text) return null;
+    const lines = text.split('\n');
+    return lines.map((line, i) => {
+      if (line === '') return <div key={i} style={{ height: '0.5em' }} />;
+      const parts = line.split(/(\*\*[^*]+\*\*)/).map((part, j) =>
+        part.startsWith('**') && part.endsWith('**')
+          ? <strong key={j} style={{ fontWeight:600, color:'var(--color-text-primary)' }}>{part.slice(2,-2)}</strong>
+          : part
+      );
+      return <div key={i} style={{ lineHeight: 1.7 }}>{parts}</div>;
+    });
+  };
+
   return (
     <div style={{ display:'flex',flexDirection:'column',alignItems:isUser?'flex-end':'flex-start',marginBottom:20,gap:8 }}>
-      <div style={{ display:'flex',alignItems:'flex-end',gap:8,maxWidth:'80%',flexDirection:isUser?'row-reverse':'row' }}>
-        <div style={{ width:32,height:32,borderRadius:'50%',flexShrink:0,display:'flex',alignItems:'center',justifyContent:'center',fontSize:14,background:isUser?'linear-gradient(135deg,#6c63ff,#8b5cf6)':'linear-gradient(135deg,#f59e0b,#ef4444)',boxShadow:'0 2px 6px rgba(0,0,0,0.15)' }}>
-          {isUser?'👤':'🤖'}
-        </div>
-        <div>
-          <div style={{ padding:'11px 15px',borderRadius:isUser?'18px 18px 4px 18px':'18px 18px 18px 4px',background:isUser?'linear-gradient(135deg,#6c63ff,#8b5cf6)':'var(--surface)',color:isUser?'#fff':'var(--text)',fontSize:14,lineHeight:1.65,border:isUser?'none':'1px solid var(--border)',boxShadow:isUser?'0 2px 8px rgba(108,99,255,0.25)':'0 1px 4px rgba(0,0,0,0.06)',whiteSpace:'pre-wrap',wordBreak:'break-word' }}>
-            {msg.content}
+      {/* Bulle message — masquée si profs présents */}
+      {!hasProfs && (
+        <div style={{ display:'flex',alignItems:'flex-end',gap:8,maxWidth:'80%',flexDirection:isUser?'row-reverse':'row' }}>
+          <div style={{ width:32,height:32,borderRadius:'50%',flexShrink:0,display:'flex',alignItems:'center',justifyContent:'center',fontSize:14,background:isUser?'linear-gradient(135deg,#6c63ff,#8b5cf6)':'linear-gradient(135deg,#f59e0b,#ef4444)',boxShadow:'0 2px 6px rgba(0,0,0,0.15)' }}>
+            {isUser?'👤':'🤖'}
           </div>
-          <div style={{ fontSize:11,color:'var(--text2)',marginTop:3,textAlign:isUser?'right':'left' }}>{msg.time}</div>
+          <div>
+            <div style={{ padding: isUser ? '11px 15px' : '14px 18px',borderRadius:isUser?'18px 18px 4px 18px':'18px 18px 18px 4px',background:isUser?'linear-gradient(135deg,#6c63ff,#8b5cf6)':'var(--surface)',color:isUser?'#fff':'var(--text)',fontSize:14,lineHeight:1.65,border:isUser?'none':'1px solid var(--border)',boxShadow:isUser?'0 2px 8px rgba(108,99,255,0.25)':'0 1px 4px rgba(0,0,0,0.06)',wordBreak:'break-word' }}>
+              {renderContent(msg.content)}
+            </div>
+            <div style={{ fontSize:11,color:'var(--text2)',marginTop:3,textAlign:isUser?'right':'left' }}>{msg.time}</div>
+          </div>
         </div>
-      </div>
-      {/* Barre de progression collecte critères */}
-      {!isUser && msg.prochain_critere && (!msg.profs || msg.profs.length === 0) && (
+      )}
+
+      {/* Barre de progression — masquée pour la démo */}
+      {false && !isUser && msg.prochain_critere && !hasProfs && msg.criteres && Object.values(msg.criteres).some(v => v !== null && v !== undefined) && (
         <div style={{ paddingLeft:40, maxWidth:460 }}>
           <ProgressBar prochain={msg.prochain_critere} criteres={msg.criteres || {}} />
         </div>
       )}
 
-      {!isUser&&msg.profs&&msg.profs.length>0&&(
-        <div style={{ paddingLeft:40,width:'100%',maxWidth:540,display:'flex',flexDirection:'column',gap:10 }}>
-          <div style={{ fontSize:12,color:'var(--text2)',fontWeight:600,marginBottom:2 }}>
-            {msg.alternative ? (
-              <span style={{ color:'#d97706' }}>
-                💡 Aucun prof en <strong>{msg.alternative.matiere_originale}</strong> — voici des alternatives en <strong>{msg.alternative.matiere_alternative}</strong>
-              </span>
-            ) : (
-              <>🎯 {msg.profs.length} professeur{msg.profs.length>1?'s':''} trouvé{msg.profs.length>1?'s':''} — profil complet</>
-            )}
+      {/* Résultats profs */}
+      {hasProfs && (
+        <div style={{ width:'100%',maxWidth:540,display:'flex',flexDirection:'column',gap:10 }}>
+          {/* Résumé intelligent au-dessus des cartes */}
+          <div style={{ display:'flex',alignItems:'flex-start',gap:10 }}>
+            <div style={{ width:32,height:32,borderRadius:'50%',flexShrink:0,display:'flex',alignItems:'center',justifyContent:'center',fontSize:14,background:'linear-gradient(135deg,#f59e0b,#ef4444)',boxShadow:'0 2px 6px rgba(0,0,0,0.15)' }}>
+              🤖
+            </div>
+            <div style={{ flex:1 }}>
+              <div style={{ padding:'11px 15px',borderRadius:'18px 18px 18px 4px',background:'var(--surface)',color:'var(--text)',fontSize:14,lineHeight:1.65,border:'1px solid var(--border)',boxShadow:'0 1px 4px rgba(0,0,0,0.06)',whiteSpace:'pre-wrap',wordBreak:'break-word' }}>
+                {msg.alternative ? (
+                  <span style={{ color:'#d97706' }}>
+                    💡 Aucun prof en <strong>{msg.alternative.matiere_originale}</strong> — alternatives en <strong>{msg.alternative.matiere_alternative}</strong>
+                  </span>
+                ) : <div style={{ fontSize:14 }}>{renderContent(msg.content)}</div>}
+              </div>
+              <div style={{ fontSize:11,color:'var(--text2)',marginTop:3 }}>{msg.time}</div>
+            </div>
           </div>
-          {msg.profs.map((prof,i)=><ProfCard key={prof.id} prof={prof} rank={i+1} onView={onViewProf}/>)}
+          {/* Cartes profs */}
+          <div style={{ paddingLeft:42,display:'flex',flexDirection:'column',gap:10 }}>
+            {msg.profs.map((prof,i)=><ProfCard key={prof.id} prof={prof} rank={i+1} onView={onViewProf}/>)}
+          </div>
         </div>
       )}
-      {!isUser && msg.noProfs && msg.besoin_complet && (!msg.profs || msg.profs.length === 0) && (
+
+      {!isUser && msg.noProfs && msg.besoin_complet && !hasProfs && (
         <div style={{ paddingLeft:40,maxWidth:420 }}>
           <div style={{ padding:'10px 14px',background:'rgba(245,158,11,0.08)',border:'1px solid rgba(245,158,11,0.25)',borderRadius:12,fontSize:13,color:'var(--text)',display:'flex',gap:8,alignItems:'flex-start' }}>
             <span style={{ fontSize:16 }}>💡</span>
@@ -246,6 +380,78 @@ const SUGGESTIONS = [
   "Prof de physique en ligne, budget 40 DT/h",
   "Cours d'anglais pour collège à Tunis",
   "Professeur d'informatique / programmation",
+  "Dev web React pour débutant, soir disponible",
+  "Arabe 4ème primaire à Sfax, présentiel",
+];
+
+// Questions du mode guidé — liste ordonnée
+const GUIDED_STEPS = [
+  {
+    key:         'domaine',
+    question:    'Quelle type de formation cherchez-vous ?',
+    icon:        '🏫',
+    type:        'choice',
+    choices:     [
+      { label: '🎓 Soutien académique', value: 'Je cherche un soutien académique (scolaire)', sub: 'Primaire, collège, lycée, bac, université' },
+      { label: '💼 Formation professionnelle', value: 'Je cherche une formation professionnelle', sub: 'Dev web, IA, cloud, reconversion...' },
+    ],
+  },
+  {
+    key:         'matiere',
+    question:    'Quelle matière ou technologie ?',
+    icon:        '📚',
+    type:        'text',
+    placeholder: 'Ex: maths, physique, développement web, React...',
+  },
+  {
+    key:         'niveau',
+    question:    "Quel est le niveau de l'élève ?",
+    icon:        '🎓',
+    type:        'choice',
+    choices:     [
+      { label: '📗 Primaire', value: 'primaire', sub: '1ère à 6ème année' },
+      { label: '📘 Collège', value: 'collège', sub: '7ème, 8ème, 9ème année' },
+      { label: '📙 Lycée / Bac', value: 'lycée', sub: '1ère, 2ème, 3ème, Bac' },
+      { label: '🎓 Université', value: 'université', sub: 'Licence, Master...' },
+      { label: '💼 Professionnel', value: 'débutant à avancé', sub: 'Tous niveaux' },
+    ],
+  },
+  {
+    key:         'mode',
+    question:    "Mode d'enseignement souhaité ?",
+    icon:        '📡',
+    type:        'choice',
+    choices:     [
+      { label: '🌐 En ligne', value: 'en ligne', sub: 'Zoom, Google Meet...' },
+      { label: '🏫 Présentiel', value: 'en présentiel', sub: 'À domicile ou chez le prof' },
+      { label: '🔀 Les deux', value: 'en ligne ou en présentiel', sub: 'Je suis flexible' },
+    ],
+  },
+  {
+    key:         'budget',
+    question:    'Quel est votre budget maximum par heure ?',
+    icon:        '💰',
+    type:        'choice',
+    choices:     [
+      { label: '≤ 30 DT/h', value: 'budget maximum 30 DT par heure' },
+      { label: '≤ 50 DT/h', value: 'budget maximum 50 DT par heure' },
+      { label: '≤ 80 DT/h', value: 'budget maximum 80 DT par heure' },
+      { label: 'Peu importe', value: 'peu importe le budget' },
+    ],
+  },
+  {
+    key:         'creneaux',
+    question:    'Avez-vous une préférence de créneau ?',
+    icon:        '📅',
+    type:        'choice',
+    choices:     [
+      { label: '🌅 Matin', value: 'le matin', sub: '8h – 12h' },
+      { label: '☀️ Après-midi', value: "l'après-midi", sub: '12h – 18h' },
+      { label: '🌙 Soir', value: 'le soir', sub: 'Après 18h' },
+      { label: '🗓 Week-end', value: 'le week-end', sub: 'Samedi ou dimanche' },
+      { label: '🔄 Flexible', value: 'peu importe les créneaux' },
+    ],
+  },
 ];
 
 // Étapes dynamiques selon domaine — calculées depuis criteres
@@ -270,7 +476,8 @@ function getEtapes(criteres) {
     if (criteres?.mode === 'presentiel') {
       etapes.push({ key:'ville', label:'Ville', icon:'📍' });
     }
-    etapes.push({ key:'budget_max', label:'Budget', icon:'💰' });
+    etapes.push({ key:'budget_max', label:'Budget',   icon:'💰' });
+    etapes.push({ key:'creneaux',   label:'Créneaux',  icon:'📅' });
     return etapes;
   }
   return [
@@ -278,12 +485,18 @@ function getEtapes(criteres) {
     { key:'matiere',      label:'Spécialité', icon:'🛠' },
     { key:'mode',         label:'Mode',       icon:'📡' },
     { key:'budget_max',   label:'Budget',     icon:'💰' },
+    { key:'creneaux',     label:'Créneaux',   icon:'📅' },
   ];
 }
 
 function ProgressBar({ prochain, criteres }) {
   const ETAPES = getEtapes(criteres);
-  const done = ETAPES.filter(e => criteres && criteres[e.key]).length;
+  // creneaux=False = "peu importe" = réponse valide → compte comme fait
+  const done = ETAPES.filter(e => {
+    if (!criteres) return false;
+    const v = criteres[e.key];
+    return v !== null && v !== undefined; // false (peu importe) compte aussi
+  }).length;
   const idx  = ETAPES.findIndex(e => e.key === prochain);
   return (
     <div style={{ padding:'10px 14px',background:'rgba(108,99,255,0.06)',border:'1px solid rgba(108,99,255,0.15)',borderRadius:12,marginTop:4 }}>
@@ -316,11 +529,172 @@ function ProgressBar({ prochain, criteres }) {
   );
 }
 
+
+/* ════════════════════════════════════════════════
+   COMPOSANT MODE GUIDÉ
+════════════════════════════════════════════════ */
+function GuidedMode({ onSend, onExit }) {
+  const [stepIdx, setStepIdx] = useState(0);
+  const [answers, setAnswers] = useState({});
+  const [textVal, setTextVal] = useState('');
+  const step = GUIDED_STEPS[stepIdx];
+  const isLast = stepIdx === GUIDED_STEPS.length - 1;
+
+  const handleChoice = (value) => {
+    const newAnswers = { ...answers, [step.key]: value };
+    setAnswers(newAnswers);
+    if (isLast) {
+      // Construire le message synthèse et envoyer
+      const parts = Object.values(newAnswers).filter(Boolean);
+      const msg = parts.join(', ');
+      onSend(msg);
+    } else {
+      setStepIdx(i => i + 1);
+    }
+  };
+
+  const handleText = () => {
+    if (!textVal.trim()) return;
+    const newAnswers = { ...answers, [step.key]: textVal.trim() };
+    setAnswers(newAnswers);
+    setTextVal('');
+    if (isLast) {
+      const parts = Object.values(newAnswers).filter(Boolean);
+      onSend(parts.join(', '));
+    } else {
+      setStepIdx(i => i + 1);
+    }
+  };
+
+  const pct = Math.round((stepIdx / GUIDED_STEPS.length) * 100);
+
+  return (
+    <div style={{ display:'flex', flexDirection:'column', height:'100%', padding:'24px 28px', overflowY:'auto' }}>
+      {/* Header mode guidé */}
+      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:20 }}>
+        <div>
+          <div style={{ fontWeight:800, fontSize:15, color:'var(--text)', marginBottom:3 }}>
+            🧭 Mode guidé — Étape {stepIdx + 1}/{GUIDED_STEPS.length}
+          </div>
+          <div style={{ fontSize:12, color:'var(--text2)' }}>Répondez étape par étape pour affiner votre recherche</div>
+        </div>
+        <button onClick={onExit}
+          style={{ padding:'6px 14px', background:'var(--surface2)', border:'1px solid var(--border)', borderRadius:9, cursor:'pointer', fontSize:12, color:'var(--text2)', fontWeight:600 }}>
+          ✕ Quitter le guide
+        </button>
+      </div>
+
+      {/* Barre de progression */}
+      <div style={{ marginBottom:24 }}>
+        <div style={{ display:'flex', justifyContent:'space-between', fontSize:11, color:'var(--text2)', marginBottom:6 }}>
+          <span>Progression</span>
+          <span style={{ fontWeight:700, color:'#6c63ff' }}>{pct}%</span>
+        </div>
+        <div style={{ height:5, background:'var(--surface2)', borderRadius:3, overflow:'hidden' }}>
+          <div style={{ height:'100%', width:`${pct}%`, background:'linear-gradient(90deg,#6c63ff,#8b5cf6)', borderRadius:3, transition:'width .4s ease' }}/>
+        </div>
+        {/* Étapes visuelles */}
+        <div style={{ display:'flex', gap:4, marginTop:10 }}>
+          {GUIDED_STEPS.map((s, i) => (
+            <div key={s.key} title={s.question}
+              style={{ flex:1, height:4, borderRadius:2,
+                background: i < stepIdx ? '#6c63ff' : i === stepIdx ? '#8b5cf6' : 'var(--border)',
+                transition:'background .3s' }}
+            />
+          ))}
+        </div>
+      </div>
+
+      {/* Récap des réponses précédentes */}
+      {Object.keys(answers).length > 0 && (
+        <div style={{ display:'flex', flexWrap:'wrap', gap:6, marginBottom:20 }}>
+          {Object.entries(answers).map(([k, v]) => {
+            const s = GUIDED_STEPS.find(st => st.key === k);
+            return (
+              <div key={k} style={{ display:'inline-flex', alignItems:'center', gap:5, padding:'4px 11px', borderRadius:20,
+                background:'rgba(108,99,255,0.1)', border:'1px solid rgba(108,99,255,0.25)', fontSize:12, color:'#6c63ff', fontWeight:600 }}>
+                {s?.icon} <span style={{ maxWidth:140, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{v.length > 30 ? v.slice(0,30)+'…' : v}</span>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Question courante */}
+      <div style={{ background:'var(--surface)', border:'1.5px solid rgba(108,99,255,0.2)', borderRadius:18, padding:'22px 24px', marginBottom:20, boxShadow:'0 4px 20px rgba(108,99,255,0.08)' }}>
+        <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:16 }}>
+          <div style={{ width:40, height:40, borderRadius:12, background:'linear-gradient(135deg,#6c63ff,#8b5cf6)',
+            display:'flex', alignItems:'center', justifyContent:'center', fontSize:18, flexShrink:0 }}>
+            {step.icon}
+          </div>
+          <div style={{ fontWeight:700, fontSize:15, color:'var(--text)', lineHeight:1.4 }}>{step.question}</div>
+        </div>
+
+        {/* Choix ou champ texte */}
+        {step.type === 'choice' ? (
+          <div style={{ display:'flex', flexDirection:'column', gap:9 }}>
+            {step.choices.map(ch => (
+              <button key={ch.value} onClick={() => handleChoice(ch.value)}
+                style={{ display:'flex', alignItems:'center', gap:12, padding:'11px 15px',
+                  background:'var(--surface2)', border:'1.5px solid var(--border)', borderRadius:13,
+                  cursor:'pointer', textAlign:'left', transition:'all .15s', width:'100%' }}
+                onMouseEnter={e => { e.currentTarget.style.borderColor='#6c63ff'; e.currentTarget.style.background='rgba(108,99,255,0.07)'; }}
+                onMouseLeave={e => { e.currentTarget.style.borderColor='var(--border)'; e.currentTarget.style.background='var(--surface2)'; }}>
+                <div style={{ flex:1 }}>
+                  <div style={{ fontWeight:700, fontSize:13, color:'var(--text)' }}>{ch.label}</div>
+                  {ch.sub && <div style={{ fontSize:11, color:'var(--text2)', marginTop:2 }}>{ch.sub}</div>}
+                </div>
+                <span style={{ fontSize:16, color:'var(--text3)' }}>›</span>
+              </button>
+            ))}
+          </div>
+        ) : (
+          <div style={{ display:'flex', gap:10 }}>
+            <input
+              autoFocus
+              value={textVal}
+              onChange={e => setTextVal(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') handleText(); }}
+              placeholder={step.placeholder || 'Votre réponse...'}
+              style={{ flex:1, padding:'11px 15px', background:'var(--surface2)', border:'1.5px solid var(--border)',
+                borderRadius:12, fontSize:14, color:'var(--text)', outline:'none', fontFamily:'inherit',
+                transition:'border-color .15s' }}
+              onFocus={e => e.target.style.borderColor='#6c63ff'}
+              onBlur={e => e.target.style.borderColor='var(--border)'}
+            />
+            <button onClick={handleText} disabled={!textVal.trim()}
+              style={{ padding:'11px 18px', background:'linear-gradient(135deg,#6c63ff,#8b5cf6)',
+                border:'none', borderRadius:12, cursor:textVal.trim()?'pointer':'not-allowed',
+                color:'#fff', fontWeight:700, fontSize:13, flexShrink:0,
+                opacity:textVal.trim()?1:0.5, transition:'all .15s' }}>
+              Suivant →
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* Navigation */}
+      {stepIdx > 0 && (
+        <div style={{ textAlign:'center' }}>
+          <button onClick={() => setStepIdx(i => i - 1)}
+            style={{ padding:'7px 18px', background:'none', border:'1px solid var(--border)',
+              borderRadius:9, cursor:'pointer', fontSize:12, color:'var(--text2)', fontWeight:600 }}>
+            ← Étape précédente
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 /* ════════════════════════════════════════════════
    PAGE PRINCIPALE
 ════════════════════════════════════════════════ */
 export default function Chatbot() {
   const { user } = useAuth();
+
+  // ── Mode conversationnel ou guidé ──
+  const [chatMode, setChatMode] = useState('libre'); // 'libre' | 'guide'
 
   // ── États sessions ──
   const [sessions, setSessions]         = useState([]);
@@ -344,6 +718,21 @@ export default function Chatbot() {
   useEffect(()=>{ bottomRef.current?.scrollIntoView({behavior:'smooth'}); },[msgs,loading]);
 
   // ── Charger les sessions ──
+  // Afficher le message d'accueil dès l'ouverture si pas de session
+  useEffect(() => {
+    if (welcome && msgs.length === 0) {
+      setMsgs([{
+        role: 'assistant',
+        content: "Bonjour ! 👋\n\nJe suis **EduBot**, votre assistant de matching pour trouver le professeur ou le formateur idéal.\n\nNous proposons un **soutien académique** pour les étudiants et les universitaires, ainsi que des **formations professionnelles** pour les professionnels en reconversion ou souhaitant développer leurs compétences en entreprise.\n\n**Comment puis-je vous aider ?** 😊\n\nDécrivez librement votre besoin.",
+        time: new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}),
+        profs: [],
+        prochain_critere: null,
+        criteres: {},
+        _isWelcome: true,
+      }]);
+    }
+  }, []);
+
   useEffect(()=>{
     loadSessions();
   },[]);
@@ -357,14 +746,23 @@ export default function Chatbot() {
   };
 
   // ── Créer une nouvelle session ──
+  const WELCOME_BOT_MSG = {
+    role: 'assistant',
+    content: "Bonjour ! 👋\n\nJe suis **EduBot**, votre assistant de matching pour trouver le professeur ou le formateur idéal.\n\nNous proposons un **soutien académique** pour les étudiants et les universitaires, ainsi que des **formations professionnelles** pour les professionnels en reconversion ou souhaitant développer leurs compétences en entreprise.\n\n**Comment puis-je vous aider ?** 😊\n\nDécrivez librement votre besoin.",
+    time: new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}),
+    profs: [],
+    prochain_critere: null,
+    criteres: {},
+  };
+
   const newSession = async () => {
     try {
       const r = await api.post('/api/chatbot/sessions', { titre: 'Nouvelle conversation' });
       const s = r.data;
       setSessions(prev => [s, ...prev]);
       setActiveSession(s);
-      setMsgs([]);
-      setWelcome(true);
+      setMsgs([WELCOME_BOT_MSG]);
+      setWelcome(false);
       setInput('');
     } catch { alert('Erreur création session'); }
   };
@@ -376,10 +774,15 @@ export default function Chatbot() {
     try {
       const r = await api.get(`/api/chatbot/sessions/${session.id}/messages`);
       const messages = (r.data || []).map(m => ({
-        role:    m.role,
-        content: m.content,
-        time:    new Date(m.created_at).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}),
-        profs:   [],
+        role:             m.role,
+        content:          m.content,
+        time:             new Date(m.created_at).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}),
+        profs:            m.profs || [],
+        alternative:      m.alternative || null,
+        noProfs:          m.noProfs || false,
+        besoin_complet:   m.besoin_complet || false,
+        criteres:         m.criteres || {},
+        prochain_critere: m.prochain_critere || null,
       }));
       setMsgs(messages);
     } catch { setMsgs([]); }
@@ -412,26 +815,21 @@ export default function Chatbot() {
   const now = () => new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
 
   const handleView = async (prof) => {
-    // Récupérer sous_niveau et mode depuis le dernier message assistant qui a des critères
-    let sous_niveau = null;
-    let mode = null;
-    // Chercher dans les messages le dernier critère connu
-    for (let i = msgs.length - 1; i >= 0; i--) {
-      const m = msgs[i];
-      if (m.criteres) {
-        sous_niveau = m.criteres.sous_niveau || null;
-        mode        = m.criteres.mode        || null;
-        break;
-      }
-    }
-    // Construire les query params
+    // Les critères sont stockés directement dans prof._criteres
+    // (enrichissement fait lors de la réception des résultats)
+    const criteres = prof._criteres || null;
+    const sous_niveau = criteres?.sous_niveau || null;
+    const mode        = criteres?.mode        || null;
+
     const params = new URLSearchParams();
     if (sous_niveau) params.append('sous_niveau', sous_niveau);
     if (mode)        params.append('mode', mode);
     const qs = params.toString() ? `?${params.toString()}` : '';
+
     try {
       const r = await api.get(`/api/chatbot/prof-detail/${prof.id}${qs}`);
-      setSelectedProf(r.data);
+      // Garder les critères dans le profil pour ProfModal aussi
+      setSelectedProf({ ...r.data, _criteres: criteres });
     } catch {
       setSelectedProf(prof);
     }
@@ -467,29 +865,39 @@ export default function Chatbot() {
       try { await api.post(`/api/chatbot/sessions/${sessionId}/messages`, { role:'user', content:txt }); } catch {}
     }
 
-    const history = [...msgs, userMsg].map(m=>({role:m.role,content:m.content}));
+    // Exclure le message d'accueil local (premier msg bot sans interaction user)
+    const history = [...msgs, userMsg]
+      .filter(m => !(m.role === 'assistant' && m._isWelcome))
+      .map(m=>({role:m.role,content:m.content}));
 
     try {
       const res = await api.post('/api/chatbot/chat', { messages: history });
       const { reply, top3_profs, besoin_complet, prochain_critere } = res.data;
       const hasProfs = top3_profs && top3_profs.length > 0;
 
+      // Enrichir chaque prof avec les critères pour le filtrage "Voir profil"
+      const criteres_msg = res.data.criteres || null;
+      const profs_enrichis = (hasProfs ? top3_profs : []).map(p => ({
+        ...p,
+        _criteres: criteres_msg,  // stocker les critères directement dans le prof
+      }));
+
       const assistantMsg = {
         role:           'assistant',
         content:        reply,
         time:           now(),
-        profs:          hasProfs ? top3_profs : [],
+        profs:          profs_enrichis,
         noProfs:        res.data.noProfs,
         besoin_complet,
         prochain_critere,
         alternative:    res.data.alternative || null,
-        criteres:       res.data.criteres || null,
+        criteres:       criteres_msg,
       };
       setMsgs(prev => [...prev, assistantMsg]);
 
       // Sauvegarder réponse assistant en base
       if (sessionId) {
-        try { await api.post(`/api/chatbot/sessions/${sessionId}/messages`, { role:'assistant', content:reply }); } catch {}
+        try { await api.post(`/api/chatbot/sessions/${sessionId}/messages`, { role:'assistant', content:reply, top3_profs: hasProfs ? top3_profs : [], alternative: res.data.alternative || null, noProfs: res.data.noProfs || false, besoin_complet: res.data.besoin_complet || false, criteres: res.data.criteres || {} }); } catch {}
       }
 
       // Mettre à jour le titre de la session avec le premier message
@@ -637,18 +1045,29 @@ export default function Chatbot() {
               </div>
             </div>
           </div>
-          {activeSession && (
-            <button onClick={newSession}
-              style={{ padding:'7px 14px',background:'var(--surface2)',border:'1px solid var(--border)',borderRadius:9,cursor:'pointer',fontSize:12,color:'var(--text2)',fontWeight:600,display:'flex',alignItems:'center',gap:5,transition:'all .15s' }}
-              onMouseEnter={e=>{e.currentTarget.style.borderColor='#6c63ff';e.currentTarget.style.color='#6c63ff';}}
-              onMouseLeave={e=>{e.currentTarget.style.borderColor='var(--border)';e.currentTarget.style.color='var(--text2)';}}>
-              ✏️ Nouveau
-            </button>
-          )}
+          <div style={{ display:'flex', gap:8, alignItems:'center' }}>
+
+            {activeSession && (
+              <button onClick={newSession}
+                style={{ padding:'7px 14px',background:'var(--surface2)',border:'1px solid var(--border)',borderRadius:9,cursor:'pointer',fontSize:12,color:'var(--text2)',fontWeight:600,display:'flex',alignItems:'center',gap:5,transition:'all .15s' }}
+                onMouseEnter={e=>{e.currentTarget.style.borderColor='#6c63ff';e.currentTarget.style.color='#6c63ff';}}
+                onMouseLeave={e=>{e.currentTarget.style.borderColor='var(--border)';e.currentTarget.style.color='var(--text2)';}}>
+                ✏️ Nouveau
+              </button>
+            )}
+          </div>
         </div>
 
-        {/* Messages */}
-        <div className="chat-scroll" style={{ flex:1,overflowY:'auto',padding:'28px 28px 16px' }}>
+        {/* Messages ou Mode Guidé */}
+        {chatMode === 'guide' && (!msgs.length || welcome) ? (
+          <div style={{ flex:1, overflowY:'auto' }}>
+            <GuidedMode
+              onSend={(msg) => { setChatMode('libre'); send(msg); }}
+              onExit={() => setChatMode('libre')}
+            />
+          </div>
+        ) : null}
+        <div className="chat-scroll" style={{ flex:1,overflowY:'auto',padding:'28px 28px 16px', display: chatMode === 'guide' && (!msgs.length || welcome) ? 'none' : 'block' }}>
           {welcome && !activeSession && (
             <div style={{ textAlign:'center',paddingBottom:32 }}>
               <div style={{ width:72,height:72,borderRadius:20,background:'linear-gradient(135deg,#6c63ff,#8b5cf6)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:32,margin:'0 auto 20px',boxShadow:'0 8px 24px rgba(108,99,255,0.35)' }}>🤖</div>
@@ -657,19 +1076,7 @@ export default function Chatbot() {
                 Je suis <strong style={{ color:'var(--text)' }}>EduBot</strong>, votre assistant de matching EduMatch.
                 Décrivez votre besoin et je trouve les meilleurs professeurs.
               </p>
-              <div style={{ marginBottom:24 }}>
-                <div style={{ fontSize:11,fontWeight:700,color:'var(--text2)',textTransform:'uppercase',letterSpacing:'.07em',marginBottom:12 }}>Exemples</div>
-                <div style={{ display:'flex',flexWrap:'wrap',gap:8,justifyContent:'center' }}>
-                  {SUGGESTIONS.map(q=>(
-                    <button key={q} onClick={()=>send(q)}
-                      style={{ padding:'8px 15px',background:'var(--surface)',border:'1.5px solid var(--border)',borderRadius:20,cursor:'pointer',fontSize:13,color:'var(--text)',fontWeight:500,transition:'all .15s' }}
-                      onMouseEnter={e=>{e.currentTarget.style.borderColor='#6c63ff';e.currentTarget.style.color='#6c63ff';e.currentTarget.style.background='rgba(108,99,255,0.06)';}}
-                      onMouseLeave={e=>{e.currentTarget.style.borderColor='var(--border)';e.currentTarget.style.color='var(--text)';e.currentTarget.style.background='var(--surface)';}}>
-                      {q}
-                    </button>
-                  ))}
-                </div>
-              </div>
+
             </div>
           )}
           {msgs.map((msg,i)=><Message key={i} msg={msg} onViewProf={handleView}/>)}
@@ -677,8 +1084,9 @@ export default function Chatbot() {
           <div ref={bottomRef}/>
         </div>
 
-        {/* Input */}
-        <div style={{ padding:'12px 24px 18px',background:'var(--surface)',borderTop:'1px solid var(--border)',flexShrink:0 }}>
+        {/* Input — masqué en mode guidé initial */}
+        <div style={{ padding:'12px 24px 18px',background:'var(--surface)',borderTop:'1px solid var(--border)',flexShrink:0,
+          display: chatMode === 'guide' && (!msgs.length || welcome) ? 'none' : 'block' }}>
           <div style={{ display:'flex',gap:10,alignItems:'flex-end',background:'var(--surface2)',border:'1.5px solid var(--border)',borderRadius:16,padding:'8px 10px 8px 16px',transition:'border-color .2s,box-shadow .2s' }}
             onFocusCapture={e=>{e.currentTarget.style.borderColor='#6c63ff';e.currentTarget.style.boxShadow='0 0 0 3px rgba(108,99,255,0.1)';}}
             onBlurCapture={e=>{e.currentTarget.style.borderColor='var(--border)';e.currentTarget.style.boxShadow='none';}}>
@@ -696,41 +1104,7 @@ export default function Chatbot() {
       </div>
 
       {/* ════ PANNEAU LATÉRAL conseils ════ */}
-      <div style={{ width:240,background:'var(--surface)',borderLeft:'1px solid var(--border)',display:'flex',flexDirection:'column',flexShrink:0 }}>
-        <div style={{ padding:'18px 16px 14px',borderBottom:'1px solid var(--border)' }}>
-          <div style={{ fontWeight:800,fontSize:13,color:'var(--text)',marginBottom:3 }}>💡 Conseils</div>
-          <div style={{ fontSize:11,color:'var(--text2)' }}>Pour des résultats optimaux</div>
-        </div>
-        <div style={{ padding:'12px 14px',flex:1,overflowY:'auto',display:'flex',flexDirection:'column',gap:8 }}>
-          {[
-            {icon:'📚',tip:'Matière (25pts)',  ex:'"maths", "physique"',    color:'#6c63ff'},
-            {icon:'🎓',tip:'Niveau (40pts)',   ex:'"lycée", "bac", "collège"', color:'#f59e0b'},
-            {icon:'📍',tip:'Ville (15pts)',    ex:'"à Tunis", "Sfax"',      color:'#ff6584'},
-            {icon:'💰',tip:'Budget (10pts)',   ex:'"max 40 DT/h"',          color:'#43e97b'},
-            {icon:'📡',tip:'Mode (5pts)',      ex:'"en ligne", "domicile"', color:'#38bdf8'},
-          ].map(t=>(
-            <div key={t.tip} style={{ padding:'9px 11px',background:'var(--surface2)',borderRadius:10,border:'1px solid var(--border)',display:'flex',gap:9,alignItems:'flex-start' }}>
-              <div style={{ width:28,height:28,borderRadius:8,background:`${t.color}18`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:13,flexShrink:0,border:`1px solid ${t.color}30` }}>{t.icon}</div>
-              <div>
-                <div style={{ fontWeight:700,fontSize:11,color:'var(--text)',marginBottom:2 }}>{t.tip}</div>
-                <div style={{ fontSize:10,color:'var(--text2)',fontStyle:'italic' }}>{t.ex}</div>
-              </div>
-            </div>
-          ))}
-          <div style={{ marginTop:4,padding:'10px 12px',background:'rgba(108,99,255,0.06)',borderRadius:10,border:'1px solid rgba(108,99,255,0.15)' }}>
-            <div style={{ fontSize:11,fontWeight:700,color:'#6c63ff',marginBottom:6 }}>📊 Score matching</div>
-            {[['#22c55e','80-100','Excellent'],['#6c63ff','65-79','Très bon'],['#d97706','50-64','Bon'],['#dc2626','<50','Possible']].map(([c,r,l])=>(
-              <div key={r} style={{ display:'flex',alignItems:'center',gap:7,marginBottom:4,fontSize:11,color:'var(--text2)' }}>
-                <span style={{ width:7,height:7,borderRadius:'50%',background:c,display:'inline-block',flexShrink:0 }}/>
-                <span style={{ fontWeight:700,minWidth:38,color:'var(--text)' }}>{r}</span>
-                <span>{l}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
 
-      {/* ════ MODAL CONFIRM DELETE ════ */}
       {confirmDelete && (
         <div style={{ position:'fixed',inset:0,background:'rgba(15,23,42,.7)',backdropFilter:'blur(6px)',zIndex:3000,display:'flex',alignItems:'center',justifyContent:'center',padding:20 }}>
           <div style={{ background:'var(--surface)',borderRadius:22,width:'100%',maxWidth:360,padding:26,boxShadow:'0 40px 100px rgba(0,0,0,.2)',border:'1.5px solid var(--border)' }}>

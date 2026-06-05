@@ -1,4 +1,5 @@
 # app/routers/chatbot_sessions.py
+import json
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from app.database import get_db
@@ -23,12 +24,12 @@ def get_sessions(
     ).order_by(ChatSession.updated_at.desc()).all()
     return [
         {
-            "id":         s.id,
-            "titre":      s.titre,
-            "created_at": str(s.created_at),
-            "updated_at": str(s.updated_at),
+            "id":          s.id,
+            "titre":       s.titre,
+            "created_at":  str(s.created_at),
+            "updated_at":  str(s.updated_at),
             "nb_messages": len(s.messages),
-            "apercu":     s.messages[-1].content[:60] + "…" if s.messages else "",
+            "apercu":      s.messages[-1].content[:60] + "…" if s.messages else "",
         }
         for s in sessions
     ]
@@ -66,10 +67,33 @@ def get_messages(
     ).first()
     if not session:
         raise HTTPException(404, "Session introuvable")
-    return [
-        {"role": m.role, "content": m.content, "created_at": str(m.created_at)}
-        for m in session.messages
-    ]
+
+    result = []
+    for m in session.messages:
+        msg_data = {
+            "role":       m.role,
+            "content":    m.content,
+            "created_at": str(m.created_at),
+            "profs":      [],
+            "alternative": None,
+            "noProfs":    False,
+            "besoin_complet": False,
+            "prochain_critere": None,
+            "criteres":   {},
+        }
+        # ── Extraire les profs sauvegardés en JSON ──
+        if m.role == "assistant" and m.profs_json:
+            try:
+                saved = json.loads(m.profs_json)
+                msg_data["profs"]      = saved.get("profs", [])
+                msg_data["alternative"] = saved.get("alternative", None)
+                msg_data["noProfs"]    = saved.get("noProfs", False)
+                msg_data["besoin_complet"] = saved.get("besoin_complet", False)
+                msg_data["criteres"]   = saved.get("criteres", {})
+            except Exception:
+                pass
+        result.append(msg_data)
+    return result
 
 # ── POST ajouter un message à une session ──
 @router.post("/sessions/{session_id}/messages")
@@ -87,10 +111,25 @@ def add_message(
     if not session:
         raise HTTPException(404, "Session introuvable")
 
+    # ── Sauvegarder les profs en JSON si message assistant ──
+    profs_json = None
+    if data.get("role") == "assistant" and data.get("top3_profs"):
+        try:
+            profs_json = json.dumps({
+                "profs":          data.get("top3_profs", []),
+                "alternative":    data.get("alternative", None),
+                "noProfs":        data.get("noProfs", False),
+                "besoin_complet": data.get("besoin_complet", False),
+                "criteres":       data.get("criteres", {}),
+            }, ensure_ascii=False)
+        except Exception:
+            profs_json = None
+
     msg = ChatMessage(
         session_id=session_id,
         role=data.get("role", "user"),
-        content=data.get("content", "")
+        content=data.get("content", ""),
+        profs_json=profs_json,
     )
     db.add(msg)
 
@@ -125,6 +164,7 @@ def rename_session(
 @router.delete("/sessions/{session_id}")
 def delete_session(
     session_id: int,
+    data: dict = {},
     db: Session = Depends(get_db),
     current_user: User = Depends(require_etudiant)
 ):

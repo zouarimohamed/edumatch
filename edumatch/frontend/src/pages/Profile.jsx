@@ -335,6 +335,7 @@ export default function Profile() {
         tarif_en_ligne:   data.tarif_en_ligne  !=null ? data.tarif_en_ligne  : '',
         tarif_presentiel: data.tarif_presentiel!=null ? data.tarif_presentiel: '',
         statut_validation: data.statut_validation||'incomplet',
+        raison_refus: data.raison_refus||null,
       }));
       if (user.role==='professeur' && results[2]) setDemandes(results[2].data);
     } catch(e) { console.error(e); }
@@ -577,18 +578,41 @@ export default function Profile() {
 
           {/* Statut refusé */}
           {form.statut_validation === 'refusé' && (
-            <div style={{ marginBottom:20, padding:'16px 22px', background:'#FEF2F2', border:'1.5px solid #FCA5A5', borderRadius:18, display:'flex', alignItems:'center', justifyContent:'space-between', gap:14, animation:'fadeUp .4s ease both', flexWrap:'wrap' }}>
-              <div style={{ display:'flex', alignItems:'center', gap:12 }}>
-                <div style={{ width:38,height:38,borderRadius:11,background:'#FEE2E2',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'1.2rem',flexShrink:0 }}>❌</div>
-                <div>
-                  <div style={{ fontFamily:'Cabinet Grotesk,sans-serif', fontWeight:900, color:'#DC2626', fontSize:'.9rem' }}>Profil refusé</div>
-                  <div style={{ fontSize:'.75rem', color:'#991B1B', marginTop:2 }}>Mettez à jour vos informations puis resoumettez votre profil.</div>
+            <div style={{ marginBottom:20, animation:'fadeUp .4s ease both' }}>
+              <div style={{ padding:'18px 22px', background:'linear-gradient(135deg,#FEF2F2,#fff1f2)', border:'2px solid #FCA5A5', borderRadius:18 }}>
+                <div style={{ display:'flex', alignItems:'flex-start', gap:12, marginBottom: form.raison_refus ? 14 : 12 }}>
+                  <div style={{ width:40,height:40,borderRadius:12,background:'#FEE2E2',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'1.3rem',flexShrink:0 }}>❌</div>
+                  <div style={{ flex:1 }}>
+                    <div style={{ fontFamily:'Cabinet Grotesk,sans-serif', fontWeight:900, color:'#DC2626', fontSize:'.92rem', marginBottom:4 }}>
+                      Candidature refusée
+                    </div>
+                    {form.raison_refus ? (
+                      <div style={{ padding:'10px 14px', background:'rgba(255,255,255,.7)', border:'1.5px solid #FCA5A5', borderRadius:10, fontSize:'.8rem', color:'#7F1D1D', lineHeight:1.6 }}>
+                        <strong>📋 Raison :</strong> {form.raison_refus}
+                      </div>
+                    ) : (
+                      <div style={{ fontSize:'.75rem', color:'#991B1B' }}>Mettez à jour vos informations puis resoumettez votre profil.</div>
+                    )}
+                  </div>
                 </div>
+                <button
+                  onClick={async () => {
+                    if (soumettreLoading) return;
+                    setSoumettreLoading(true);
+                    try {
+                      await api.put('/api/professeurs/resoumettre');
+                      setForm(f => ({ ...f, statut_validation: 'en_attente', raison_refus: null }));
+                    } catch(e) {
+                      alert(e.response?.data?.detail || 'Erreur lors de la resoumission');
+                    } finally { setSoumettreLoading(false); }
+                  }}
+                  disabled={soumettreLoading}
+                  style={{ display:'flex', alignItems:'center', gap:8, padding:'10px 20px', background: soumettreLoading ? '#e2e8f0' : '#DC2626', color: soumettreLoading ? '#94a3b8' : '#fff', border:'none', borderRadius:11, cursor: soumettreLoading ? 'not-allowed' : 'pointer', fontFamily:'Cabinet Grotesk,sans-serif', fontWeight:800, fontSize:'.82rem', boxShadow: soumettreLoading ? 'none' : '0 4px 12px rgba(220,38,38,0.3)', transition:'all .18s' }}>
+                  {soumettreLoading
+                    ? <><div style={{ width:13,height:13,border:'2px solid rgba(0,0,0,.2)',borderTopColor:'#94a3b8',borderRadius:'50%',animation:'spin2 .8s linear infinite' }}/>Resoumission...</>
+                    : '🔄 Resoumettre ma candidature'}
+                </button>
               </div>
-              <button onClick={handleSoumettre} disabled={completionScore < 100 || soumettreLoading}
-                style={{ padding:'9px 18px', background:'#DC2626', color:'#fff', border:'none', borderRadius:11, cursor:'pointer', fontFamily:'Cabinet Grotesk,sans-serif', fontWeight:800, fontSize:'.82rem', boxShadow:'0 4px 12px rgba(220,38,38,0.3)', transition:'all .18s' }}>
-                🔄 Re-soumettre
-              </button>
             </div>
           )}
         </>
@@ -721,7 +745,7 @@ export default function Profile() {
                     <div style={{ fontSize:'.72rem', fontWeight:800, color:'#3b82f6', textTransform:'uppercase', letterSpacing:'.06em', marginBottom:10 }}>🌐 Tarif en ligne</div>
                     <div style={{ display:'flex', gap:10, alignItems:'center' }}>
                       <input type="number" min="0" step="0.5" className="inp-field" style={{ flex:1 }} placeholder="Ex : 30" value={form.tarif_en_ligne} onChange={e=>handleInput('tarif_en_ligne',e.target.value)} />
-                      <span style={{ color:'#3b82f6', fontWeight:800, fontSize:'.9rem', whiteSpace:'nowrap' }}>DT/h</span>
+                      <span style={{ color:'#3b82f6', fontWeight:800, fontSize:'.9rem', whiteSpace:'nowrap' }}>DT/séance</span>
                     </div>
                   </div>
                 )}
@@ -730,7 +754,7 @@ export default function Profile() {
                     <div style={{ fontSize:'.72rem', fontWeight:800, color:'#10b981', textTransform:'uppercase', letterSpacing:'.06em', marginBottom:10 }}>🏫 Tarif présentiel</div>
                     <div style={{ display:'flex', gap:10, alignItems:'center' }}>
                       <input type="number" min="0" step="0.5" className="inp-field" style={{ flex:1 }} placeholder="Ex : 40" value={form.tarif_presentiel} onChange={e=>handleInput('tarif_presentiel',e.target.value)} />
-                      <span style={{ color:'#10b981', fontWeight:800, fontSize:'.9rem', whiteSpace:'nowrap' }}>DT/h</span>
+                      <span style={{ color:'#10b981', fontWeight:800, fontSize:'.9rem', whiteSpace:'nowrap' }}>DT/séance</span>
                     </div>
                   </div>
                 )}

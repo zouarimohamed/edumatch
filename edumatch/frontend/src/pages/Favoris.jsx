@@ -248,7 +248,7 @@ export default function Favoris() {
                     {/* Tarif min */}
                     {minTarif && (
                       <div style={{ position: 'absolute', bottom: 10, right: 12, background: 'rgba(255,255,255,0.15)', backdropFilter: 'blur(8px)', padding: '3px 10px', borderRadius: 20, fontSize: '.67rem', fontWeight: 800, color: '#fff', border: '1px solid rgba(255,255,255,0.22)', fontFamily: 'Cabinet Grotesk, sans-serif' }}>
-                        dès {minTarif} DT/h
+                        dès {minTarif} DT/séance
                       </div>
                     )}
                   </div>

@@ -153,7 +153,7 @@ export default function Paiement() {
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10 }}>
             {[
               { label: 'Mode', val: reservation.mode_seance === 'en_ligne' ? '🌐 En ligne' : '🏫 Présentiel' },
-              { label: 'Tarif/h', val: `${reservation.tarif_applique || 30} DT` },
+              { label: 'Tarif/séance', val: `${reservation.tarif_applique || 30} DT` },
               { label: 'Total', val: `${montant} DT`, accent: '#065F46' },
             ].map((item, i) => (
               <div key={i} style={{ background: i === 2 ? '#ECFDF5' : '#F8FAFC', borderRadius: 12, padding: '12px 14px', border: `1.5px solid ${i === 2 ? '#6EE7B7' : '#F1F5F9'}` }}>

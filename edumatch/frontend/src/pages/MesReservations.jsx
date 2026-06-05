@@ -332,7 +332,7 @@ function ReservationCard({ r, onChat, onPay, unreadCount, index }) {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 10, marginBottom: r.description_seance ? 10 : 16 }}>
           <InfoBlock icon={<Calendar size={11}/>} label="Date" value={formatDate(r.date_cours)}/>
           <InfoBlock icon={<Clock size={11}/>} label="Horaire" value={`${String(r.heure_debut||'').slice(0,5)} → ${String(r.heure_fin||'').slice(0,5)}`}/>
-          {r.tarif_applique && <InfoBlock icon={<CreditCard size={11}/>} label="Tarif" value={`${r.tarif_applique} DT/h`} accent="#065F46"/>}
+          {r.tarif_applique && <InfoBlock icon={<CreditCard size={11}/>} label="Tarif" value={`${r.tarif_applique} DT/séance`} accent="#065F46"/>}
         </div>
         {r.description_seance && (
           <div style={{ marginBottom:16, padding:'10px 14px', background:'#F8FAFC', border:'1.5px solid #E2E8F0', borderRadius:12, display:'flex', alignItems:'flex-start', gap:9 }}>

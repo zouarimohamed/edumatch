@@ -36,7 +36,7 @@ export default function ProfCard({ prof, score, onView }) {
         <div style={{ fontSize: '.8rem', color: 'var(--text2)', display: 'flex', flexDirection: 'column', gap: 3, margin: '8px 0 14px' }}>
           <span>📚 {prof.matieres?.[0] || prof.matiere || '—'}</span>
           <span>📍 {prof.ville || '—'}</span>
-          <span>💰 {prof.tarif} DT/h</span>
+          <span>💰 {prof.tarif} DT/séance</span>
         </div>
 
         {/* Match score */}

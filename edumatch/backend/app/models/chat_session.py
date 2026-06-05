@@ -24,6 +24,7 @@ class ChatMessage(Base):
     session_id = Column(Integer, ForeignKey("chat_sessions.id", ondelete="CASCADE"), index=True)
     role       = Column(String(10))   # "user" | "assistant"
     content    = Column(Text, nullable=False)
+    profs_json = Column(Text, nullable=True)  # ← NOUVEAU : profs sauvegardés en JSON
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     session = relationship("ChatSession", back_populates="messages")

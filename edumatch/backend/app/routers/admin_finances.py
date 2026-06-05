@@ -15,8 +15,7 @@ def get_finances_stats(
     try:
         ca = db.execute(text("""
             SELECT COALESCE(SUM(
-                EXTRACT(EPOCH FROM (heure_fin::time - heure_debut::time))/3600.0
-                * CAST(tarif_applique AS FLOAT)
+                CAST(tarif_applique AS FLOAT)
             ), 0) AS total
             FROM reservations
             WHERE statut_paiement = 'payé'
@@ -98,8 +97,7 @@ def get_finances_stats(
                 pu.prenom || ' ' || pu.nom AS prof,
                 COUNT(r.id) AS nb_seances,
                 COALESCE(SUM(
-                    EXTRACT(EPOCH FROM (r.heure_fin::time - r.heure_debut::time))/3600.0
-                    * CAST(COALESCE(r.tarif_applique,0) AS FLOAT)
+                    CAST(COALESCE(r.tarif_applique,0) AS FLOAT)
                 ), 0) AS total_revenus
             FROM reservations r
             JOIN professeurs p ON p.id = r.prof_id
@@ -126,8 +124,7 @@ def get_finances_stats(
                 TO_CHAR(date_cours, 'YYYY-MM') AS mois,
                 TO_CHAR(date_cours, 'Mon YYYY') AS mois_label,
                 COALESCE(SUM(
-                    EXTRACT(EPOCH FROM (heure_fin::time - heure_debut::time))/3600.0
-                    * CAST(COALESCE(tarif_applique,0) AS FLOAT)
+                    CAST(COALESCE(tarif_applique,0) AS FLOAT)
                 ), 0) AS total
             FROM reservations
             WHERE statut_paiement = 'payé'

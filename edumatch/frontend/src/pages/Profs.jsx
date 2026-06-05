@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import api from '../services/api';
+import { useAuth } from '../context/AuthContext';
 import ProfModal from './ProfModal';
 import { useFavoris } from './Favoris';
 
@@ -178,7 +179,7 @@ function ProfAvatar({ prof, size = 72 }) {
 }
 
 /* ─── Bouton Favori ────────────────────────── */
-function FavoriBtn({ prof, small = false }) {
+function FavoriBtn({ prof, small = false, hideForAdmin = false }) {
   const { toggleFavori, isFavori } = useFavoris();
   const [anim, setAnim] = useState(false);
   const fav = isFavori(prof.id);
@@ -189,6 +190,8 @@ function FavoriBtn({ prof, small = false }) {
     setAnim(true);
     setTimeout(() => setAnim(false), 400);
   };
+
+  if (hideForAdmin) return null;
 
   return (
     <button
@@ -208,7 +211,7 @@ function FavoriBtn({ prof, small = false }) {
 /* ════════════════════════════════════════════════
    CARTE GRILLE
 ════════════════════════════════════════════════ */
-function ProfCard({ prof, onView, index }) {
+function ProfCard({ prof, onView, index, isAdmin = false }) {
   const nom = `${prof.user_prenom || ''} ${prof.user_nom || ''}`.trim() || 'Professeur';
   const allMats = prof.tarifs_matieres ? [...new Set(prof.tarifs_matieres.map(t => t.nom_matiere))] : [];
   const matieres = allMats.slice(0, 3);
@@ -229,14 +232,14 @@ function ProfCard({ prof, onView, index }) {
           {Array.from({ length: 21 }, (_, i) => <circle key={i} cx={(i % 7) * 52 + 10} cy={Math.floor(i / 7) * 38 + 16} r="1.5" fill="#fff"/>)}
         </svg>
         <div style={{ position: 'absolute', top: 11, left: 11, zIndex: 3 }}>
-          <FavoriBtn prof={prof} small/>
+          <FavoriBtn prof={prof} small hideForAdmin={isAdmin}/>
         </div>
         <div style={{ position: 'absolute', top: 11, right: 11 }}>
           <ModeBadge mode={prof.mode_enseignement}/>
         </div>
         {tarifMin && (
           <div style={{ position: 'absolute', bottom: 10, right: 12, background: 'rgba(255,255,255,0.16)', backdropFilter: 'blur(8px)', padding: '3px 11px', borderRadius: 20, fontSize: '.68rem', fontWeight: 800, color: '#fff', border: '1px solid rgba(255,255,255,0.25)', fontFamily: 'Cabinet Grotesk, sans-serif' }}>
-            dès {tarifMin} DT/h
+            dès {tarifMin} DT/séance
           </div>
         )}
       </div>
@@ -310,7 +313,7 @@ function ProfCard({ prof, onView, index }) {
 /* ════════════════════════════════════════════════
    CARTE VUE LISTE
 ════════════════════════════════════════════════ */
-function ProfRow({ prof, onView, index }) {
+function ProfRow({ prof, onView, index, isAdmin = false }) {
   const nom = `${prof.user_prenom || ''} ${prof.user_nom || ''}`.trim() || 'Professeur';
   const matieres = prof.tarifs_matieres ? [...new Set(prof.tarifs_matieres.map(t => t.nom_matiere))].slice(0, 4) : [];
   const tarifMin = getTarifMin(prof);
@@ -353,16 +356,18 @@ function ProfRow({ prof, onView, index }) {
         <Stars n={prof.note_moyenne}/>
         {tarifMin && (
           <div style={{ fontFamily: 'Cabinet Grotesk, sans-serif', fontWeight: 900, fontSize: '.88rem', color: '#065F46', background: '#ECFDF5', padding: '5px 13px', borderRadius: 20, border: '1.5px solid #6EE7B7', whiteSpace: 'nowrap' }}>
-            dès {tarifMin} DT/h
+            dès {tarifMin} DT/séance
           </div>
         )}
-        <button
-          onClick={e => { e.stopPropagation(); toggleFavori(prof); }}
-          title={fav ? 'Retirer des favoris' : 'Ajouter aux favoris'}
-          className={`fav-btn${fav ? ' active' : ''}`}
-        >
-          {fav ? '❤️' : '🤍'}
-        </button>
+{!isAdmin && (
+          <button
+            onClick={e => { e.stopPropagation(); toggleFavori(prof); }}
+            title={fav ? 'Retirer des favoris' : 'Ajouter aux favoris'}
+            className={`fav-btn${fav ? ' active' : ''}`}
+          >
+            {fav ? '❤️' : '🤍'}
+          </button>
+        )}
         <button className="see-btn" onClick={() => onView(prof)}>
           Voir ↗
         </button>
@@ -375,6 +380,8 @@ function ProfRow({ prof, onView, index }) {
    PAGE PRINCIPALE
 ════════════════════════════════════════════════ */
 export default function Profs() {
+  const { user } = useAuth();
+  const isAdmin  = user?.role === 'admin';
   const [profs, setProfs]                   = useState([]);
   const [loading, setLoading]               = useState(true);
   const [selectedProf, setSelectedProf]     = useState(null);
@@ -486,16 +493,19 @@ export default function Profs() {
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
           <div style={{ width: 4, height: 28, background: 'linear-gradient(180deg,#00153D,#3B82F6)', borderRadius: 2 }}/>
           <span style={{ fontSize: '.65rem', fontWeight: 900, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '.14em', fontFamily: 'Cabinet Grotesk, sans-serif' }}>
-            ✦ Espace Étudiant
+            {isAdmin ? '✦ Administration' : '✦ Espace Étudiant'}
           </span>
         </div>
         <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', flexWrap: 'wrap', gap: 16 }}>
           <div>
             <h1 style={{ fontFamily: 'Cabinet Grotesk, sans-serif', fontWeight: 900, fontSize: '2.4rem', color: '#0F172A', margin: '0 0 7px', letterSpacing: '-.035em', lineHeight: 1 }}>
-              Trouver un formateur
+              {isAdmin ? 'Annuaire des formateurs' : 'Trouver un formateur'}
             </h1>
             <p style={{ color: '#94A3B8', margin: 0, fontSize: '.88rem', fontWeight: 500, fontStyle: 'italic' }}>
-              {profs.length} formateur{profs.length !== 1 ? 's' : ''} disponible{profs.length !== 1 ? 's' : ''} · Cliquez sur 🤍 pour sauvegarder vos favoris
+              {isAdmin
+                ? `${profs.length} formateur${profs.length !== 1 ? 's' : ''} enregistré${profs.length !== 1 ? 's' : ''} sur la plateforme`
+                : `${profs.length} formateur${profs.length !== 1 ? 's' : ''} disponible${profs.length !== 1 ? 's' : ''} · Cliquez sur 🤍 pour sauvegarder vos favoris`
+              }
             </p>
           </div>
           {/* Pills stats */}
@@ -580,7 +590,7 @@ export default function Profs() {
             { label: '🗂 Domaine',   value: filterDomaine, onChange: (v) => { setFilterDomaine(v); setFilterNiveau(''); setFilterMatiere(''); }, opts: allDomaines.map(d => ({ v: d, l: d })),                      ph: 'Tous les domaines'   },
             { label: '🎓 Niveau',    value: filterNiveau,  onChange: setFilterNiveau,  opts: allNiveaux.map(n => ({ v: n, l: n })),                                                                                ph: 'Tous les niveaux'    },
             { label: '📚 Matière',   value: filterMatiere, onChange: setFilterMatiere, opts: allMatieres.map(m => ({ v: m, l: m })),                                                                               ph: 'Toutes les matières' },
-            { label: '💰 Budget max',value: filterBudget,  onChange: setFilterBudget,  opts: [20,30,40,50,75,100].map(b => ({ v: b, l: `≤ ${b} DT/h` })),                                                        ph: 'Sans limite'         },
+            { label: '💰 Budget max',value: filterBudget,  onChange: setFilterBudget,  opts: [20,30,40,50,75,100].map(b => ({ v: b, l: `≤ ${b} DT/séance` })),                                                        ph: 'Sans limite'         },
           ].map(f => (
             <div key={f.label}>
               <div style={{ fontSize: '.65rem', fontWeight: 900, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '.1em', marginBottom: 7, fontFamily: 'Cabinet Grotesk, sans-serif' }}>{f.label}</div>
@@ -632,11 +642,11 @@ export default function Profs() {
         </div>
       ) : vue === 'grille' ? (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 20 }}>
-          {filtered.map((p, i) => <ProfCard key={p.id} prof={p} onView={setSelectedProf} index={i}/>)}
+          {filtered.map((p, i) => <ProfCard key={p.id} prof={p} onView={setSelectedProf} index={i} isAdmin={isAdmin}/>)}
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          {filtered.map((p, i) => <ProfRow key={p.id} prof={p} onView={setSelectedProf} index={i}/>)}
+          {filtered.map((p, i) => <ProfRow key={p.id} prof={p} onView={setSelectedProf} index={i} isAdmin={isAdmin}/>)}
         </div>
       )}
 

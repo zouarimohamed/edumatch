@@ -101,7 +101,7 @@ const LAYOUT_CSS = `
     height:64px; min-height:64px; background:var(--topbar-bg);
     border-bottom:1.5px solid var(--border);
     display:flex; align-items:center; justify-content:space-between;
-    padding:0 32px; box-shadow:var(--shadow-sm); flex-shrink:0; z-index:10;
+    padding:0 32px; box-shadow:var(--shadow-sm); flex-shrink:0; z-index:500;
     transition:background .25s, border-color .25s;
   }
 
@@ -142,11 +142,11 @@ const LAYOUT_CSS = `
 
   /* ─── Settings panel ─── */
   .settings-panel {
-    position:fixed; top:64px; right:24px;
+    position:fixed; top:68px; right:24px;
     width:360px; max-height:calc(100vh - 80px);
     background:var(--surface); border:1.5px solid var(--border2);
     border-radius:22px; box-shadow:0 32px 80px rgba(0,0,0,0.2);
-    z-index:299; overflow:hidden; display:flex; flex-direction:column;
+    z-index:2000; overflow:hidden; display:flex; flex-direction:column;
     animation:settingsIn .22s cubic-bezier(.22,1,.36,1);
   }
 
@@ -269,6 +269,8 @@ function useNotifications(user) {
     if (!user) return;
     try {
       const isAdmin = user.role === 'admin';
+      const isProf  = user.role === 'professeur';
+      const isEtud  = user.role === 'étudiant';
       const baseReqs = [
         api.get('/api/reservations/mes-reservations'),
         api.get('/api/messages/non-lus'),
@@ -276,29 +278,227 @@ function useNotifications(user) {
       if (isAdmin) {
         baseReqs.push(api.get('/api/admin/professeurs/all').catch(()=>({data:[]})));
         baseReqs.push(api.get('/api/admin/demandes-matieres').catch(()=>({data:[]})));
+        baseReqs.push(api.get('/api/admin/signalements').catch(()=>({data:[]})));
+      }
+      if (isProf) {
+        baseReqs.push(api.get('/api/professeurs/me').catch(()=>({data:null})));
       }
       const results = await Promise.all(baseReqs);
       const reservations = results[0].data||[];
       const nonLus = results[1].data?.messages||[];
 
+      // ── Notif refus/blocage candidature prof ──────────────────────
+      let profStatutNotifs = [];
+      if (isProf) {
+        const profIdx = isAdmin ? 4 : 2;
+        const profData = results[profIdx]?.data || null;
+
+        if (profData?.statut_validation === 'refusé') {
+          // Récupérer aussi les notifs depuis la BDD (contiennent la vraie raison stockée)
+          let raisonTexte = profData.raison_refus || null;
+
+          // Si raison_refus absent du profil (colonne SQL pas encore migrée ou ORM ancien),
+          // essayer de récupérer depuis les notifications stockées en BDD
+          if (!raisonTexte) {
+            try {
+              const notifRes = await api.get('/api/professeurs/notifications').catch(()=>({data:[]}));
+              const notifsBDD = Array.isArray(notifRes.data) ? notifRes.data : [];
+              const dernierRefus = notifsBDD.find(n => n.type === 'refus');
+              if (dernierRefus?.message) {
+                // Extraire la raison du message stocké
+                const match = dernierRefus.message.match(/Raison\s*:\s*(.+?)(?:\s*Vous pouvez|$)/);
+                if (match) raisonTexte = match[1].trim();
+              }
+            } catch {}
+          }
+
+          const raisonHash = (raisonTexte || 'sans-raison').replace(/\s+/g,'_').slice(0,40);
+          const id = `prof-candidature-refusee-${profData.id}-${raisonHash}`;
+          profStatutNotifs.push({
+            id,
+            type:'candidature_refusee',
+            icon:'❌',
+            title:'Candidature refusée par ladministration',
+            body: raisonTexte
+              ? `Raison : ${raisonTexte}`
+              : 'Aucune raison précisée. Complétez votre profil et resoumettez.',
+            detail:'Cliquez pour aller sur votre tableau de bord et resoumettre.',
+            color:'#991B1B', bg:'#FEF2F2', border:'#FCA5A5',
+            time: new Date().toISOString(),
+            path:'/prof',
+            read: readIds.current.has(id),
+            raison: raisonTexte,
+          });
+        }
+
+        // ── Notifs BDD : validation + avertissements + blocage + déblocage ──
+        let warningNotifsBDD    = [];
+        let validationNotifsBDD = [];
+        let blocageNotifsBDD    = [];
+        let deblocageNotifsBDD  = [];
+        try {
+          const warnRes = await api.get('/api/professeurs/notifications').catch(()=>({data:[]}));
+          const allNotifs = Array.isArray(warnRes.data) ? warnRes.data : [];
+          warningNotifsBDD    = allNotifs.filter(n => n.type === 'warning'   && !n.lu);
+          validationNotifsBDD = allNotifs.filter(n => n.type === 'validation'&& !n.lu);
+          blocageNotifsBDD    = allNotifs.filter(n => n.type === 'blocage'   && !n.lu);
+          deblocageNotifsBDD  = allNotifs.filter(n => n.type === 'deblocage' && !n.lu);
+        } catch {}
+
+        // ── Notification validation par l'admin ──
+        validationNotifsBDD.forEach(v => {
+          const id = `prof-validation-${v.id}`;
+          profStatutNotifs.push({
+            id,
+            type:   'validation_prof',
+            icon:   '🎉',
+            title:  'Profil validé par ladministration',
+            body:   v.message || 'Félicitations ! Votre profil est maintenant visible par les étudiants.',
+            detail: 'Vous pouvez désormais recevoir des demandes de réservation.',
+            color:  '#065F46', bg: '#ECFDF5', border: '#6EE7B7',
+            time:   v.created_at || new Date().toISOString(),
+            path:   '/prof',
+            read:   readIds.current.has(id) || v.lu,
+            raison: null,
+          });
+        });
+
+        warningNotifsBDD.forEach(w => {
+          const id = `prof-warning-${w.id}`;
+          profStatutNotifs.push({
+            id,
+            type: 'avertissement',
+            icon: '⚠️',
+            title: 'Avertissement de ladministration',
+            body: w.message,
+            detail: 'Respectez les conditions dutilisation dEduMatch.',
+            color: '#B45309', bg: '#FFFBEB', border: '#FCD34D',
+            time: w.created_at || new Date().toISOString(),
+            path: '/prof',
+            read: readIds.current.has(id),
+            raison: null,
+          });
+        });
+
+        // ── Notifs blocage prof (depuis BDD notifications) ──
+        blocageNotifsBDD.forEach(b => {
+          const id = `prof-blocage-bdd-${b.id}`;
+          const raisonMatch = b.message && b.message.match(/Raison\s*:\s*(.+?)(?:\s+Contactez|\.?\s*$)/);
+          const raison = raisonMatch ? raisonMatch[1].trim() : null;
+          profStatutNotifs.push({
+            id,
+            type:   'compte_bloque',
+            icon:   '🚫',
+            title:  "Compte suspendu par l'administration",
+            body:   raison ? `Raison : ${raison}` : b.message || "Votre compte a été suspendu.",
+            detail: "Contactez l'équipe EduMatch pour plus d'informations.",
+            color:  '#991B1B', bg: '#FEF2F2', border: '#FCA5A5',
+            time:   b.created_at || new Date().toISOString(),
+            path:   '/prof',
+            read:   readIds.current.has(id) || b.lu,
+            raison,
+          });
+        });
+
+        // ── Notifs déblocage prof (depuis BDD notifications) ──
+        deblocageNotifsBDD.forEach(d => {
+          const id = `prof-deblocage-bdd-${d.id}`;
+          profStatutNotifs.push({
+            id,
+            type:   'compte_debloque',
+            icon:   '✅',
+            title:  'Compte réactivé par ladministration',
+            body:   d.message || 'Votre compte a été réactivé. Vous pouvez à nouveau accéder à la plateforme.',
+            detail: 'Bienvenue de retour sur EduMatch !',
+            color:  '#065F46', bg: '#ECFDF5', border: '#6EE7B7',
+            time:   d.created_at || new Date().toISOString(),
+            path:   '/prof',
+            read:   readIds.current.has(id) || d.lu,
+            raison: null,
+          });
+        });
+
+        if (profData?.user_statut === 'bloqué') {
+          const raisonHash = (profData.raison_blocage || 'sans-raison').replace(/[\s]+/g,'_').slice(0,40);
+          const id = `prof-compte-bloque-${profData.id}-${raisonHash}`;
+          const raisonTexte = profData.raison_blocage || null;
+          profStatutNotifs.push({
+            id,
+            type:'compte_bloque',
+            icon:'🚫',
+            title:"Compte suspendu par l'administration",
+            body: raisonTexte ? `Raison : ${raisonTexte}` : "Contactez l'équipe EduMatch pour plus d'informations.",
+            detail:"Votre accès à la plateforme est restreint.",
+            color:'#6D28D9', bg:'#F5F3FF', border:'#DDD6FE',
+            time: new Date().toISOString(),
+            path:'/prof',
+            read: readIds.current.has(id),
+            raison: raisonTexte,
+          });
+        }
+      }
+
+      // ── Notifs blocage/déblocage pour ÉTUDIANTS (depuis notifications_users) ──
+      let etudStatutNotifs = [];
+      if (isEtud) {
+        try {
+          const notifEtudRes = await api.get('/api/etudiants/notifications').catch(()=>({data:[]}));
+          const notifsBDD = Array.isArray(notifEtudRes.data) ? notifEtudRes.data : [];
+          notifsBDD.forEach(n => {
+            if (n.type === 'blocage' || n.type === 'deblocage') {
+              const id = `etud-${n.type}-${n.id}`;
+              const raisonMatch = n.message && n.message.match(/Raison\s*:\s*(.+?)(?:\s+Contactez|\.?\s*$)/);
+              const raison = raisonMatch ? raisonMatch[1].trim() : null;
+              etudStatutNotifs.push({
+                id,
+                type: n.type === 'blocage' ? 'compte_bloque' : 'compte_debloque',
+                icon: n.type === 'blocage' ? '🚫' : '✅',
+                title: n.type === 'blocage' ? "Compte suspendu par l'administration" : 'Compte réactivé',
+                body: raison ? `Raison : ${raison}` : n.message,
+                detail: n.type === 'blocage' ? "Contactez l'équipe EduMatch pour plus d'informations." : 'Vous pouvez à nouveau accéder à la plateforme.',
+                color: n.type === 'blocage' ? '#991B1B' : '#065F46',
+                bg:    n.type === 'blocage' ? '#FEF2F2' : '#ECFDF5',
+                border:n.type === 'blocage' ? '#FCA5A5' : '#6EE7B7',
+                time:  n.created_at || new Date().toISOString(),
+                path:  '/reservations',
+                read:  readIds.current.has(id) || n.lu,
+                raison,
+              });
+            }
+          });
+        } catch {}
+      }
+
       // Notifs admin
       let adminNotifs = [];
       if (isAdmin) {
-        const allProfs  = results[2]?.data||[];
-        const demandes  = results[3]?.data||[];
-        const profsEnAttente = allProfs.filter(p=>p.statut_validation==='en_attente');
-        profsEnAttente.forEach(p => {
+        const allProfs     = results[2]?.data||[];
+        const demandes     = results[3]?.data||[];
+        const signalements = results[4]?.data||[];
+
+        // Profs en attente de validation
+        // ID basé sur soumis_le (updated_at) :
+        // - stable tant que le prof ne resoume pas → lu une fois = reste lu ✅
+        // - change à chaque resoumission (soumis_le = NOW()) → nouvelle notif ✅
+        allProfs.filter(p=>p.statut_validation==='en_attente').forEach(p => {
           const nm = `${p.user_prenom||''} ${p.user_nom||''}`.trim()||'Formateur';
-          const id = `admin-prof-${p.id}`;
+          // updated_at = soumis_le depuis prof_to_out (date de dernière soumission)
+          // Fallback sur created_at si soumis_le absent (anciens profils)
+          const soumisTs = p.updated_at
+            ? new Date(p.updated_at).getTime()
+            : (p.created_at ? new Date(p.created_at).getTime() : p.id);
+          const id = `admin-prof-${p.id}-${soumisTs}`;
           adminNotifs.push({
             id, type:'admin_prof', icon:'👨‍🏫',
             title:'Nouveau profil à valider',
             body:`${nm} souhaite rejoindre la plateforme`,
             detail:`📍 ${p.ville||'Ville non renseignée'} · ${p.mode_enseignement||''}`,
             color:'#B45309', bg:'#FFFBEB', border:'#FCD34D',
-            time: p.created_at, path:'/admin?tab=profs', read:readIds.current.has(id),
+            time: p.updated_at || p.created_at, path:'/admin?tab=profs', read:readIds.current.has(id),
           });
         });
+
+        // Demandes matières en attente
         demandes.filter(d=>d.statut==='en_attente').forEach(d => {
           const id = `admin-dem-${d.id}`;
           adminNotifs.push({
@@ -310,11 +510,24 @@ function useNotifications(user) {
             time: d.created_at, path:'/admin?tab=demandes', read:readIds.current.has(id),
           });
         });
+
+        // Signalements nouveaux (non traités)
+        signalements.filter(s=>s.statut==='nouveau').forEach(s => {
+          const id = `admin-sig-${s.id}`;
+          adminNotifs.push({
+            id, type:'admin_signalement', icon:'🚨',
+            title:'Nouveau signalement',
+            body:`${s.etudiant_nom||'Un étudiant'} a signalé ${s.prof_nom||'un professeur'}`,
+            detail:`📋 ${s.raison?.length>60 ? s.raison.slice(0,60)+'…' : s.raison||'—'}`,
+            color:'#DC2626', bg:'#FEF2F2', border:'#FCA5A5',
+            time: s.created_at, path:'/admin?tab=signalements', read:readIds.current.has(id),
+          });
+        });
       }
 
       const resa = buildResaNotifs(reservations, user.role);
       const msgs = buildMsgNotifs(nonLus, user.role, reservations);
-      const all = [...msgs,...resa,...adminNotifs].sort((a,b)=>{
+      const all = [...msgs,...profStatutNotifs,...etudStatutNotifs,...resa,...adminNotifs].sort((a,b)=>{
         if(!a.read&&b.read) return -1;
         if(a.read&&!b.read) return 1;
         return new Date(b.time||0)-new Date(a.time||0);
@@ -368,11 +581,117 @@ function NotifTime({ str }) {
 }
 
 /* ─── Notif Item ── */
-function NotifItem({ n, isLast, onNavigate, onClose, onOpenChat, onOpenResa, onMarkRead }) {
-  const isMsg = n.type==='message';
+/* ─── Modal Avertissement ── */
+function AvertissementModal({ n, onClose, onMarkRead }) {
+  useEffect(() => {
+    const onKey = e => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onClose]);
+
+  // Extraire nom étudiant depuis le message si présent
+  const matchEtud = n.body && n.body.match(/signalement de (.+?)(?:\s+le |$)/i);
+  const etudNom   = matchEtud ? matchEtud[1] : null;
+  const matchDate = n.body && n.body.match(/le (\d{2}\/\d{2}\/\d{4})/);
+  const dateAvert = matchDate ? matchDate[1] : (n.time ? new Date(n.time).toLocaleDateString('fr-FR') : null);
+
+  const handleConfirm = () => {
+    onMarkRead(n.id);
+    onClose();
+  };
+
   return (
-    <div className="notif-item"
-      onClick={()=>{ onMarkRead(n.id); if(isMsg&&onOpenChat) onOpenChat(n.resa_id); else if(n.type==='pending'&&onOpenResa) onOpenResa(n.resa_id); else { const [p,q]=n.path.split('?'); onNavigate(q?`${p}?${q}`:p); } onClose(); }}
+    <div style={{ position:'fixed', inset:0, background:'rgba(15,23,42,0.65)', backdropFilter:'blur(10px)', zIndex:9999, display:'flex', alignItems:'center', justifyContent:'center', padding:16 }}
+      onClick={e => e.target === e.currentTarget && onClose()}>
+      <div style={{ background:'#fff', borderRadius:24, width:'100%', maxWidth:480, boxShadow:'0 32px 80px rgba(0,0,0,0.22)', overflow:'hidden', animation:'notifIn .26s cubic-bezier(.34,1.56,.64,1)' }}>
+
+        {/* Header */}
+        <div style={{ background:'linear-gradient(135deg,#fffbeb,#fef3c7)', borderBottom:'2px solid #fcd34d', padding:'20px 24px 16px' }}>
+          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start' }}>
+            <div style={{ display:'flex', alignItems:'center', gap:12 }}>
+              <div style={{ width:48, height:48, borderRadius:14, background:'#fef3c7', border:'2px solid #fcd34d', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'1.6rem', flexShrink:0 }}>⚠️</div>
+              <div>
+                <div style={{ fontFamily:'Cabinet Grotesk,sans-serif', fontWeight:900, fontSize:'1.05rem', color:'#92400e', letterSpacing:'-.01em' }}>Avertissement officiel</div>
+                {dateAvert && <div style={{ fontSize:'.75rem', color:'#b45309', marginTop:2, fontWeight:600 }}>📅 {dateAvert}</div>}
+              </div>
+            </div>
+            <button onClick={onClose}
+              style={{ width:32, height:32, borderRadius:9, background:'rgba(180,83,9,0.08)', border:'1.5px solid #fcd34d', cursor:'pointer', color:'#b45309', display:'flex', alignItems:'center', justifyContent:'center', fontSize:13, flexShrink:0 }}
+              onMouseEnter={e => e.currentTarget.style.background='rgba(180,83,9,0.16)'}
+              onMouseLeave={e => e.currentTarget.style.background='rgba(180,83,9,0.08)'}>✕</button>
+          </div>
+        </div>
+
+        {/* Corps */}
+        <div style={{ padding:'20px 24px', display:'flex', flexDirection:'column', gap:14 }}>
+
+          {/* Info émetteur */}
+          {etudNom && (
+            <div style={{ display:'flex', alignItems:'center', gap:10, padding:'10px 14px', background:'#f8fafc', border:'1.5px solid #e2e8f0', borderRadius:12 }}>
+              <div style={{ width:32, height:32, borderRadius:'50%', background:'linear-gradient(135deg,#4C1D95,#6D28D9)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:12, fontWeight:900, color:'#fff', flexShrink:0 }}>
+                {etudNom[0].toUpperCase()}
+              </div>
+              <div>
+                <div style={{ fontSize:'.68rem', fontWeight:700, color:'#94a3b8', textTransform:'uppercase', letterSpacing:'.06em', marginBottom:1 }}>Signalé par</div>
+                <div style={{ fontFamily:'Cabinet Grotesk,sans-serif', fontWeight:800, fontSize:'.88rem', color:'#0F172A' }}>{etudNom}</div>
+              </div>
+            </div>
+          )}
+
+          {/* Message complet */}
+          <div style={{ padding:'14px 16px', background:'#fffbeb', border:'2px solid #fcd34d', borderRadius:14 }}>
+            <div style={{ fontSize:'.7rem', fontWeight:900, color:'#b45309', textTransform:'uppercase', letterSpacing:'.08em', marginBottom:8, fontFamily:'Cabinet Grotesk,sans-serif' }}>
+              📋 Message de l'administration
+            </div>
+            <div style={{ fontSize:'.88rem', color:'#92400e', lineHeight:1.65, fontWeight:500 }}>
+              {n.body}
+            </div>
+          </div>
+
+          {/* Avertissement légal */}
+          <div style={{ padding:'10px 14px', background:'#fef2f2', border:'1.5px solid #fca5a5', borderRadius:11, fontSize:'.78rem', color:'#991b1b', display:'flex', gap:8, alignItems:'flex-start', lineHeight:1.55 }}>
+            <span style={{ flexShrink:0, marginTop:1 }}>ℹ️</span>
+            <span>Un avertissement est enregistré dans votre dossier. En cas de récidive, votre compte pourra être suspendu.</span>
+          </div>
+
+          {/* Bouton J'ai compris */}
+          <button onClick={handleConfirm}
+            style={{ width:'100%', padding:'13px', background:'#b45309', border:'none', borderRadius:13, fontFamily:'Cabinet Grotesk,sans-serif', fontWeight:800, fontSize:'.95rem', color:'#fff', cursor:'pointer', boxShadow:'0 4px 16px rgba(180,83,9,0.28)', transition:'all .18s' }}
+            onMouseEnter={e => { e.currentTarget.style.background='#92400e'; e.currentTarget.style.transform='translateY(-1px)'; }}
+            onMouseLeave={e => { e.currentTarget.style.background='#b45309'; e.currentTarget.style.transform='none'; }}>
+            ✓ J'ai compris
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function NotifItem({ n, isLast, onNavigate, onClose, onOpenChat, onOpenResa, onMarkRead }) {
+  const isMsg     = n.type==='message';
+  const isWarn    = n.type==='avertissement';
+  const [showWarnModal, setShowWarnModal] = useState(false);
+
+  const handleClick = () => {
+    if (isWarn) { setShowWarnModal(true); return; }
+    onMarkRead(n.id);
+    if (isMsg&&onOpenChat) onOpenChat(n.resa_id);
+    else if (n.type==='pending'&&onOpenResa) onOpenResa(n.resa_id);
+    else { const [p,q]=n.path.split('?'); onNavigate(q?`${p}?${q}`:p); }
+    onClose();
+  };
+
+  return (
+    <>
+      {showWarnModal && (
+        <AvertissementModal
+          n={n}
+          onClose={() => setShowWarnModal(false)}
+          onMarkRead={onMarkRead}
+        />
+      )}
+      <div className="notif-item"
+        onClick={handleClick}
       style={{ borderBottom:isLast?'none':`1px solid var(--border)`, background:!n.read?`${n.bg}55`:'transparent', position:'relative' }}>
       {!n.read&&<div style={{ position:'absolute',left:6,top:'50%',transform:'translateY(-50%)',width:6,height:6,borderRadius:'50%',background:n.color }}/>}
       <div style={{ width:42,height:42,borderRadius:12,flexShrink:0,background:n.bg,border:`1.5px solid ${n.border}`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:'1.05rem' }}>{n.icon}</div>
@@ -381,25 +700,43 @@ function NotifItem({ n, isLast, onNavigate, onClose, onOpenChat, onOpenResa, onM
           <div style={{ fontFamily:!n.read?'Cabinet Grotesk,sans-serif':'inherit',fontWeight:!n.read?800:600,fontSize:'.84rem',color:'var(--text)' }}>{n.title}</div>
           <div style={{ fontSize:'.66rem',color:'var(--text3)',whiteSpace:'nowrap',marginLeft:8,flexShrink:0 }}><NotifTime str={n.time}/></div>
         </div>
-        <div style={{ fontSize:'.78rem',color:'var(--text2)',marginBottom:3,lineHeight:1.45 }}>{n.body}</div>
-        {n.detail&&<div style={{ fontSize:'.71rem',color:n.color,fontWeight:700 }}>{n.detail}</div>}
+        {/* Raison mise en évidence pour les notifs de candidature */}
+        {(n.type==='candidature_refusee'||n.type==='compte_bloque') && n.raison ? (
+          <div style={{ marginBottom:6 }}>
+            <div style={{ fontSize:'.72rem',color:n.color,fontWeight:700,marginBottom:4,opacity:.8 }}>Message de l'administration :</div>
+            <div style={{ fontSize:'.8rem',color:n.color,fontWeight:700,lineHeight:1.5,padding:'8px 12px',background:`${n.bg}`,border:`1.5px solid ${n.border}`,borderRadius:10 }}>
+              📋 {n.raison}
+            </div>
+            {n.detail&&<div style={{ fontSize:'.71rem',color:n.color,fontWeight:600,marginTop:5,opacity:.8 }}>{n.detail}</div>}
+          </div>
+        ) : (
+          <>
+            <div style={{ fontSize:'.78rem',color:'var(--text2)',marginBottom:3,lineHeight:1.45 }}>{n.body}</div>
+            {n.detail&&<div style={{ fontSize:'.71rem',color:n.color,fontWeight:700 }}>{n.detail}</div>}
+          </>
+        )}
         {isMsg&&<div style={{ marginTop:5,display:'inline-flex',alignItems:'center',gap:4,fontSize:'.68rem',fontWeight:800,color:'#1D4ED8',background:'#EFF6FF',padding:'3px 10px',borderRadius:20,border:'1.5px solid #BFDBFE',fontFamily:'Cabinet Grotesk,sans-serif' }}>💬 Ouvrir la conversation</div>}
         {n.lien&&<a href={n.lien} target="_blank" rel="noreferrer" onClick={e=>e.stopPropagation()} style={{ display:'inline-flex',alignItems:'center',gap:4,marginTop:5,fontSize:'.68rem',fontWeight:700,color:'#065F46',background:'#ECFDF5',padding:'3px 10px',borderRadius:20,textDecoration:'none',border:'1.5px solid #6EE7B7' }}>🎥 Rejoindre le Meet</a>}
         {n.mode&&<span style={{ display:'inline-flex',alignItems:'center',gap:3,marginTop:4,fontSize:'.66rem',fontWeight:700,padding:'2px 8px',borderRadius:20,background:n.mode==='en_ligne'?'#EFF6FF':'#ECFDF5',color:n.mode==='en_ligne'?'#1D4ED8':'#065F46',border:`1.5px solid ${n.mode==='en_ligne'?'#BFDBFE':'#6EE7B7'}` }}>{n.mode==='en_ligne'?'🌐 En ligne':'🏫 Présentiel'}</span>}
       </div>
     </div>
+    </>
   );
 }
 
 /* ─── Panneau Notifications ── */
 function NotificationPanel({ notifs, unread, onMarkAllRead, onNavigate, onClose, onOpenChat, onOpenResa, onMarkOneRead }) {
   const msgs   = notifs.filter(n=>n.type==='message');
-  const adminN = notifs.filter(n=>n.type==='admin_prof'||n.type==='admin_demande');
-  const resas  = notifs.filter(n=>n.type!=='message'&&n.type!=='admin_prof'&&n.type!=='admin_demande');
+  const adminN = notifs.filter(n=>n.type==='admin_prof'||n.type==='admin_demande'||n.type==='admin_signalement');
+  const sigN   = notifs.filter(n=>n.type==='admin_signalement');
+  const adminBase = notifs.filter(n=>n.type==='admin_prof'||n.type==='admin_demande');
+  const STATUT_TYPES = ['candidature_refusee','compte_bloque','compte_debloque','avertissement','validation_prof'];
+  const profN  = notifs.filter(n=>STATUT_TYPES.includes(n.type));
+  const resas  = notifs.filter(n=>n.type!=='message'&&n.type!=='admin_prof'&&n.type!=='admin_demande'&&!STATUT_TYPES.includes(n.type));
   return (
     <>
-      <div onClick={onClose} style={{ position:'fixed',inset:0,zIndex:298 }}/>
-      <div style={{ position:'fixed',top:64,right:24,width:420,maxHeight:'calc(100vh - 80px)',background:'var(--surface)',border:'1.5px solid var(--border2)',borderRadius:22,boxShadow:'0 32px 80px rgba(0,0,0,0.2)',zIndex:299,overflow:'hidden',animation:'notifIn .22s cubic-bezier(.22,1,.36,1)',display:'flex',flexDirection:'column' }}>
+      <div onClick={onClose} style={{ position:'fixed',inset:0,zIndex:1999 }}/>
+      <div style={{ position:'fixed',top:68,right:24,width:420,maxHeight:'calc(100vh - 80px)',background:'var(--surface)',border:'1.5px solid var(--border2)',borderRadius:22,boxShadow:'0 32px 80px rgba(0,0,0,0.2)',zIndex:2000,overflow:'hidden',animation:'notifIn .22s cubic-bezier(.22,1,.36,1)',display:'flex',flexDirection:'column' }}>
         <div style={{ padding:'16px 20px 14px',borderBottom:`1.5px solid var(--border)`,display:'flex',alignItems:'center',justifyContent:'space-between',background:'var(--surface)',flexShrink:0 }}>
           <div style={{ display:'flex',alignItems:'center',gap:10 }}>
             <h3 style={{ fontFamily:'Cabinet Grotesk,sans-serif',fontWeight:900,fontSize:'1rem',color:'var(--text)',margin:0 }}>Notifications</h3>
@@ -410,7 +747,7 @@ function NotificationPanel({ notifs, unread, onMarkAllRead, onNavigate, onClose,
             <button onClick={onClose} style={{ width:30,height:30,borderRadius:8,background:'var(--surface2)',border:`1.5px solid var(--border2)`,cursor:'pointer',color:'var(--text2)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'.85rem' }}>✕</button>
           </div>
         </div>
-        <div style={{ flex:1,overflowY:'auto' }}>
+        <div style={{ flex:1,overflowY:'auto',scrollbarWidth:'thin',scrollbarColor:'var(--border2) transparent' }}>
           {notifs.length===0 ? (
             <div style={{ textAlign:'center',padding:'56px 20px',color:'var(--text3)' }}>
               <div style={{ fontSize:'3rem',marginBottom:14 }}>🔕</div>
@@ -425,16 +762,28 @@ function NotificationPanel({ notifs, unread, onMarkAllRead, onNavigate, onClose,
                   {msgs.map((n,i)=><NotifItem key={n.id} n={n} isLast={i===msgs.length-1&&resas.length===0} onNavigate={onNavigate} onClose={onClose} onOpenChat={onOpenChat} onOpenResa={onOpenResa} onMarkRead={onMarkOneRead}/>)}
                 </>
               )}
+              {profN.length>0&&(
+                <>
+                  <div style={{ padding:'9px 20px 7px',fontSize:'.66rem',fontWeight:900,color:'#991B1B',textTransform:'uppercase',letterSpacing:'.12em',background:'#FEF2F2',borderBottom:'1px solid #FCA5A5' }}>⚠️ Statut · {profN.length}</div>
+                  {profN.map((n,i)=><NotifItem key={n.id} n={n} isLast={i===profN.length-1&&resas.length===0&&adminN.length===0} onNavigate={onNavigate} onClose={onClose} onOpenChat={onOpenChat} onOpenResa={onOpenResa} onMarkRead={onMarkOneRead}/>)}
+                </>
+              )}
               {resas.length>0&&(
                 <>
-                  {msgs.length>0&&<div style={{ padding:'9px 20px 7px',fontSize:'.66rem',fontWeight:900,color:'var(--text3)',textTransform:'uppercase',letterSpacing:'.12em',background:'var(--surface2)',borderBottom:`1px solid var(--border)` }}>📅 Réservations · {resas.length}</div>}
+                  {(msgs.length>0||profN.length>0)&&<div style={{ padding:'9px 20px 7px',fontSize:'.66rem',fontWeight:900,color:'var(--text3)',textTransform:'uppercase',letterSpacing:'.12em',background:'var(--surface2)',borderBottom:`1px solid var(--border)` }}>📅 Réservations · {resas.length}</div>}
                   {resas.map((n,i)=><NotifItem key={n.id} n={n} isLast={i===resas.length-1&&adminN.length===0} onNavigate={onNavigate} onClose={onClose} onOpenChat={onOpenChat} onOpenResa={onOpenResa} onMarkRead={onMarkOneRead}/>)}
                 </>
               )}
-              {adminN.length>0&&(
+              {sigN.length>0&&(
                 <>
-                  <div style={{ padding:'9px 20px 7px',fontSize:'.66rem',fontWeight:900,color:'var(--text3)',textTransform:'uppercase',letterSpacing:'.12em',background:'var(--surface2)',borderBottom:`1px solid var(--border)` }}>🛠 Admin · {adminN.length}</div>
-                  {adminN.map((n,i)=><NotifItem key={n.id} n={n} isLast={i===adminN.length-1} onNavigate={onNavigate} onClose={onClose} onOpenChat={onOpenChat} onMarkRead={onMarkOneRead}/>)}
+                  <div style={{ padding:'9px 20px 7px',fontSize:'.66rem',fontWeight:900,color:'#DC2626',textTransform:'uppercase',letterSpacing:'.12em',background:'#FEF2F2',borderBottom:'1px solid #FCA5A5' }}>🚨 Signalements · {sigN.length}</div>
+                  {sigN.map((n,i)=><NotifItem key={n.id} n={n} isLast={i===sigN.length-1&&adminBase.length===0} onNavigate={onNavigate} onClose={onClose} onOpenChat={onOpenChat} onMarkRead={onMarkOneRead}/>)}
+                </>
+              )}
+              {adminBase.length>0&&(
+                <>
+                  <div style={{ padding:'9px 20px 7px',fontSize:'.66rem',fontWeight:900,color:'var(--text3)',textTransform:'uppercase',letterSpacing:'.12em',background:'var(--surface2)',borderBottom:`1px solid var(--border)` }}>🛠 Admin · {adminBase.length}</div>
+                  {adminBase.map((n,i)=><NotifItem key={n.id} n={n} isLast={i===adminBase.length-1} onNavigate={onNavigate} onClose={onClose} onOpenChat={onOpenChat} onMarkRead={onMarkOneRead}/>)}
                 </>
               )}
             </>
@@ -466,7 +815,7 @@ function SettingsPanel({ onClose, dark, setDark, notifSound, setNotifSound, user
   const navigate = useNavigate();
   return (
     <>
-      <div onClick={onClose} style={{ position:'fixed',inset:0,zIndex:298 }}/>
+      <div onClick={onClose} style={{ position:'fixed',inset:0,zIndex:1999 }}/>
       <div className="settings-panel">
         {/* Header */}
         <div style={{ padding:'16px 20px 14px',borderBottom:`1.5px solid var(--border)`,display:'flex',alignItems:'center',justifyContent:'space-between',flexShrink:0 }}>
@@ -601,6 +950,23 @@ export default function Layout() {
   useEffect(()=>{ injectLayoutCSS(); },[]);
   useEffect(()=>{ refresh(); },[location.pathname]);
   useEffect(()=>{ try { localStorage.setItem('edumatch_notif_sound', notifSound?'true':'false'); } catch {} },[notifSound]);
+
+  // ── Vérification périodique : détecter blocage en temps réel ────
+  useEffect(()=>{
+    if (!user) return;
+    const checkStatus = async () => {
+      try {
+        await api.get('/api/auth/status');
+      } catch (err) {
+        // Si 403 COMPTE_BLOQUE → l'intercepteur api.js gère la déconnexion automatiquement
+        // Si 401 → token expiré, même chose
+        // On ne fait rien ici, l'intercepteur prend en charge
+      }
+    };
+    // Vérifier toutes les 30 secondes
+    const iv = setInterval(checkStatus, 30000);
+    return () => clearInterval(iv);
+  }, [user]);
 
   function handleLogout()     { logout(); navigate('/login'); }
   function handleNotifOpen()  { setNotifOpen(p=>!p); setSettingsOpen(false); if(!notifOpen) markAllRead(); }
