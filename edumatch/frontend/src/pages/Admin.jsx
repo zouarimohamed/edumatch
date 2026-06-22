@@ -4,7 +4,6 @@ import api from '../services/api';
 import FinancesTab from './FinancesTab';
 import { exportAdminProfs, exportAdminAnalytiques } from '../services/exportPDF';
 
-// ─── CSS GLOBAL ───────────────────────────────────────────────────────────────
 const CSS = `
 @import url('https://fonts.googleapis.com/css2?family=Cabinet+Grotesk:wght@400;500;700;800;900&family=Instrument+Sans:ital,wght@0,400;0,500;0,600;1,400&display=swap');
 .adm { font-family:'Instrument Sans',system-ui,sans-serif; color:#0F172A; background:#f8fafc; min-height:100vh; }
@@ -130,7 +129,6 @@ function useChart(canvasRef, configFn, deps = []) {
 function ChartLineSig({ data }) {
   const ref = useRef(null);
   useChart(ref, (C, c) => {
-    // Dégradé sous la courbe
     const getGrad = (ctx) => {
       const canvas = ctx.chart.ctx;
       const { top, bottom } = ctx.chart.chartArea || {};
@@ -149,58 +147,24 @@ function ChartLineSig({ data }) {
           data: data.map(d => d.val),
           borderColor: '#6366f1',
           backgroundColor: (ctx) => getGrad(ctx),
-          fill: true,
-          tension: 0.45,
-          cubicInterpolationMode: 'monotone',
-          pointBackgroundColor: '#6366f1',
-          pointBorderColor: '#fff',
-          pointBorderWidth: 2.5,
-          pointRadius: 6,
-          pointHoverRadius: 9,
-          pointHoverBackgroundColor: '#4f46e5',
-          pointHoverBorderColor: '#fff',
-          pointHoverBorderWidth: 3,
-          borderWidth: 2.8,
+          fill: true, tension: 0.45, cubicInterpolationMode: 'monotone',
+          pointBackgroundColor: '#6366f1', pointBorderColor: '#fff', pointBorderWidth: 2.5,
+          pointRadius: 6, pointHoverRadius: 9, pointHoverBackgroundColor: '#4f46e5',
+          pointHoverBorderColor: '#fff', pointHoverBorderWidth: 3, borderWidth: 2.8,
         }]
       },
       options: {
-        responsive: true,
-        maintainAspectRatio: false,
+        responsive: true, maintainAspectRatio: false,
         animation: { duration: 900, easing: 'easeInOutQuart' },
         plugins: {
           legend: { display: false },
-          tooltip: {
-            backgroundColor: '#1e293b',
-            titleColor: '#94a3b8',
-            bodyColor: '#fff',
-            borderColor: '#6366f1',
-            borderWidth: 1,
-            padding: 12,
-            cornerRadius: 10,
-            callbacks: {
-              title: items => items[0].label,
-              label: ctx => `  ${ctx.raw} signalement${ctx.raw > 1 ? 's' : ''}`
-            }
+          tooltip: { backgroundColor: '#1e293b', titleColor: '#94a3b8', bodyColor: '#fff', borderColor: '#6366f1', borderWidth: 1, padding: 12, cornerRadius: 10,
+            callbacks: { title: items => items[0].label, label: ctx => `  ${ctx.raw} signalement${ctx.raw > 1 ? 's' : ''}` }
           }
         },
         scales: {
-          x: {
-            grid: { color: 'rgba(0,0,0,0.04)', drawBorder: false },
-            ticks: { color: '#64748b', font: { size: 11, weight: '600' } },
-            border: { dash: [4, 4] }
-          },
-          y: {
-            beginAtZero: true,
-            grid: { color: 'rgba(99,102,241,0.07)', drawBorder: false },
-            ticks: {
-              color: '#94a3b8',
-              font: { size: 11 },
-              stepSize: 1,
-              padding: 8,
-              callback: v => Number.isInteger(v) ? v : ''
-            },
-            border: { display: false }
-          }
+          x: { grid: { color: 'rgba(0,0,0,0.04)', drawBorder: false }, ticks: { color: '#64748b', font: { size: 11, weight: '600' } }, border: { dash: [4, 4] } },
+          y: { beginAtZero: true, grid: { color: 'rgba(99,102,241,0.07)', drawBorder: false }, ticks: { color: '#94a3b8', font: { size: 11 }, stepSize: 1, padding: 8, callback: v => Number.isInteger(v) ? v : '' }, border: { display: false } }
         }
       }
     };
@@ -267,22 +231,13 @@ function ProfAvatar({ prof, size = 40 }) {
   const radius = size / 4;
   return (
     <div style={{ width: size, height: size, borderRadius: radius, flexShrink: 0, overflow: 'hidden', background: `linear-gradient(135deg,${a},${b})`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: size * .34, fontWeight: 800, color: '#fff', fontFamily: 'Cabinet Grotesk,sans-serif', boxShadow: '0 2px 8px rgba(0,0,0,.12)', position: 'relative' }}>
-      {prof?.photo_url
-        ? <img src={`http://localhost:8001${prof.photo_url}`} alt="" style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'cover', borderRadius: radius }} />
-        : init}
+      {prof?.photo_url ? <img src={`http://localhost:8001${prof.photo_url}`} alt="" style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'cover', borderRadius: radius }} /> : init}
     </div>
   );
 }
 
-// ── PATCH 1 : StatutBadge avec "bloqué" ──
 function StatutBadge({ s }) {
-  const m = {
-    'valide':     { c: 'adm-badge-green',  i: '✓',  l: 'Validé' },
-    'en_attente': { c: 'adm-badge-amber',  i: '⏳', l: 'En attente' },
-    'refuse':     { c: 'adm-badge-red',    i: '✕',  l: 'Refusé' },
-    'approuve':   { c: 'adm-badge-green',  i: '✓',  l: 'Approuvé' },
-    'bloque':     { c: 'adm-badge-red',    i: '🚫', l: 'Bloqué' },
-  };
+  const m = { 'valide': { c: 'adm-badge-green', i: '✓', l: 'Validé' }, 'en_attente': { c: 'adm-badge-amber', i: '⏳', l: 'En attente' }, 'refuse': { c: 'adm-badge-red', i: '✕', l: 'Refusé' }, 'approuve': { c: 'adm-badge-green', i: '✓', l: 'Approuvé' }, 'bloque': { c: 'adm-badge-red', i: '🚫', l: 'Bloqué' } };
   const key = s === 'validé' ? 'valide' : s === 'refusé' ? 'refuse' : s === 'approuvé' ? 'approuve' : s === 'en_attente' ? 'en_attente' : s === 'bloqué' ? 'bloque' : s;
   const cfg = m[key] || { c: 'adm-badge-blue', i: '?', l: s };
   return <span className={`adm-badge ${cfg.c}`}>{cfg.i} {cfg.l}</span>;
@@ -317,7 +272,6 @@ function EmptyState({ icon, title, sub }) {
   );
 }
 
-// ─── MODAL GÉNÉRIQUE DE CONFIRMATION ─────────────────────────────────────────
 function ConfirmModal({ title, message, confirmLabel, confirmClass = 'adm-btn-danger', onConfirm, onCancel, children }) {
   return (
     <div className="adm-modal-overlay" onClick={e => { if (e.target === e.currentTarget) onCancel(); }}>
@@ -337,7 +291,6 @@ function ConfirmModal({ title, message, confirmLabel, confirmClass = 'adm-btn-da
   );
 }
 
-// ── PATCH 2 : ProfDrawer avec raison_refus affiché + correction bouton refuser ──
 function ProfDrawer({ prof, onClose, onValider, onRefuser }) {
   const [tab, setTab] = useState('profil');
   if (!prof) return null;
@@ -352,25 +305,18 @@ function ProfDrawer({ prof, onClose, onValider, onRefuser }) {
       {href ? <a href={href} style={{ fontSize: 13, fontWeight: 600, color: '#3b82f6', textDecoration: 'none' }}>{val}</a> : <span style={{ fontSize: 13, fontWeight: 500, color: '#0F172A' }}>{val || '—'}</span>}
     </div>
   );
-
   const isBloque = prof.user_statut === 'bloqué';
-
   return (
     <>
       <div className="adm-drawer-overlay" onClick={onClose} />
       <div className="adm-drawer">
-        {/* Header coloré */}
         <div style={{ height: 70, background: isBloque ? 'linear-gradient(135deg,#7c3aed,#a78bfa)' : 'linear-gradient(135deg,#1e40af 0%,#3b82f6 60%,#60a5fa 100%)', position: 'relative', overflow: 'hidden', flexShrink: 0 }}>
           <div style={{ position: 'absolute', top: 12, left: 16 }}><StatutBadge s={isBloque ? 'bloqué' : prof.statut_validation} /></div>
           <button onClick={onClose} style={{ position: 'absolute', top: 12, right: 14, width: 32, height: 32, borderRadius: 9, background: 'rgba(255,255,255,.12)', border: '1px solid rgba(255,255,255,.2)', cursor: 'pointer', color: '#fff', fontSize: 13, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✕</button>
         </div>
-
-        {/* Avatar + nom */}
         <div style={{ padding: '0 24px 20px', borderBottom: '1px solid #f1f5f9' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 16, paddingTop: 16, marginBottom: 16 }}>
-            <div style={{ width: 72, height: 72, borderRadius: 18, border: '3px solid #f1f5f9', overflow: 'hidden', flexShrink: 0, boxShadow: '0 2px 10px rgba(0,0,0,.10)' }}>
-              <ProfAvatar prof={prof} size={66} />
-            </div>
+            <div style={{ width: 72, height: 72, borderRadius: 18, border: '3px solid #f1f5f9', overflow: 'hidden', flexShrink: 0, boxShadow: '0 2px 10px rgba(0,0,0,.10)' }}><ProfAvatar prof={prof} size={66} /></div>
             <div>
               <h2 style={{ fontFamily: 'Cabinet Grotesk,sans-serif', fontSize: 17, fontWeight: 900, color: '#0F172A', margin: '0 0 6px', letterSpacing: '-.02em' }}>{nm}</h2>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center' }}>
@@ -380,47 +326,20 @@ function ProfDrawer({ prof, onClose, onValider, onRefuser }) {
               </div>
             </div>
           </div>
-
-          {/* Statut actions */}
-          {isBloque && (
-            <div style={{ padding: '10px 14px', background: '#fef2f2', border: '1.5px solid #fca5a5', borderRadius: 10, fontSize: 12, color: '#991b1b' }}>
-              <div style={{ fontWeight: 700, marginBottom: 4 }}>🚫 Compte bloqué</div>
-              {prof.raison_blocage && <div style={{ color: '#7f1d1d' }}>Raison : {prof.raison_blocage}</div>}
-            </div>
-          )}
-          {!isBloque && prof.statut_validation === 'validé' && (
-            <div style={{ padding: '9px 14px', background: '#ecfdf5', border: '1px solid #6ee7b7', borderRadius: 10, fontSize: 12, color: '#065f46', fontWeight: 600 }}>
-              ✓ Professeur validé — visible sur la plateforme
-            </div>
-          )}
-          {!isBloque && prof.statut_validation === 'en_attente' && (
-            <div style={{ display: 'flex', gap: 8 }}>
-              <button className="adm-btn adm-btn-success" style={{ flex: 1, justifyContent: 'center' }} onClick={() => { onValider(prof.id); onClose(); }}>✓ Valider</button>
-              <button className="adm-btn adm-btn-danger" style={{ flex: 1, justifyContent: 'center' }} onClick={() => { onRefuser(prof.id, nm); onClose(); }}>✕ Refuser</button>
-            </div>
-          )}
-          {/* CORRECTION : afficher raison_refus */}
+          {isBloque && (<div style={{ padding: '10px 14px', background: '#fef2f2', border: '1.5px solid #fca5a5', borderRadius: 10, fontSize: 12, color: '#991b1b' }}><div style={{ fontWeight: 700, marginBottom: 4 }}>🚫 Compte bloqué</div>{prof.raison_blocage && <div style={{ color: '#7f1d1d' }}>Raison : {prof.raison_blocage}</div>}</div>)}
+          {!isBloque && prof.statut_validation === 'validé' && (<div style={{ padding: '9px 14px', background: '#ecfdf5', border: '1px solid #6ee7b7', borderRadius: 10, fontSize: 12, color: '#065f46', fontWeight: 600 }}>✓ Professeur validé — visible sur la plateforme</div>)}
+          {!isBloque && prof.statut_validation === 'en_attente' && (<div style={{ display: 'flex', gap: 8 }}><button className="adm-btn adm-btn-success" style={{ flex: 1, justifyContent: 'center' }} onClick={() => { onValider(prof.id); onClose(); }}>✓ Valider</button><button className="adm-btn adm-btn-danger" style={{ flex: 1, justifyContent: 'center' }} onClick={() => { onRefuser(prof.id, nm); onClose(); }}>✕ Refuser</button></div>)}
           {!isBloque && prof.statut_validation === 'refusé' && (
             <div style={{ padding: '10px 14px', background: '#fef2f2', border: '1.5px solid #fca5a5', borderRadius: 10, fontSize: 12 }}>
               <div style={{ fontWeight: 700, color: '#991b1b', marginBottom: prof.raison_refus ? 6 : 0 }}>✕ Professeur refusé</div>
-              {prof.raison_refus && (
-                <div style={{ color: '#7f1d1d', lineHeight: 1.5 }}>
-                  <strong>Raison :</strong> {prof.raison_refus}
-                </div>
-              )}
+              {prof.raison_refus && <div style={{ color: '#7f1d1d', lineHeight: 1.5 }}><strong>Raison :</strong> {prof.raison_refus}</div>}
               {!prof.raison_refus && <div style={{ color: '#94a3b8', fontStyle: 'italic' }}>Aucune raison fournie</div>}
             </div>
           )}
         </div>
-
-        {/* Onglets */}
         <div style={{ display: 'flex', borderBottom: '1px solid #f1f5f9', padding: '0 12px', background: '#fff' }}>
-          {TABS.map(([k, l]) => (
-            <button key={k} onClick={() => setTab(k)} style={{ flex: 1, padding: '13px 4px', background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: tab === k ? 700 : 400, color: tab === k ? '#3b82f6' : '#94a3b8', borderBottom: `2px solid ${tab === k ? '#3b82f6' : 'transparent'}`, transition: 'all .15s' }}>{l}</button>
-          ))}
+          {TABS.map(([k, l]) => (<button key={k} onClick={() => setTab(k)} style={{ flex: 1, padding: '13px 4px', background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: tab === k ? 700 : 400, color: tab === k ? '#3b82f6' : '#94a3b8', borderBottom: `2px solid ${tab === k ? '#3b82f6' : 'transparent'}`, transition: 'all .15s' }}>{l}</button>))}
         </div>
-
-        {/* Contenu onglets */}
         <div style={{ padding: 24 }}>
           {tab === 'profil' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
@@ -448,27 +367,10 @@ function ProfDrawer({ prof, onClose, onValider, onRefuser }) {
           {tab === 'docs' && (prof.certificats?.length > 0 ? <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>{prof.certificats.map(c => <a key={c.id} href={`http://localhost:8001${c.fichier_url}`} target="_blank" rel="noreferrer" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 12, padding: '13px 16px', background: '#f8fafc', border: '1.5px solid #f1f5f9', borderRadius: 14, transition: 'all .15s' }} onMouseEnter={e => { e.currentTarget.style.borderColor = '#3b82f6'; e.currentTarget.style.background = '#eff6ff'; }} onMouseLeave={e => { e.currentTarget.style.borderColor = '#f1f5f9'; e.currentTarget.style.background = '#f8fafc'; }}><div style={{ width: 40, height: 40, borderRadius: 10, background: '#eff6ff', border: '1px solid #bfdbfe', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, flexShrink: 0 }}>📄</div><div style={{ flex: 1 }}><div style={{ fontWeight: 700, fontSize: 13, color: '#0F172A', marginBottom: 2 }}>{c.titre}</div><div style={{ fontSize: 12, color: '#3b82f6' }}>Consulter →</div></div></a>)}</div> : <EmptyState icon="📄" title="Aucun document" sub="Ce professeur n'a pas encore ajouté de diplômes." />)}
           {tab === 'dispos' && (() => {
             const today = new Date(); today.setHours(0,0,0,0);
-            const futures = (prof.disponibilites || []).filter(d => {
-              if (!d.date_specifique) return false;
-              const dd = new Date(d.date_specifique); dd.setHours(0,0,0,0);
-              return dd >= today;
-            });
+            const futures = (prof.disponibilites || []).filter(d => { if (!d.date_specifique) return false; const dd = new Date(d.date_specifique); dd.setHours(0,0,0,0); return dd >= today; });
             return futures.length > 0 ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                {futures.map(d => {
-                  const full = d.nb_max_etudiants > 0 && d.nb_inscrits >= d.nb_max_etudiants;
-                  return (
-                    <div key={d.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', background: '#f8fafc', border: `1.5px solid ${full ? '#fca5a5' : '#f1f5f9'}`, borderRadius: 14 }}>
-                      <div>
-                        <div style={{ fontFamily: 'Cabinet Grotesk,sans-serif', fontWeight: 700, fontSize: 13, color: '#0F172A', marginBottom: 3 }}>
-                          {new Date(d.date_specifique).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
-                        </div>
-                        <div style={{ fontSize: 12, color: '#94a3b8' }}>{d.heure_debut} – {d.heure_fin}</div>
-                      </div>
-                      <span className={`adm-badge ${full ? 'adm-badge-red' : 'adm-badge-green'}`}>{full ? 'Complet' : `${d.nb_inscrits}/${d.nb_max_etudiants}`}</span>
-                    </div>
-                  );
-                })}
+                {futures.map(d => { const full = d.nb_max_etudiants > 0 && d.nb_inscrits >= d.nb_max_etudiants; return (<div key={d.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', background: '#f8fafc', border: `1.5px solid ${full ? '#fca5a5' : '#f1f5f9'}`, borderRadius: 14 }}><div><div style={{ fontFamily: 'Cabinet Grotesk,sans-serif', fontWeight: 700, fontSize: 13, color: '#0F172A', marginBottom: 3 }}>{new Date(d.date_specifique).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</div><div style={{ fontSize: 12, color: '#94a3b8' }}>{d.heure_debut} – {d.heure_fin}</div></div><span className={`adm-badge ${full ? 'adm-badge-red' : 'adm-badge-green'}`}>{full ? 'Complet' : `${d.nb_inscrits}/${d.nb_max_etudiants}`}</span></div>); })}
               </div>
             ) : <EmptyState icon="📅" title="Aucun créneau à venir" sub="Toutes les disponibilités sont passées ou aucune n'est planifiée." />;
           })()}
@@ -478,7 +380,6 @@ function ProfDrawer({ prof, onClose, onValider, onRefuser }) {
   );
 }
 
-// ── SignalementsTab enrichi : filtres + recherche + badges + avertir avec notification ──
 function SignalementsTab({ signalements, onReload }) {
   const [actionModal, setActionModal] = useState(null);
   const [raisonBlocage, setRaisonBlocage] = useState('');
@@ -487,63 +388,47 @@ function SignalementsTab({ signalements, onReload }) {
   const [recherche, setRecherche] = useState('');
 
   const STATUT_CFG = {
-    'nouveau': { bg: '#eff6ff', color: '#1d4ed8', border: '#bfdbfe', label: '🆕 Nouveau',  dot: '#3b82f6' },
-    'ignoré':  { bg: '#f8fafc', color: '#64748b', border: '#e2e8f0', label: '🔕 Ignoré',   dot: '#94a3b8' },
-    'traité':  { bg: '#ecfdf5', color: '#065f46', border: '#6ee7b7', label: '✅ Traité',   dot: '#10b981' },
+    'nouveau': { bg: '#eff6ff', color: '#1d4ed8', border: '#bfdbfe', label: '🆕 Nouveau', dot: '#3b82f6' },
+    'ignoré':  { bg: '#f8fafc', color: '#64748b', border: '#e2e8f0', label: '🔕 Ignoré',  dot: '#94a3b8' },
+    'traité':  { bg: '#ecfdf5', color: '#065f46', border: '#6ee7b7', label: '✅ Traité',  dot: '#10b981' },
   };
 
-  // Calcul nb signalements par prof
   const sigParProf = useMemo(() => {
     const m = {};
     signalements.forEach(s => { m[s.prof_nom] = (m[s.prof_nom] || 0) + 1; });
     return m;
   }, [signalements]);
 
-  // Filtres + recherche
-  const filtered = useMemo(() => {
-    return signalements.filter(s => {
-      const matchFiltre = filtre === 'tous' || s.statut === filtre;
-      const matchRecherche = !recherche || s.prof_nom?.toLowerCase().includes(recherche.toLowerCase()) || s.etudiant_nom?.toLowerCase().includes(recherche.toLowerCase());
-      return matchFiltre && matchRecherche;
-    });
-  }, [signalements, filtre, recherche]);
+  const filtered = useMemo(() => signalements.filter(s => {
+    const matchFiltre = filtre === 'tous' || s.statut === filtre;
+    const matchRecherche = !recherche || s.prof_nom?.toLowerCase().includes(recherche.toLowerCase()) || s.etudiant_nom?.toLowerCase().includes(recherche.toLowerCase());
+    return matchFiltre && matchRecherche;
+  }), [signalements, filtre, recherche]);
 
   const nouveaux = filtered.filter(s => s.statut === 'nouveau');
   const archives = filtered.filter(s => s.statut !== 'nouveau');
 
   const handleAction = async (sig, action) => {
-    if (action === 'bloquer') {
-      setRaisonBlocage('');
-      setActionModal({ sig, action });
-      return;
-    }
+    if (action === 'bloquer') { setRaisonBlocage(''); setActionModal({ sig, action }); return; }
     setSaving(true);
-    try {
-      await api.put(`/api/admin/signalements/${sig.id}/action`, { action });
-      onReload();
-    } catch (e) { alert(e.response?.data?.detail || 'Erreur'); }
+    try { await api.put(`/api/admin/signalements/${sig.id}/action`, { action }); onReload(); }
+    catch (e) { alert(e.response?.data?.detail || 'Erreur'); }
     finally { setSaving(false); }
   };
 
   const handleBloquerConfirm = async () => {
     if (!actionModal) return;
     setSaving(true);
-    try {
-      await api.put(`/api/admin/signalements/${actionModal.sig.id}/action`, {
-        action: 'bloquer',
-        raison: raisonBlocage || 'Signalement étudiant',
-      });
-      setActionModal(null);
-      onReload();
-    } catch (e) { alert(e.response?.data?.detail || 'Erreur'); }
+    try { await api.put(`/api/admin/signalements/${actionModal.sig.id}/action`, { action: 'bloquer', raison: raisonBlocage || 'Signalement étudiant' }); setActionModal(null); onReload(); }
+    catch (e) { alert(e.response?.data?.detail || 'Erreur'); }
     finally { setSaving(false); }
   };
 
   const FILTRES = [
-    { key: 'tous',    label: 'Tous',       count: signalements.length },
+    { key: 'tous', label: 'Tous', count: signalements.length },
     { key: 'nouveau', label: 'En attente', count: signalements.filter(s => s.statut === 'nouveau').length },
-    { key: 'ignoré',  label: 'Ignorés',    count: signalements.filter(s => s.statut === 'ignoré').length },
-    { key: 'traité',  label: 'Traités',    count: signalements.filter(s => s.statut === 'traité').length },
+    { key: 'ignoré', label: 'Ignorés', count: signalements.filter(s => s.statut === 'ignoré').length },
+    { key: 'traité', label: 'Traités', count: signalements.filter(s => s.statut === 'traité').length },
   ];
 
   const SigCard = ({ sig }) => {
@@ -553,50 +438,23 @@ function SignalementsTab({ signalements, onReload }) {
     return (
       <div style={{ padding: '18px 20px', background: isNew ? '#fffbff' : '#fff', border: `1.5px solid ${isNew ? '#e9d5ff' : '#f1f5f9'}`, borderRadius: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16, flexWrap: 'wrap', boxShadow: isNew ? '0 2px 12px rgba(139,92,246,0.07)' : 'none', transition: 'all .2s' }}>
         <div style={{ flex: 1, minWidth: 220 }}>
-          {/* Étudiant → Prof */}
           <div style={{ display: 'flex', gap: 8, marginBottom: 10, flexWrap: 'wrap', alignItems: 'center' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 10px', background: '#f1f5f9', borderRadius: 20 }}>
-              <span style={{ fontSize: 11 }}>👤</span>
-              <span style={{ fontWeight: 700, fontSize: 12, color: '#374151' }}>{sig.etudiant_nom}</span>
-            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 10px', background: '#f1f5f9', borderRadius: 20 }}><span style={{ fontSize: 11 }}>👤</span><span style={{ fontWeight: 700, fontSize: 12, color: '#374151' }}>{sig.etudiant_nom}</span></div>
             <span style={{ color: '#c4b5fd', fontSize: 12, fontWeight: 700 }}>→ signale →</span>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 10px', background: '#eff6ff', border: '1.5px solid #bfdbfe', borderRadius: 20 }}>
-              <span style={{ fontSize: 11 }}>👨‍🏫</span>
-              <span style={{ fontWeight: 800, fontSize: 12, color: '#1d4ed8' }}>{sig.prof_nom}</span>
-            </div>
-            {nbSig > 1 && (
-              <span style={{ fontSize: 11, fontWeight: 800, padding: '3px 8px', borderRadius: 20, background: '#fef2f2', color: '#dc2626', border: '1.5px solid #fca5a5' }}>
-                ⚠ {nbSig} signalements
-              </span>
-            )}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 10px', background: '#eff6ff', border: '1.5px solid #bfdbfe', borderRadius: 20 }}><span style={{ fontSize: 11 }}>👨‍🏫</span><span style={{ fontWeight: 800, fontSize: 12, color: '#1d4ed8' }}>{sig.prof_nom}</span></div>
+            {nbSig > 1 && <span style={{ fontSize: 11, fontWeight: 800, padding: '3px 8px', borderRadius: 20, background: '#fef2f2', color: '#dc2626', border: '1.5px solid #fca5a5' }}>⚠ {nbSig} signalements</span>}
           </div>
-          {/* Raison */}
-          <div style={{ fontSize: 13, color: '#374151', padding: '9px 13px', background: isNew ? 'rgba(233,213,255,.2)' : '#f8fafc', borderRadius: 10, fontStyle: 'italic', borderLeft: `3px solid ${cfg.border}`, lineHeight: 1.55, marginBottom: 8 }}>
-            "{sig.raison}"
-          </div>
-          {/* Méta */}
+          <div style={{ fontSize: 13, color: '#374151', padding: '9px 13px', background: isNew ? 'rgba(233,213,255,.2)' : '#f8fafc', borderRadius: 10, fontStyle: 'italic', borderLeft: `3px solid ${cfg.border}`, lineHeight: 1.55, marginBottom: 8 }}>"{sig.raison}"</div>
           <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
-            <span style={{ fontSize: 11, color: '#94a3b8', fontWeight: 600 }}>
-              📅 {new Date(sig.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })}
-            </span>
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 20, background: cfg.bg, color: cfg.color, border: `1.5px solid ${cfg.border}` }}>
-              <span style={{ width: 6, height: 6, borderRadius: '50%', background: cfg.dot, flexShrink: 0 }}/>
-              {cfg.label}
-            </span>
+            <span style={{ fontSize: 11, color: '#94a3b8', fontWeight: 600 }}>📅 {new Date(sig.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 20, background: cfg.bg, color: cfg.color, border: `1.5px solid ${cfg.border}` }}><span style={{ width: 6, height: 6, borderRadius: '50%', background: cfg.dot, flexShrink: 0 }}/>{cfg.label}</span>
           </div>
         </div>
-        {/* Actions (seulement pour nouveaux) */}
         {isNew && (
           <div style={{ display: 'flex', gap: 7, flexShrink: 0, flexDirection: 'column' }}>
-            <button onClick={() => handleAction(sig, 'ignorer')} disabled={saving}
-              className="adm-btn adm-btn-ghost adm-btn-sm"
-              style={{ fontSize: 12, padding: '7px 13px' }}>🔕 Ignorer</button>
-            <button onClick={() => handleAction(sig, 'avertir')} disabled={saving}
-              className="adm-btn adm-btn-warning adm-btn-sm"
-              style={{ fontSize: 12, padding: '7px 13px' }}>⚠️ Avertir le prof</button>
-            <button onClick={() => handleAction(sig, 'bloquer')} disabled={saving}
-              className="adm-btn adm-btn-danger adm-btn-sm"
-              style={{ fontSize: 12, padding: '7px 13px' }}>🚫 Bloquer prof</button>
+            <button onClick={() => handleAction(sig, 'ignorer')} disabled={saving} className="adm-btn adm-btn-ghost adm-btn-sm" style={{ fontSize: 12, padding: '7px 13px' }}>🔕 Ignorer</button>
+            <button onClick={() => handleAction(sig, 'avertir')} disabled={saving} className="adm-btn adm-btn-warning adm-btn-sm" style={{ fontSize: 12, padding: '7px 13px' }}>⚠️ Avertir le prof</button>
+            <button onClick={() => handleAction(sig, 'bloquer')} disabled={saving} className="adm-btn adm-btn-danger adm-btn-sm" style={{ fontSize: 12, padding: '7px 13px' }}>🚫 Bloquer prof</button>
           </div>
         )}
       </div>
@@ -605,130 +463,54 @@ function SignalementsTab({ signalements, onReload }) {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-
-      {/* KPIs */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 14 }}>
         {[
-          { label: 'Nouveaux',  count: signalements.filter(s => s.statut === 'nouveau').length, color: '#1d4ed8', bg: '#eff6ff', border: '#bfdbfe', icon: '🚨' },
-          { label: 'Ignorés',   count: signalements.filter(s => s.statut === 'ignoré').length,  color: '#64748b', bg: '#f8fafc', border: '#e2e8f0', icon: '🔕' },
-          { label: 'Traités',   count: signalements.filter(s => s.statut === 'traité').length,   color: '#065f46', bg: '#ecfdf5', border: '#6ee7b7', icon: '✅' },
+          { label: 'Nouveaux', count: signalements.filter(s => s.statut === 'nouveau').length, color: '#1d4ed8', bg: '#eff6ff', border: '#bfdbfe', icon: '🚨' },
+          { label: 'Ignorés',  count: signalements.filter(s => s.statut === 'ignoré').length,  color: '#64748b', bg: '#f8fafc', border: '#e2e8f0', icon: '🔕' },
+          { label: 'Traités',  count: signalements.filter(s => s.statut === 'traité').length,   color: '#065f46', bg: '#ecfdf5', border: '#6ee7b7', icon: '✅' },
         ].map((s, i) => (
-          <div key={i} onClick={() => setFiltre(i === 0 ? 'nouveau' : i === 1 ? 'ignoré' : 'traité')}
-            style={{ background: s.bg, border: `1.5px solid ${s.border}`, borderRadius: 20, padding: '20px 22px', display: 'flex', alignItems: 'center', gap: 14, boxShadow: '0 2px 8px rgba(0,0,0,.04)', cursor: 'pointer', transition: 'all .18s' }}
-            onMouseEnter={e => e.currentTarget.style.transform = 'translateY(-2px)'}
-            onMouseLeave={e => e.currentTarget.style.transform = 'none'}>
+          <div key={i} onClick={() => setFiltre(i === 0 ? 'nouveau' : i === 1 ? 'ignoré' : 'traité')} style={{ background: s.bg, border: `1.5px solid ${s.border}`, borderRadius: 20, padding: '20px 22px', display: 'flex', alignItems: 'center', gap: 14, boxShadow: '0 2px 8px rgba(0,0,0,.04)', cursor: 'pointer', transition: 'all .18s' }} onMouseEnter={e => e.currentTarget.style.transform = 'translateY(-2px)'} onMouseLeave={e => e.currentTarget.style.transform = 'none'}>
             <div style={{ width: 46, height: 46, borderRadius: 13, background: 'rgba(255,255,255,.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.3rem', flexShrink: 0 }}>{s.icon}</div>
-            <div>
-              <div style={{ fontFamily: "'Cabinet Grotesk',sans-serif", fontSize: '2rem', fontWeight: 900, color: s.color, lineHeight: 1, marginBottom: 3 }}>{s.count}</div>
-              <div style={{ fontSize: '.72rem', color: s.color, opacity: .7, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '.08em' }}>{s.label}</div>
-            </div>
+            <div><div style={{ fontFamily: "'Cabinet Grotesk',sans-serif", fontSize: '2rem', fontWeight: 900, color: s.color, lineHeight: 1, marginBottom: 3 }}>{s.count}</div><div style={{ fontSize: '.72rem', color: s.color, opacity: .7, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '.08em' }}>{s.label}</div></div>
           </div>
         ))}
       </div>
-
-      {/* Barre filtres + recherche */}
       <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center', background: '#fff', padding: '14px 18px', borderRadius: 16, border: '1.5px solid #f1f5f9', boxShadow: '0 1px 6px rgba(0,0,0,.04)' }}>
         <div style={{ display: 'flex', gap: 6 }}>
           {FILTRES.map(f => (
-            <button key={f.key} onClick={() => setFiltre(f.key)}
-              style={{ padding: '7px 14px', borderRadius: 20, border: `1.5px solid ${filtre === f.key ? '#3b82f6' : '#e2e8f0'}`, background: filtre === f.key ? '#eff6ff' : '#f8fafc', color: filtre === f.key ? '#1d4ed8' : '#64748b', fontWeight: filtre === f.key ? 800 : 600, fontSize: 12, cursor: 'pointer', transition: 'all .15s', fontFamily: "'Instrument Sans',sans-serif", display: 'flex', alignItems: 'center', gap: 5 }}>
-              {f.label}
-              <span style={{ fontSize: 10, fontWeight: 900, padding: '1px 6px', borderRadius: 10, background: filtre === f.key ? '#3b82f6' : '#e2e8f0', color: filtre === f.key ? '#fff' : '#64748b' }}>{f.count}</span>
+            <button key={f.key} onClick={() => setFiltre(f.key)} style={{ padding: '7px 14px', borderRadius: 20, border: `1.5px solid ${filtre === f.key ? '#3b82f6' : '#e2e8f0'}`, background: filtre === f.key ? '#eff6ff' : '#f8fafc', color: filtre === f.key ? '#1d4ed8' : '#64748b', fontWeight: filtre === f.key ? 800 : 600, fontSize: 12, cursor: 'pointer', transition: 'all .15s', fontFamily: "'Instrument Sans',sans-serif", display: 'flex', alignItems: 'center', gap: 5 }}>
+              {f.label}<span style={{ fontSize: 10, fontWeight: 900, padding: '1px 6px', borderRadius: 10, background: filtre === f.key ? '#3b82f6' : '#e2e8f0', color: filtre === f.key ? '#fff' : '#64748b' }}>{f.count}</span>
             </button>
           ))}
         </div>
         <div style={{ flex: 1, minWidth: 180, position: 'relative' }}>
           <span style={{ position: 'absolute', left: 11, top: '50%', transform: 'translateY(-50%)', fontSize: 13, color: '#94a3b8' }}>🔍</span>
-          <input
-            value={recherche} onChange={e => setRecherche(e.target.value)}
-            placeholder="Rechercher par nom prof ou étudiant..."
-            style={{ width: '100%', paddingLeft: 32, paddingRight: 12, paddingTop: 8, paddingBottom: 8, border: '1.5px solid #e2e8f0', borderRadius: 20, fontSize: 12, outline: 'none', fontFamily: "'Instrument Sans',sans-serif", background: '#f8fafc', boxSizing: 'border-box', transition: 'border-color .15s' }}
-            onFocus={e => e.target.style.borderColor = '#3b82f6'}
-            onBlur={e => e.target.style.borderColor = '#e2e8f0'}
-          />
+          <input value={recherche} onChange={e => setRecherche(e.target.value)} placeholder="Rechercher par nom prof ou étudiant..." style={{ width: '100%', paddingLeft: 32, paddingRight: 12, paddingTop: 8, paddingBottom: 8, border: '1.5px solid #e2e8f0', borderRadius: 20, fontSize: 12, outline: 'none', fontFamily: "'Instrument Sans',sans-serif", background: '#f8fafc', boxSizing: 'border-box', transition: 'border-color .15s' }} onFocus={e => e.target.style.borderColor = '#3b82f6'} onBlur={e => e.target.style.borderColor = '#e2e8f0'} />
         </div>
-        {(filtre !== 'tous' || recherche) && (
-          <button onClick={() => { setFiltre('tous'); setRecherche(''); }}
-            style={{ padding: '7px 13px', borderRadius: 20, border: '1.5px solid #fca5a5', background: '#fef2f2', color: '#dc2626', fontWeight: 700, fontSize: 12, cursor: 'pointer', transition: 'all .15s' }}>
-            ✕ Réinitialiser
-          </button>
-        )}
-        {filtered.length !== signalements.length && (
-          <span style={{ fontSize: 11, color: '#94a3b8', marginLeft: 'auto' }}>{filtered.length}/{signalements.length} signalement{filtered.length > 1 ? 's' : ''}</span>
-        )}
+        {(filtre !== 'tous' || recherche) && (<button onClick={() => { setFiltre('tous'); setRecherche(''); }} style={{ padding: '7px 13px', borderRadius: 20, border: '1.5px solid #fca5a5', background: '#fef2f2', color: '#dc2626', fontWeight: 700, fontSize: 12, cursor: 'pointer', transition: 'all .15s' }}>✕ Réinitialiser</button>)}
+        {filtered.length !== signalements.length && (<span style={{ fontSize: 11, color: '#94a3b8', marginLeft: 'auto' }}>{filtered.length}/{signalements.length} signalement{filtered.length > 1 ? 's' : ''}</span>)}
       </div>
-
-      {/* Liste signalements */}
-      {nouveaux.length > 0 && (
-        <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
-            <span style={{ fontSize: 11, fontWeight: 800, color: '#1d4ed8', background: '#eff6ff', padding: '3px 10px', borderRadius: 20, border: '1.5px solid #bfdbfe', textTransform: 'uppercase', letterSpacing: '.06em' }}>⚠ Action requise</span>
-            <span style={{ fontSize: 12, color: '#64748b' }}>{nouveaux.length} signalement{nouveaux.length > 1 ? 's' : ''} en attente</span>
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {nouveaux.map(sig => <SigCard key={sig.id} sig={sig} />)}
-          </div>
-        </div>
-      )}
-
-      {archives.length > 0 && (
-        <div>
-          {nouveaux.length > 0 && <div style={{ height: 1, background: '#f1f5f9', margin: '4px 0 16px' }}/>}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
-            <span style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '.06em' }}>Historique — {archives.length} entrée{archives.length > 1 ? 's' : ''}</span>
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {archives.map(sig => <SigCard key={sig.id} sig={sig} />)}
-          </div>
-        </div>
-      )}
-
-      {filtered.length === 0 && (
-        <div className="adm-card" style={{ padding: 40, textAlign: 'center' }}>
-          <EmptyState icon={recherche ? '🔍' : '✅'} title={recherche ? 'Aucun résultat' : 'Aucun signalement'} sub={recherche ? `Aucun résultat pour "${recherche}"` : 'Tout est calme !'} />
-        </div>
-      )}
-
-      {/* Modal bloquer */}
-      {actionModal && (
-        <ConfirmModal
-          title={`🚫 Bloquer ${actionModal.sig.prof_nom}`}
-          confirmLabel={saving ? 'Blocage...' : '🚫 Bloquer ce professeur'}
-          confirmClass="adm-btn-danger"
-          onConfirm={handleBloquerConfirm}
-          onCancel={() => setActionModal(null)}
-        >
-          <label className="adm-label">Raison du blocage <span style={{ color: '#94a3b8', fontWeight: 400 }}>(communiquée au prof)</span></label>
-          <textarea
-            autoFocus
-            className="adm-input adm-textarea"
-            placeholder="Ex: Comportement inapproprié signalé par plusieurs étudiants..."
-            value={raisonBlocage}
-            onChange={e => setRaisonBlocage(e.target.value)}
-          />
-        </ConfirmModal>
-      )}
+      {nouveaux.length > 0 && (<div><div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}><span style={{ fontSize: 11, fontWeight: 800, color: '#1d4ed8', background: '#eff6ff', padding: '3px 10px', borderRadius: 20, border: '1.5px solid #bfdbfe', textTransform: 'uppercase', letterSpacing: '.06em' }}>⚠ Action requise</span><span style={{ fontSize: 12, color: '#64748b' }}>{nouveaux.length} signalement{nouveaux.length > 1 ? 's' : ''} en attente</span></div><div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>{nouveaux.map(sig => <SigCard key={sig.id} sig={sig} />)}</div></div>)}
+      {archives.length > 0 && (<div>{nouveaux.length > 0 && <div style={{ height: 1, background: '#f1f5f9', margin: '4px 0 16px' }}/>}<div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}><span style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '.06em' }}>Historique — {archives.length} entrée{archives.length > 1 ? 's' : ''}</span></div><div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>{archives.map(sig => <SigCard key={sig.id} sig={sig} />)}</div></div>)}
+      {filtered.length === 0 && (<div className="adm-card" style={{ padding: 40, textAlign: 'center' }}><EmptyState icon={recherche ? '🔍' : '✅'} title={recherche ? 'Aucun résultat' : 'Aucun signalement'} sub={recherche ? `Aucun résultat pour "${recherche}"` : 'Tout est calme !'} /></div>)}
+      {actionModal && (<ConfirmModal title={`🚫 Bloquer ${actionModal.sig.prof_nom}`} confirmLabel={saving ? 'Blocage...' : '🚫 Bloquer ce professeur'} confirmClass="adm-btn-danger" onConfirm={handleBloquerConfirm} onCancel={() => setActionModal(null)}><label className="adm-label">Raison du blocage <span style={{ color: '#94a3b8', fontWeight: 400 }}>(communiquée au prof)</span></label><textarea autoFocus className="adm-input adm-textarea" placeholder="Ex: Comportement inapproprié signalé par plusieurs étudiants..." value={raisonBlocage} onChange={e => setRaisonBlocage(e.target.value)} /></ConfirmModal>)}
     </div>
   );
 }
 
-// ── UsersTab — double filtrage statut + rôle ──
 function UsersTab({ onReload }) {
-  const [users, setUsers]             = useState([]);
-  const [loading, setLoading]         = useState(true);
-  const [search, setSearch]           = useState('');
+  const [users, setUsers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState('');
   const [filterStatut, setFilterStatut] = useState('tous');
-  const [filterRole, setFilterRole]   = useState('tous');
+  const [filterRole, setFilterRole] = useState('tous');
   const [bloquerModal, setBloquerModal] = useState(null);
   const [raisonBlocage, setRaisonBlocage] = useState('');
-  const [saving, setSaving]           = useState(false);
+  const [saving, setSaving] = useState(false);
 
   const fetchUsers = () => {
     setLoading(true);
-    api.get('/api/admin/users/all')
-      .then(r => setUsers(Array.isArray(r.data) ? r.data : []))
-      .catch(() => setUsers([]))
-      .finally(() => setLoading(false));
+    api.get('/api/admin/users/all').then(r => setUsers(Array.isArray(r.data) ? r.data : [])).catch(() => setUsers([])).finally(() => setLoading(false));
   };
   useEffect(() => { fetchUsers(); }, []);
 
@@ -736,17 +518,15 @@ function UsersTab({ onReload }) {
     const nm = `${u.prenom || ''} ${u.nom || ''} ${u.email || ''}`.toLowerCase();
     if (search && !nm.includes(search.toLowerCase())) return false;
     if (filterStatut !== 'tous' && u.statut !== filterStatut) return false;
-    if (filterRole  !== 'tous' && u.role   !== filterRole)   return false;
+    if (filterRole !== 'tous' && u.role !== filterRole) return false;
     return true;
   }), [users, search, filterStatut, filterRole]);
 
   const handleBloquer = async () => {
     if (!bloquerModal) return;
     setSaving(true);
-    try {
-      await api.put(`/api/admin/users/${bloquerModal.id}/bloquer`, { raison: raisonBlocage });
-      setBloquerModal(null); setRaisonBlocage(''); fetchUsers(); onReload();
-    } catch (e) { alert(e.response?.data?.detail || 'Erreur'); }
+    try { await api.put(`/api/admin/users/${bloquerModal.id}/bloquer`, { raison: raisonBlocage }); setBloquerModal(null); setRaisonBlocage(''); fetchUsers(); onReload(); }
+    catch (e) { alert(e.response?.data?.detail || 'Erreur'); }
     finally { setSaving(false); }
   };
 
@@ -755,11 +535,7 @@ function UsersTab({ onReload }) {
     catch (e) { alert(e.response?.data?.detail || 'Erreur'); }
   };
 
-  const ROLE_CFG = {
-    admin:      { c: 'adm-badge-purple', l: 'Admin',      icon: '🛡' },
-    professeur: { c: 'adm-badge-blue',   l: 'Professeur', icon: '👨‍🏫' },
-    étudiant:   { c: 'adm-badge-green',  l: 'Étudiant',   icon: '🎓' },
-  };
+  const ROLE_CFG = { admin: { c: 'adm-badge-purple', l: 'Admin', icon: '🛡' }, professeur: { c: 'adm-badge-blue', l: 'Professeur', icon: '👨‍🏫' }, étudiant: { c: 'adm-badge-green', l: 'Étudiant', icon: '🎓' } };
 
   if (loading) return <div style={{ display: 'flex', justifyContent: 'center', padding: 40 }}><div className="adm-loader" style={{ width: 32, height: 32 }} /></div>;
 
@@ -770,35 +546,25 @@ function UsersTab({ onReload }) {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-
-      {/* ── KPIs ── */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: 12 }}>
         {[
-          { label: 'Total',       count: users.length, color: '#3b82f6', bg: '#eff6ff', border: '#bfdbfe', icon: '👥' },
-          { label: 'Professeurs', count: nbProfs,      color: '#8b5cf6', bg: '#f5f3ff', border: '#ddd6fe', icon: '👨‍🏫' },
-          { label: 'Étudiants',   count: nbEtuds,      color: '#f59e0b', bg: '#fffbeb', border: '#fcd34d', icon: '🎓' },
-          { label: 'Actifs',      count: nbActifs,     color: '#10b981', bg: '#ecfdf5', border: '#6ee7b7', icon: '✅' },
-          { label: 'Bloqués',     count: nbBloques,    color: '#ef4444', bg: '#fef2f2', border: '#fca5a5', icon: '🚫' },
+          { label: 'Total', count: users.length, color: '#3b82f6', bg: '#eff6ff', border: '#bfdbfe', icon: '👥' },
+          { label: 'Professeurs', count: nbProfs, color: '#8b5cf6', bg: '#f5f3ff', border: '#ddd6fe', icon: '👨‍🏫' },
+          { label: 'Étudiants', count: nbEtuds, color: '#f59e0b', bg: '#fffbeb', border: '#fcd34d', icon: '🎓' },
+          { label: 'Actifs', count: nbActifs, color: '#10b981', bg: '#ecfdf5', border: '#6ee7b7', icon: '✅' },
+          { label: 'Bloqués', count: nbBloques, color: '#ef4444', bg: '#fef2f2', border: '#fca5a5', icon: '🚫' },
         ].map((s, i) => (
-          <div key={i} style={{ background: s.bg, border: `1.5px solid ${s.border}`, borderRadius: 18, padding: '16px 18px', display: 'flex', alignItems: 'center', gap: 12, boxShadow: '0 2px 8px rgba(0,0,0,.04)', transition: 'all .18s', cursor: 'default' }}
-            onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 8px 24px rgba(0,0,0,.08)'; }}
-            onMouseLeave={e => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,.04)'; }}>
+          <div key={i} style={{ background: s.bg, border: `1.5px solid ${s.border}`, borderRadius: 18, padding: '16px 18px', display: 'flex', alignItems: 'center', gap: 12, boxShadow: '0 2px 8px rgba(0,0,0,.04)', transition: 'all .18s', cursor: 'default' }} onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 8px 24px rgba(0,0,0,.08)'; }} onMouseLeave={e => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,.04)'; }}>
             <div style={{ width: 38, height: 38, borderRadius: 10, background: 'rgba(255,255,255,.65)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.1rem', flexShrink: 0 }}>{s.icon}</div>
-            <div>
-              <div style={{ fontFamily: "\'Cabinet Grotesk\',sans-serif", fontSize: '1.6rem', fontWeight: 900, color: s.color, lineHeight: 1, marginBottom: 2 }}>{s.count}</div>
-              <div style={{ fontSize: '.68rem', color: s.color, opacity: .7, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '.07em' }}>{s.label}</div>
-            </div>
+            <div><div style={{ fontFamily: "'Cabinet Grotesk',sans-serif", fontSize: '1.6rem', fontWeight: 900, color: s.color, lineHeight: 1, marginBottom: 2 }}>{s.count}</div><div style={{ fontSize: '.68rem', color: s.color, opacity: .7, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '.07em' }}>{s.label}</div></div>
           </div>
         ))}
       </div>
-
-      {/* ── Double filtrage : statut + rôle ── */}
       <div style={{ display: 'flex', gap: 14, alignItems: 'flex-end', flexWrap: 'wrap', padding: '16px 20px', background: '#f8fafc', border: '1.5px solid #f1f5f9', borderRadius: 16 }}>
         <div className="adm-search-wrap" style={{ flex: 1, minWidth: 200 }}>
           <span className="adm-search-icon">🔍</span>
           <input className="adm-input" placeholder="Rechercher par nom ou email..." value={search} onChange={e => setSearch(e.target.value)} />
         </div>
-
         <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
           <span style={{ fontSize: 10, fontWeight: 800, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '.08em' }}>Statut</span>
           <div style={{ display: 'flex', gap: 4 }}>
@@ -807,7 +573,6 @@ function UsersTab({ onReload }) {
             ))}
           </div>
         </div>
-
         <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
           <span style={{ fontSize: 10, fontWeight: 800, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '.08em' }}>Rôle</span>
           <div style={{ display: 'flex', gap: 4 }}>
@@ -816,113 +581,46 @@ function UsersTab({ onReload }) {
             ))}
           </div>
         </div>
-
-        {(filterStatut !== 'tous' || filterRole !== 'tous') && (
-          <button onClick={() => { setFilterStatut('tous'); setFilterRole('tous'); }} style={{ padding: '6px 12px', borderRadius: 10, border: '1.5px solid #fca5a5', background: '#fef2f2', color: '#dc2626', fontSize: 12, fontWeight: 700, cursor: 'pointer', alignSelf: 'flex-end' }}>✕ Réinitialiser</button>
-        )}
-
-        <span style={{ fontSize: 12, color: '#94a3b8', alignSelf: 'flex-end', marginLeft: 'auto', whiteSpace: 'nowrap' }}>
-          <strong style={{ color: '#0F172A' }}>{filtered.length}</strong> utilisateur{filtered.length > 1 ? 's' : ''}
-        </span>
+        {(filterStatut !== 'tous' || filterRole !== 'tous') && (<button onClick={() => { setFilterStatut('tous'); setFilterRole('tous'); }} style={{ padding: '6px 12px', borderRadius: 10, border: '1.5px solid #fca5a5', background: '#fef2f2', color: '#dc2626', fontSize: 12, fontWeight: 700, cursor: 'pointer', alignSelf: 'flex-end' }}>✕ Réinitialiser</button>)}
+        <span style={{ fontSize: 12, color: '#94a3b8', alignSelf: 'flex-end', marginLeft: 'auto', whiteSpace: 'nowrap' }}><strong style={{ color: '#0F172A' }}>{filtered.length}</strong> utilisateur{filtered.length > 1 ? 's' : ''}</span>
       </div>
-
-      {/* ── Tableau ── */}
       <div className="adm-card" style={{ overflow: 'hidden' }}>
         <table className="adm-table">
-          <thead>
-            <tr>
-              <th>Utilisateur</th>
-              <th>Rôle</th>
-              <th>Statut</th>
-              <th>Raison blocage</th>
-              <th>Inscrit le</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
+          <thead><tr><th>Utilisateur</th><th>Rôle</th><th>Statut</th><th>Raison blocage</th><th>Inscrit le</th><th>Actions</th></tr></thead>
           <tbody>
-            {filtered.length === 0 ? (
-              <tr><td colSpan={6} style={{ textAlign: 'center', padding: 40, color: '#94a3b8' }}>Aucun utilisateur trouvé</td></tr>
-            ) : filtered.map(u => {
+            {filtered.length === 0 ? (<tr><td colSpan={6} style={{ textAlign: 'center', padding: 40, color: '#94a3b8' }}>Aucun utilisateur trouvé</td></tr>) : filtered.map(u => {
               const estBloque = u.statut === 'bloqué';
               const roleCfg = ROLE_CFG[u.role] || { c: 'adm-badge-gray', l: u.role, icon: '?' };
               return (
                 <tr key={u.id}>
-                  <td>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                      <div style={{ width: 36, height: 36, borderRadius: 10, background: estBloque ? '#fef2f2' : u.role === 'professeur' ? 'linear-gradient(135deg,#8b5cf6,#a78bfa)' : u.role === 'étudiant' ? 'linear-gradient(135deg,#f59e0b,#fbbf24)' : 'linear-gradient(135deg,#64748b,#94a3b8)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 900, color: estBloque ? '#ef4444' : '#fff', flexShrink: 0 }}>
-                        {estBloque ? '🚫' : roleCfg.icon}
-                      </div>
-                      <div>
-                        <div style={{ fontFamily: 'Cabinet Grotesk,sans-serif', fontWeight: 700, fontSize: 13, color: '#0F172A' }}>{u.prenom} {u.nom}</div>
-                        <div style={{ fontSize: 11, color: '#94a3b8' }}>{u.email}</div>
-                      </div>
-                    </div>
-                  </td>
+                  <td><div style={{ display: 'flex', alignItems: 'center', gap: 10 }}><div style={{ width: 36, height: 36, borderRadius: 10, background: estBloque ? '#fef2f2' : u.role === 'professeur' ? 'linear-gradient(135deg,#8b5cf6,#a78bfa)' : u.role === 'étudiant' ? 'linear-gradient(135deg,#f59e0b,#fbbf24)' : 'linear-gradient(135deg,#64748b,#94a3b8)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 900, color: estBloque ? '#ef4444' : '#fff', flexShrink: 0 }}>{estBloque ? '🚫' : roleCfg.icon}</div><div><div style={{ fontFamily: 'Cabinet Grotesk,sans-serif', fontWeight: 700, fontSize: 13, color: '#0F172A' }}>{u.prenom} {u.nom}</div><div style={{ fontSize: 11, color: '#94a3b8' }}>{u.email}</div></div></div></td>
                   <td><span className={`adm-badge ${roleCfg.c}`}>{roleCfg.l}</span></td>
-                  <td>
-                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 20, background: estBloque ? '#fef2f2' : '#ecfdf5', color: estBloque ? '#991b1b' : '#065f46', border: `1px solid ${estBloque ? '#fca5a5' : '#6ee7b7'}` }}>
-                      {estBloque ? '🚫 Bloqué' : '✓ Actif'}
-                    </span>
-                  </td>
-                  <td style={{ fontSize: 12, color: '#64748b', maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {u.raison_blocage || <span style={{ color: '#e2e8f0' }}>—</span>}
-                  </td>
-                  <td style={{ fontSize: 12, color: '#94a3b8', whiteSpace: 'nowrap' }}>
-                    {u.created_at ? new Date(u.created_at).toLocaleDateString('fr-FR') : '—'}
-                  </td>
-                  <td>
-                    {u.role !== 'admin' && (
-                      estBloque ? (
-                        <button className="adm-btn adm-btn-success adm-btn-sm" onClick={() => handleDebloquer(u.id)}>✓ Débloquer</button>
-                      ) : (
-                        <button className="adm-btn adm-btn-danger adm-btn-sm" onClick={() => { setRaisonBlocage(''); setBloquerModal(u); }}>🚫 Bloquer</button>
-                      )
-                    )}
-                  </td>
+                  <td><span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 20, background: estBloque ? '#fef2f2' : '#ecfdf5', color: estBloque ? '#991b1b' : '#065f46', border: `1px solid ${estBloque ? '#fca5a5' : '#6ee7b7'}` }}>{estBloque ? '🚫 Bloqué' : '✓ Actif'}</span></td>
+                  <td style={{ fontSize: 12, color: '#64748b', maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{u.raison_blocage || <span style={{ color: '#e2e8f0' }}>—</span>}</td>
+                  <td style={{ fontSize: 12, color: '#94a3b8', whiteSpace: 'nowrap' }}>{u.created_at ? new Date(u.created_at).toLocaleDateString('fr-FR') : '—'}</td>
+                  <td>{u.role !== 'admin' && (estBloque ? (<button className="adm-btn adm-btn-success adm-btn-sm" onClick={() => handleDebloquer(u.id)}>✓ Débloquer</button>) : (<button className="adm-btn adm-btn-danger adm-btn-sm" onClick={() => { setRaisonBlocage(''); setBloquerModal(u); }}>🚫 Bloquer</button>))}</td>
                 </tr>
               );
             })}
           </tbody>
         </table>
       </div>
-
-      {/* ── Modal blocage ── */}
       {bloquerModal && (
-        <ConfirmModal
-          title={`🚫 Bloquer ${bloquerModal.prenom} ${bloquerModal.nom}`}
-          confirmLabel={saving ? 'Blocage...' : '🚫 Confirmer le blocage'}
-          confirmClass="adm-btn-danger"
-          onConfirm={handleBloquer}
-          onCancel={() => setBloquerModal(null)}
-        >
-          <label className="adm-label">
-            Raison du blocage <span style={{ color: '#94a3b8', fontWeight: 400 }}>(communiquée à l'utilisateur à sa prochaine connexion)</span>
-          </label>
-          <textarea
-            autoFocus
-            className="adm-input adm-textarea"
-            placeholder="Ex: Non-respect des CGU, comportement inapproprié..."
-            value={raisonBlocage}
-            onChange={e => setRaisonBlocage(e.target.value)}
-          />
-          <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 8 }}>
-            ⚠️ L'utilisateur ne pourra plus se connecter et verra cette raison affichée.
-          </div>
+        <ConfirmModal title={`🚫 Bloquer ${bloquerModal.prenom} ${bloquerModal.nom}`} confirmLabel={saving ? 'Blocage...' : '🚫 Confirmer le blocage'} confirmClass="adm-btn-danger" onConfirm={handleBloquer} onCancel={() => setBloquerModal(null)}>
+          <label className="adm-label">Raison du blocage <span style={{ color: '#94a3b8', fontWeight: 400 }}>(communiquée à l'utilisateur à sa prochaine connexion)</span></label>
+          <textarea autoFocus className="adm-input adm-textarea" placeholder="Ex: Non-respect des CGU, comportement inapproprié..." value={raisonBlocage} onChange={e => setRaisonBlocage(e.target.value)} />
+          <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 8 }}>⚠️ L'utilisateur ne pourra plus se connecter et verra cette raison affichée.</div>
         </ConfirmModal>
       )}
     </div>
   );
 }
 
-// ─── OVERVIEW TAB ─────────────────────────────────────────────────────────────
 function OverviewTab({ stats, allProfs, demandes, counts, onTabChange, onViewProf, chartData }) {
   const pendingProfs = allProfs.filter(p => p.statut_validation === 'en_attente');
   const demandesPending = demandes.filter(d => d.statut === 'en_attente').length;
   const valides = allProfs.filter(p => p.statut_validation === 'validé');
-  const topProfs = [
-    ...valides.filter(p => parseFloat(p.note_moyenne || 0) > 0).sort((a, b) => parseFloat(b.note_moyenne) - parseFloat(a.note_moyenne)),
-    ...valides.filter(p => !parseFloat(p.note_moyenne || 0))
-  ].slice(0, 5);
+  const topProfs = [...valides.filter(p => parseFloat(p.note_moyenne || 0) > 0).sort((a, b) => parseFloat(b.note_moyenne) - parseFloat(a.note_moyenne)), ...valides.filter(p => !parseFloat(p.note_moyenne || 0))].slice(0, 5);
   const { reservations_par_mois = [] } = chartData;
   const totalResa = reservations_par_mois.reduce((a, b) => a + (b.total || 0), 0);
   const pctMois = stats.total_reservations > 0 ? Math.min(100, Math.round(((stats.reservations_mois || 0) / stats.total_reservations) * 100)) : 0;
@@ -933,55 +631,25 @@ function OverviewTab({ stats, allProfs, demandes, counts, onTabChange, onViewPro
     { icon: '📊', val: stats.total_reservations || 0, lbl: 'Total réservations', color: '#f59e0b', bg: '#fffbeb' },
   ];
   const medals = ['🥇', '🥈', '🥉', '4️⃣', '5️⃣'];
-
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
       {(pendingProfs.length > 0 || demandesPending > 0) && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          {pendingProfs.length > 0 && (
-            <div className="adm-alert adm-alert-amber" onClick={() => onTabChange('profs')}>
-              <div style={{ width: 38, height: 38, borderRadius: 10, background: 'rgba(245,158,11,.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, flexShrink: 0 }}>🔔</div>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontFamily: 'Cabinet Grotesk,sans-serif', fontWeight: 800, fontSize: 13, color: '#b45309' }}>{pendingProfs.length} formateur{pendingProfs.length > 1 ? 's' : ''} en attente de validation</div>
-                <div style={{ fontSize: 12, color: '#92400e', marginTop: 2 }}>Répondez rapidement pour ne pas bloquer leur activité</div>
-              </div>
-              <span style={{ fontSize: 12, fontWeight: 700, color: '#b45309', whiteSpace: 'nowrap' }}>Traiter →</span>
-            </div>
-          )}
-          {demandesPending > 0 && (
-            <div className="adm-alert adm-alert-red" onClick={() => onTabChange('demandes')}>
-              <div style={{ width: 38, height: 38, borderRadius: 10, background: 'rgba(239,68,68,.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, flexShrink: 0 }}>💡</div>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontFamily: 'Cabinet Grotesk,sans-serif', fontWeight: 800, fontSize: 13, color: '#9f1239' }}>{demandesPending} demande{demandesPending > 1 ? 's' : ''} de matière en attente</div>
-                <div style={{ fontSize: 12, color: '#881337', marginTop: 2 }}>Des formateurs souhaitent enseigner de nouvelles matières</div>
-              </div>
-              <span style={{ fontSize: 12, fontWeight: 700, color: '#dc2626', whiteSpace: 'nowrap' }}>Voir →</span>
-            </div>
-          )}
+          {pendingProfs.length > 0 && (<div className="adm-alert adm-alert-amber" onClick={() => onTabChange('profs')}><div style={{ width: 38, height: 38, borderRadius: 10, background: 'rgba(245,158,11,.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, flexShrink: 0 }}>🔔</div><div style={{ flex: 1 }}><div style={{ fontFamily: 'Cabinet Grotesk,sans-serif', fontWeight: 800, fontSize: 13, color: '#b45309' }}>{pendingProfs.length} formateur{pendingProfs.length > 1 ? 's' : ''} en attente de validation</div><div style={{ fontSize: 12, color: '#92400e', marginTop: 2 }}>Répondez rapidement pour ne pas bloquer leur activité</div></div><span style={{ fontSize: 12, fontWeight: 700, color: '#b45309', whiteSpace: 'nowrap' }}>Traiter →</span></div>)}
+          {demandesPending > 0 && (<div className="adm-alert adm-alert-red" onClick={() => onTabChange('demandes')}><div style={{ width: 38, height: 38, borderRadius: 10, background: 'rgba(239,68,68,.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, flexShrink: 0 }}>💡</div><div style={{ flex: 1 }}><div style={{ fontFamily: 'Cabinet Grotesk,sans-serif', fontWeight: 800, fontSize: 13, color: '#9f1239' }}>{demandesPending} demande{demandesPending > 1 ? 's' : ''} de matière en attente</div><div style={{ fontSize: 12, color: '#881337', marginTop: 2 }}>Des formateurs souhaitent enseigner de nouvelles matières</div></div><span style={{ fontSize: 12, fontWeight: 700, color: '#dc2626', whiteSpace: 'nowrap' }}>Voir →</span></div>)}
         </div>
       )}
-
       <div className="adm-chart-card adm-fadeUp" style={{ animationDelay: '.05s' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 10 }}>
-          <div>
-            <div className="adm-section-title" style={{ marginBottom: 3 }}>
-              <div className="adm-section-title-bar" />
-              <h3>Évolution des réservations</h3>
-            </div>
-            <div style={{ paddingLeft: 11, fontSize: 12, color: '#94a3b8' }}>{totalResa} réservation{totalResa !== 1 ? 's' : ''} au total</div>
-          </div>
+          <div><div className="adm-section-title" style={{ marginBottom: 3 }}><div className="adm-section-title-bar" /><h3>Évolution des réservations</h3></div><div style={{ paddingLeft: 11, fontSize: 12, color: '#94a3b8' }}>{totalResa} réservation{totalResa !== 1 ? 's' : ''} au total</div></div>
           <button className="adm-btn adm-btn-ghost adm-btn-sm" onClick={() => onTabChange('analytiques')}>Voir l'analyse complète →</button>
         </div>
         {reservations_par_mois.length > 0 ? <div className="adm-canvas-wrap"><ChartLine data={reservations_par_mois} /></div> : <EmptyState icon="📈" title="Aucune réservation encore" sub="Les données apparaîtront dès les premières réservations" />}
       </div>
-
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
         <div className="adm-chart-card adm-fadeUp" style={{ animationDelay: '.1s' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-            <div>
-              <div className="adm-section-title" style={{ marginBottom: 3 }}><div className="adm-section-title-bar" /><h3>Top Formateurs</h3></div>
-              <div style={{ paddingLeft: 11, fontSize: 12, color: '#94a3b8' }}>{valides.length} formateur{valides.length !== 1 ? 's' : ''} actif{valides.length !== 1 ? 's' : ''}</div>
-            </div>
+            <div><div className="adm-section-title" style={{ marginBottom: 3 }}><div className="adm-section-title-bar" /><h3>Top Formateurs</h3></div><div style={{ paddingLeft: 11, fontSize: 12, color: '#94a3b8' }}>{valides.length} formateur{valides.length !== 1 ? 's' : ''} actif{valides.length !== 1 ? 's' : ''}</div></div>
             <button className="adm-btn adm-btn-ghost adm-btn-sm" onClick={() => onTabChange('profs')}>Voir tous</button>
           </div>
           {topProfs.length > 0 ? (
@@ -990,69 +658,38 @@ function OverviewTab({ stats, allProfs, demandes, counts, onTabChange, onViewPro
                 const nm = `${p.user_prenom || ''} ${p.user_nom || ''}`.trim();
                 const note = parseFloat(p.note_moyenne || 0);
                 const mats = p.tarifs_matieres ? [...new Set(p.tarifs_matieres.map(t => t.nom_matiere))].slice(0, 2) : [];
-                const initials = nm.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
                 const pals = [['#00153D', '#1E3A8A'], ['#065F46', '#047857'], ['#4C1D95', '#6D28D9'], ['#7C2D12', '#B45309']];
                 const [a, b] = pals[nm.charCodeAt(0) % pals.length];
                 return (
                   <div key={p.id} className="adm-top-row" onClick={() => onViewProf(p)}>
                     <span style={{ fontSize: 16, width: 26, textAlign: 'center', flexShrink: 0 }}>{medals[i]}</span>
                     <div style={{ width: 34, height: 34, borderRadius: 10, background: `linear-gradient(135deg,${a},${b})`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 900, color: '#fff', flexShrink: 0, fontFamily: 'Cabinet Grotesk,sans-serif', overflow: 'hidden' }}>
-                      {p.photo_url ? <img src={`http://localhost:8001${p.photo_url}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="" /> : initials}
+                      {p.photo_url ? <img src={`http://localhost:8001${p.photo_url}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="" /> : nm.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2)}
                     </div>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontFamily: 'Cabinet Grotesk,sans-serif', fontWeight: 800, fontSize: 13, color: '#0F172A', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{nm}</div>
-                      <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 1 }}>{mats.length > 0 ? mats.join(' · ') : 'Aucune matière'}</div>
-                    </div>
-                    <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                      {note > 0 ? <><div style={{ fontSize: 13, fontWeight: 800, color: '#f59e0b', fontFamily: 'Cabinet Grotesk,sans-serif' }}>⭐ {note.toFixed(1)}</div><div style={{ fontSize: 10, color: '#94a3b8' }}>{p.nb_avis} avis</div></> : <span className="adm-badge adm-badge-blue" style={{ fontSize: 10 }}>Nouveau ✨</span>}
-                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}><div style={{ fontFamily: 'Cabinet Grotesk,sans-serif', fontWeight: 800, fontSize: 13, color: '#0F172A', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{nm}</div><div style={{ fontSize: 11, color: '#94a3b8', marginTop: 1 }}>{mats.length > 0 ? mats.join(' · ') : 'Aucune matière'}</div></div>
+                    <div style={{ textAlign: 'right', flexShrink: 0 }}>{note > 0 ? <><div style={{ fontSize: 13, fontWeight: 800, color: '#f59e0b', fontFamily: 'Cabinet Grotesk,sans-serif' }}>⭐ {note.toFixed(1)}</div><div style={{ fontSize: 10, color: '#94a3b8' }}>{p.nb_avis} avis</div></> : <span className="adm-badge adm-badge-blue" style={{ fontSize: 10 }}>Nouveau ✨</span>}</div>
                   </div>
                 );
               })}
             </div>
           ) : <EmptyState icon="👨‍🏫" title="Aucun formateur validé" />}
         </div>
-
         <div className="adm-chart-card adm-fadeUp" style={{ animationDelay: '.15s' }}>
-          <div style={{ marginBottom: 16 }}>
-            <div className="adm-section-title" style={{ marginBottom: 3 }}><div className="adm-section-title-bar" /><h3>Activité de la plateforme</h3></div>
-            <div style={{ paddingLeft: 11, fontSize: 12, color: '#94a3b8' }}>{new Date().toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })}</div>
-          </div>
+          <div style={{ marginBottom: 16 }}><div className="adm-section-title" style={{ marginBottom: 3 }}><div className="adm-section-title-bar" /><h3>Activité de la plateforme</h3></div><div style={{ paddingLeft: 11, fontSize: 12, color: '#94a3b8' }}>{new Date().toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })}</div></div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 14 }}>
-            {activiteKpis.map(s => (
-              <div key={s.lbl} style={{ background: s.bg, borderRadius: 14, padding: '14px 16px', border: `1.5px solid ${s.color}22` }}>
-                <div style={{ fontSize: 20, marginBottom: 6 }}>{s.icon}</div>
-                <div style={{ fontFamily: 'Cabinet Grotesk,sans-serif', fontSize: 24, fontWeight: 900, color: s.color, lineHeight: 1, marginBottom: 3 }}>{s.val}</div>
-                <div style={{ fontSize: 11, color: s.color, opacity: .75, fontWeight: 600 }}>{s.lbl}</div>
-              </div>
-            ))}
+            {activiteKpis.map(s => (<div key={s.lbl} style={{ background: s.bg, borderRadius: 14, padding: '14px 16px', border: `1.5px solid ${s.color}22` }}><div style={{ fontSize: 20, marginBottom: 6 }}>{s.icon}</div><div style={{ fontFamily: 'Cabinet Grotesk,sans-serif', fontSize: 24, fontWeight: 900, color: s.color, lineHeight: 1, marginBottom: 3 }}>{s.val}</div><div style={{ fontSize: 11, color: s.color, opacity: .75, fontWeight: 600 }}>{s.lbl}</div></div>))}
           </div>
-          {stats.total_reservations > 0 && (
-            <div style={{ padding: '12px 14px', background: '#f8fafc', borderRadius: 12, border: '1.5px solid #f1f5f9' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                <span style={{ fontSize: 12, fontWeight: 600, color: '#0F172A' }}>Ce mois / total</span>
-                <span style={{ fontFamily: 'Cabinet Grotesk,sans-serif', fontWeight: 800, fontSize: 12, color: '#3b82f6' }}>{stats.reservations_mois || 0} / {stats.total_reservations}</span>
-              </div>
-              <div className="adm-bar-track"><div className="adm-bar-fill" style={{ width: `${pctMois}%`, background: 'linear-gradient(90deg,#3b82f6,#60a5fa)' }} /></div>
-              <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 5 }}>{pctMois}% de l'activité réalisée ce mois</div>
-            </div>
-          )}
+          {stats.total_reservations > 0 && (<div style={{ padding: '12px 14px', background: '#f8fafc', borderRadius: 12, border: '1.5px solid #f1f5f9' }}><div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}><span style={{ fontSize: 12, fontWeight: 600, color: '#0F172A' }}>Ce mois / total</span><span style={{ fontFamily: 'Cabinet Grotesk,sans-serif', fontWeight: 800, fontSize: 12, color: '#3b82f6' }}>{stats.reservations_mois || 0} / {stats.total_reservations}</span></div><div className="adm-bar-track"><div className="adm-bar-fill" style={{ width: `${pctMois}%`, background: 'linear-gradient(90deg,#3b82f6,#60a5fa)' }} /></div><div style={{ fontSize: 11, color: '#94a3b8', marginTop: 5 }}>{pctMois}% de l'activité réalisée ce mois</div></div>)}
         </div>
       </div>
     </div>
   );
 }
 
-// ─── ANALYTIQUES TAB (complet, identique à l'original) ───────────────────────
 function TableauBI({ data }) {
   const deduped = useMemo(() => {
     const map = {};
-    data.forEach(m => {
-      const key = (m.label || '').toLowerCase().trim();
-      if (!map[key]) map[key] = { label: m.label, nb_profs: 0, nb_resa: 0 };
-      map[key].nb_profs += (m.nb_profs || 0);
-      map[key].nb_resa += (m.nb_resa || 0);
-    });
+    data.forEach(m => { const key = (m.label || '').toLowerCase().trim(); if (!map[key]) map[key] = { label: m.label, nb_profs: 0, nb_resa: 0 }; map[key].nb_profs += (m.nb_profs || 0); map[key].nb_resa += (m.nb_resa || 0); });
     return Object.values(map).sort((a, b) => b.nb_profs !== a.nb_profs ? b.nb_profs - a.nb_profs : b.nb_resa - a.nb_resa);
   }, [data]);
   const maxResa = Math.max(...deduped.map(d => d.nb_resa || 0), 1);
@@ -1066,13 +703,7 @@ function TableauBI({ data }) {
   return (
     <div style={{ overflowX: 'auto', borderRadius: 16, border: '1.5px solid #f1f5f9' }}>
       <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-        <thead>
-          <tr style={{ background: '#f8fafc' }}>
-            {['#', 'Matière', 'Formateurs', 'Réservations', 'Taux', 'Statut'].map((h, i) => (
-              <th key={i} style={{ padding: '10px 14px', textAlign: i > 1 ? 'center' : 'left', fontSize: 10, fontWeight: 800, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '.08em', whiteSpace: 'nowrap', borderBottom: '1.5px solid #f1f5f9' }}>{h}</th>
-            ))}
-          </tr>
-        </thead>
+        <thead><tr style={{ background: '#f8fafc' }}>{['#', 'Matière', 'Formateurs', 'Réservations', 'Taux', 'Statut'].map((h, i) => (<th key={i} style={{ padding: '10px 14px', textAlign: i > 1 ? 'center' : 'left', fontSize: 10, fontWeight: 800, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '.08em', whiteSpace: 'nowrap', borderBottom: '1.5px solid #f1f5f9' }}>{h}</th>))}</tr></thead>
         <tbody>
           {deduped.map((m, i) => {
             const r = m.nb_resa || 0, p = m.nb_profs || 0, sat = getSat(p, r);
@@ -1083,12 +714,7 @@ function TableauBI({ data }) {
                 <td style={{ padding: '12px 14px', color: '#cbd5e1', fontSize: 12, fontWeight: 700 }}>{i + 1}</td>
                 <td style={{ padding: '12px 14px' }}><div style={{ fontFamily: 'Cabinet Grotesk,sans-serif', fontWeight: 800, fontSize: 13, color: '#0F172A' }}>{m.label}</div></td>
                 <td style={{ padding: '12px 14px', textAlign: 'center' }}><span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 32, height: 32, borderRadius: 10, background: p > 0 ? '#ecfdf5' : '#f1f5f9', color: p > 0 ? '#059669' : '#94a3b8', fontFamily: 'Cabinet Grotesk,sans-serif', fontWeight: 900, fontSize: 15 }}>{p}</span></td>
-                <td style={{ padding: '12px 14px', textAlign: 'center' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'center' }}>
-                    <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 32, height: 32, borderRadius: 10, background: r > 0 ? '#eff6ff' : '#f1f5f9', color: r > 0 ? '#3b82f6' : '#94a3b8', fontFamily: 'Cabinet Grotesk,sans-serif', fontWeight: 900, fontSize: 15 }}>{r}</span>
-                    <div style={{ width: 56, height: 5, background: '#e2e8f0', borderRadius: 3, overflow: 'hidden' }}><div style={{ width: pct + '%', height: '100%', background: '#3b82f6', borderRadius: 3, transition: 'width .6s ease' }} /></div>
-                  </div>
-                </td>
+                <td style={{ padding: '12px 14px', textAlign: 'center' }}><div style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'center' }}><span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 32, height: 32, borderRadius: 10, background: r > 0 ? '#eff6ff' : '#f1f5f9', color: r > 0 ? '#3b82f6' : '#94a3b8', fontFamily: 'Cabinet Grotesk,sans-serif', fontWeight: 900, fontSize: 15 }}>{r}</span><div style={{ width: 56, height: 5, background: '#e2e8f0', borderRadius: 3, overflow: 'hidden' }}><div style={{ width: pct + '%', height: '100%', background: '#3b82f6', borderRadius: 3, transition: 'width .6s ease' }} /></div></div></td>
                 <td style={{ padding: '12px 14px', textAlign: 'center' }}>{taux ? <span style={{ fontFamily: 'Cabinet Grotesk,sans-serif', fontWeight: 800, fontSize: 13, color: parseFloat(taux) > 1 ? '#059669' : parseFloat(taux) > 0.5 ? '#d97706' : '#94a3b8' }}>{taux}</span> : <span style={{ color: '#e2e8f0', fontSize: 16 }}>—</span>}</td>
                 <td style={{ padding: '12px 14px', textAlign: 'center' }}><span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 11, fontWeight: 700, padding: '4px 10px', borderRadius: 20, background: sat.bg, color: sat.c, whiteSpace: 'nowrap', border: `1.5px solid ${sat.dot}44` }}><span style={{ width: 6, height: 6, borderRadius: '50%', background: sat.dot, flexShrink: 0 }} />{sat.l}</span></td>
               </tr>
@@ -1100,8 +726,6 @@ function TableauBI({ data }) {
   );
 }
 
-
-/* ── PieChartSVG : graphique camembert SVG inline ── */
 function PieChartSVG({ data, size = 180 }) {
   const total = data.reduce((s, d) => s + (d.val || 0), 0);
   if (total === 0) return <div style={{ textAlign:'center', color:'#94a3b8', fontSize:13, padding:24 }}>Aucune donnée</div>;
@@ -1109,25 +733,14 @@ function PieChartSVG({ data, size = 180 }) {
   let startAngle = -Math.PI / 2;
   const slices = data.map(d => {
     const angle = (d.val / total) * 2 * Math.PI;
-    const x1 = cx + r * Math.cos(startAngle);
-    const y1 = cy + r * Math.sin(startAngle);
+    const x1 = cx + r * Math.cos(startAngle); const y1 = cy + r * Math.sin(startAngle);
     startAngle += angle;
-    const x2 = cx + r * Math.cos(startAngle);
-    const y2 = cy + r * Math.sin(startAngle);
-    const large = angle > Math.PI ? 1 : 0;
-    return { ...d, x1, y1, x2, y2, large, startAngle: startAngle - angle, angle };
+    const x2 = cx + r * Math.cos(startAngle); const y2 = cy + r * Math.sin(startAngle);
+    return { ...d, x1, y1, x2, y2, large: angle > Math.PI ? 1 : 0 };
   });
   return (
     <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} style={{ display:'block', margin:'0 auto' }}>
-      {slices.map((s, i) => (
-        <path key={i}
-          d={`M ${cx} ${cy} L ${s.x1} ${s.y1} A ${r} ${r} 0 ${s.large} 1 ${s.x2} ${s.y2} Z`}
-          fill={s.color} stroke="#fff" strokeWidth={2}
-          style={{ transition:'opacity .2s' }}
-          onMouseEnter={e => e.target.style.opacity='.8'}
-          onMouseLeave={e => e.target.style.opacity='1'}
-        />
-      ))}
+      {slices.map((s, i) => (<path key={i} d={`M ${cx} ${cy} L ${s.x1} ${s.y1} A ${r} ${r} 0 ${s.large} 1 ${s.x2} ${s.y2} Z`} fill={s.color} stroke="#fff" strokeWidth={2} style={{ transition:'opacity .2s' }} onMouseEnter={e => e.target.style.opacity='.8'} onMouseLeave={e => e.target.style.opacity='1'} />))}
       <circle cx={cx} cy={cy} r={r * 0.52} fill="#fff" />
       <text x={cx} y={cy - 6} textAnchor="middle" fontSize={20} fontWeight={900} fill="#0F172A">{total}</text>
       <text x={cx} y={cy + 12} textAnchor="middle" fontSize={10} fontWeight={600} fill="#94a3b8">TOTAL</text>
@@ -1135,45 +748,21 @@ function PieChartSVG({ data, size = 180 }) {
   );
 }
 
-/* ── LineChartSVG : graphique courbe SVG inline ── */
 function LineChartSVG({ data, color = '#3b82f6' }) {
   if (!data || data.length === 0) return <div style={{ textAlign:'center', color:'#94a3b8', fontSize:13, padding:24 }}>Aucune donnée</div>;
   const W = 420, H = 140, padL = 36, padR = 16, padT = 16, padB = 32;
   const maxVal = Math.max(...data.map(d => d.val || 0), 1);
-  const pts = data.map((d, i) => ({
-    x: padL + (i / Math.max(data.length - 1, 1)) * (W - padL - padR),
-    y: padT + (1 - (d.val || 0) / maxVal) * (H - padT - padB),
-    ...d,
-  }));
+  const pts = data.map((d, i) => ({ x: padL + (i / Math.max(data.length - 1, 1)) * (W - padL - padR), y: padT + (1 - (d.val || 0) / maxVal) * (H - padT - padB), ...d }));
   const pathD = pts.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ');
   const areaD = `${pathD} L ${pts[pts.length-1].x} ${H-padB} L ${pts[0].x} ${H-padB} Z`;
   return (
     <svg width="100%" viewBox={`0 0 ${W} ${H}`} style={{ overflow:'visible' }}>
-      <defs>
-        <linearGradient id="lgSig" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor={color} stopOpacity={0.18} />
-          <stop offset="100%" stopColor={color} stopOpacity={0} />
-        </linearGradient>
-      </defs>
-      {/* Grille horizontale */}
-      {[0,.25,.5,.75,1].map((t, i) => (
-        <line key={i} x1={padL} x2={W-padR} y1={padT + t*(H-padT-padB)} y2={padT + t*(H-padT-padB)} stroke="#f1f5f9" strokeWidth={1} />
-      ))}
-      {/* Aire */}
+      <defs><linearGradient id="lgSig" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={color} stopOpacity={0.18} /><stop offset="100%" stopColor={color} stopOpacity={0} /></linearGradient></defs>
+      {[0,.25,.5,.75,1].map((t, i) => (<line key={i} x1={padL} x2={W-padR} y1={padT + t*(H-padT-padB)} y2={padT + t*(H-padT-padB)} stroke="#f1f5f9" strokeWidth={1} />))}
       <path d={areaD} fill="url(#lgSig)" />
-      {/* Courbe */}
       <path d={pathD} fill="none" stroke={color} strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" />
-      {/* Points */}
-      {pts.map((p, i) => (
-        <circle key={i} cx={p.x} cy={p.y} r={4} fill="#fff" stroke={color} strokeWidth={2.5}>
-          <title>{p.label} : {p.val}</title>
-        </circle>
-      ))}
-      {/* Labels X */}
-      {pts.filter((_, i) => data.length <= 8 || i % Math.ceil(data.length/8) === 0).map((p, i) => (
-        <text key={i} x={p.x} y={H-padB+14} textAnchor="middle" fontSize={9} fill="#94a3b8" fontWeight={600}>{p.label}</text>
-      ))}
-      {/* Labels Y max/min */}
+      {pts.map((p, i) => (<circle key={i} cx={p.x} cy={p.y} r={4} fill="#fff" stroke={color} strokeWidth={2.5}><title>{p.label} : {p.val}</title></circle>))}
+      {pts.filter((_, i) => data.length <= 8 || i % Math.ceil(data.length/8) === 0).map((p, i) => (<text key={i} x={p.x} y={H-padB+14} textAnchor="middle" fontSize={9} fill="#94a3b8" fontWeight={600}>{p.label}</text>))}
       <text x={padL-4} y={padT+4} textAnchor="end" fontSize={9} fill="#94a3b8">{maxVal}</text>
       <text x={padL-4} y={H-padB} textAnchor="end" fontSize={9} fill="#94a3b8">0</text>
     </svg>
@@ -1184,6 +773,7 @@ function AnalytiquesTab({ stats, allProfs, chartData, onTabChange, signalements 
   const [domainIdx, setDomainIdx] = useState(0);
   const [metric, setMetric] = useState('nb_profs');
   const [viewMode, setViewMode] = useState('matiere');
+  const setViewModeAndReset = (v) => { setViewMode(v); if (v === 'matiere') setMetric('nb_profs'); };
   const [expandedNiv, setExpandedNiv] = useState({});
   const { reservations_par_mois = [], reservations_par_jour = [], matieres_par_domaine = [], modes_enseignement = [], statut_profs = [], par_niveau = [], entonnoir = {}, performance_profs = [] } = chartData;
   const totalResa = reservations_par_mois.reduce((a, b) => a + (b.total || 0), 0);
@@ -1274,19 +864,13 @@ function AnalytiquesTab({ stats, allProfs, chartData, onTabChange, signalements 
           </div>
         ))}
       </div>
-      {/* ══════ GRAPHIQUES SIGNALEMENTS ══════ */}
       {(() => {
-        // ── Données Doughnut ──
-        // Statut direct depuis la table signalements (source de vérité)
         const sigNouveaux = signalements.filter(s => s.statut === 'nouveau').length;
         const sigIgnores  = signalements.filter(s => s.statut === 'ignoré').length;
         const sigTraites  = signalements.filter(s => s.statut === 'traité').length;
-        // Blocages = users bloqués (provenant des actions admin sur signalements)
         const nbBloques   = (users || []).filter(u => u.statut === 'bloqué').length;
-        // Avertissements = traités qui ne sont pas des blocages
         const nbAvertis   = Math.max(0, sigTraites - nbBloques);
         const totalSig    = signalements.length;
-
         const doughnutData = [
           { label: 'En attente',     val: sigNouveaux, color: '#3b82f6' },
           { label: 'Ignorés',        val: sigIgnores,  color: '#94a3b8' },
@@ -1294,8 +878,6 @@ function AnalytiquesTab({ stats, allProfs, chartData, onTabChange, signalements 
           { label: 'Blocages',       val: nbBloques,   color: '#ef4444' },
         ].filter(d => d.val > 0);
         const doughnutColors = doughnutData.map(d => d.color);
-
-        // ── Données évolution : regrouper par semaine si 1 seul mois, sinon par mois ──
         const MOIS_FR = ['Jan','Fév','Mar','Avr','Mai','Jun','Jul','Aoû','Sep','Oct','Nov','Déc'];
         const sigParMois = {};
         signalements.forEach(s => {
@@ -1304,18 +886,21 @@ function AnalytiquesTab({ stats, allProfs, chartData, onTabChange, signalements 
           const key = `${MOIS_FR[d.getMonth()]} ${d.getFullYear()}`;
           sigParMois[key] = (sigParMois[key] || 0) + 1;
         });
-        const moisKeys = Object.keys(sigParMois);
+        const MOIS_ORDER = ['Jan','Fév','Mar','Avr','Mai','Jun','Jul','Aoû','Sep','Oct','Nov','Déc'];
+        const moisKeys = Object.keys(sigParMois).sort((a, b) => {
+          const [mA, yA] = a.split(' ');
+          const [mB, yB] = b.split(' ');
+          if (yA !== yB) return parseInt(yA) - parseInt(yB);
+          return MOIS_ORDER.indexOf(mA) - MOIS_ORDER.indexOf(mB);
+        });
         const nbMois   = moisKeys.length;
-
-        // Si 1 seul mois → regrouper par semaine du mois
-        let chartMode = 'mois'; // 'mois' | 'semaine'
+        let chartMode = 'mois';
         let lineData  = [];
         if (nbMois > 1) {
           chartMode = 'mois';
           lineData  = moisKeys.map(k => ({ label: k, val: sigParMois[k], mois: k })).slice(-8);
         } else if (nbMois === 1) {
           chartMode = 'semaine';
-          // Regrouper par semaine du mois (S1=j1-7, S2=j8-14, S3=j15-21, S4=j22+)
           const semaines = { 'S1': 0, 'S2': 0, 'S3': 0, 'S4': 0 };
           signalements.forEach(s => {
             if (!s.created_at) return;
@@ -1328,7 +913,6 @@ function AnalytiquesTab({ stats, allProfs, chartData, onTabChange, signalements 
           lineData = Object.entries(semaines)
             .map(([label, val]) => ({ label, val, mois: label }))
             .filter((_, i) => {
-              // garder uniquement jusqu'à la semaine courante
               const now = new Date();
               const jourCourant = now.getDate();
               if (i === 0) return true;
@@ -1337,43 +921,24 @@ function AnalytiquesTab({ stats, allProfs, chartData, onTabChange, signalements 
               return jourCourant > 21;
             });
         }
-
         const hasMultiPts = lineData.length > 1;
-
         return (
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.4fr', gap: 20, marginBottom: 4 }}>
-
-            {/* ── Doughnut Résultats signalements ── */}
             <div className="adm-chart-card">
-              <SectionTitle
-                title="Résultats des signalements"
-                sub={totalSig > 0 ? `${totalSig} signalement${totalSig > 1 ? 's' : ''} au total` : 'Aucun signalement'}
-              />
+              <SectionTitle title="Résultats des signalements" sub={totalSig > 0 ? `${totalSig} signalement${totalSig > 1 ? 's' : ''} au total` : 'Aucun signalement'} />
               {totalSig > 0 && doughnutData.length > 0 ? (
-                <div className="adm-canvas-wrap">
-                  <ChartDoughnut data={doughnutData} colors={doughnutColors} />
-                </div>
+                <div className="adm-canvas-wrap"><ChartDoughnut data={doughnutData} colors={doughnutColors} /></div>
               ) : (
                 <EmptyState icon="🚨" title="Aucun signalement" sub="Les données apparaîtront dès les premiers signalements" />
               )}
             </div>
-
-            {/* ── Évolution signalements ── */}
             <div className="adm-chart-card">
-              <SectionTitle
-                title="Évolution des signalements"
-                sub={chartMode === 'semaine'
-                  ? `Par semaine · ${moisKeys[0] || ''}`
-                  : 'Par mois · données réelles'}
-              />
+              <SectionTitle title="Évolution des signalements" sub={chartMode === 'semaine' ? `Par semaine · ${moisKeys[0] || ''}` : 'Par mois · données réelles'} />
               {totalSig === 0 ? (
                 <EmptyState icon="📈" title="Aucun signalement enregistré" sub="La courbe apparaîtra avec le temps" />
               ) : hasMultiPts ? (
-                <div className="adm-canvas-wrap">
-                  <ChartLineSig data={lineData} />
-                </div>
+                <div className="adm-canvas-wrap"><ChartLineSig data={lineData} /></div>
               ) : (
-                // 1 seul point (ex: tous dans S1) — barre verticale animée
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 14, paddingTop: 4 }}>
                   {lineData.map((d, i) => (
                     <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
@@ -1393,23 +958,14 @@ function AnalytiquesTab({ stats, allProfs, chartData, onTabChange, signalements 
                 </div>
               )}
             </div>
-
           </div>
         );
       })()}
-      {/* Bouton raccourci vers onglet signalements */}
       <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 8, marginBottom: 4 }}>
-        <button
-          onClick={() => onTabChange('signalements')}
-          style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px', background: '#fef2f2', color: '#dc2626', border: '1.5px solid #fca5a5', borderRadius: 10, cursor: 'pointer', fontWeight: 700, fontSize: 12, transition: 'all .18s' }}
-          onMouseEnter={e => { e.currentTarget.style.background = '#fee2e2'; e.currentTarget.style.transform = 'translateY(-1px)'; }}
-          onMouseLeave={e => { e.currentTarget.style.background = '#fef2f2'; e.currentTarget.style.transform = 'none'; }}
-        >
+        <button onClick={() => onTabChange('signalements')} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px', background: '#fef2f2', color: '#dc2626', border: '1.5px solid #fca5a5', borderRadius: 10, cursor: 'pointer', fontWeight: 700, fontSize: 12, transition: 'all .18s' }} onMouseEnter={e => { e.currentTarget.style.background = '#fee2e2'; e.currentTarget.style.transform = 'translateY(-1px)'; }} onMouseLeave={e => { e.currentTarget.style.background = '#fef2f2'; e.currentTarget.style.transform = 'none'; }}>
           🚨 Gérer les signalements →
         </button>
       </div>
-      {/* ══════ FIN GRAPHIQUES SIGNALEMENTS ══════ */}
-
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
         <div className="adm-chart-card"><SectionTitle title="Réservations par mois" sub={totalResa > 0 ? `${totalResa} au total` : 'Aucune encore'} />{reservations_par_mois.length > 0 ? <div className="adm-canvas-wrap"><ChartLine data={reservations_par_mois} /></div> : <EmptyState icon="📈" title="Aucune donnée" />}</div>
         <div className="adm-chart-card"><SectionTitle title="Activité par jour de semaine" />{reservations_par_jour.length > 0 ? <div className="adm-canvas-wrap"><ChartBar data={reservations_par_jour} /></div> : <EmptyState icon="📊" title="Aucune donnée" />}</div>
@@ -1428,7 +984,7 @@ function AnalytiquesTab({ stats, allProfs, chartData, onTabChange, signalements 
               {matieres_par_domaine.map((d, i) => (<button key={i} onClick={() => setDomainIdx(i)} style={{ padding: '6px 14px', fontSize: 12, fontWeight: 700, borderRadius: 10, border: 'none', cursor: 'pointer', background: i === domainIdx ? '#3b82f6' : 'transparent', color: i === domainIdx ? '#fff' : '#64748b', transition: 'all .18s' }}>{d.domaine}</button>))}
             </div>
             <div style={{ display: 'flex', gap: 4, padding: 4, background: '#f8fafc', borderRadius: 14, border: '1.5px solid #f1f5f9' }}>
-              {[['matiere', '📚 Par matière'], ['niveau', '🎓 Par niveau']].map(([v, l]) => (<button key={v} onClick={() => setViewMode(v)} style={{ padding: '6px 12px', fontSize: 12, fontWeight: 700, borderRadius: 10, border: 'none', cursor: 'pointer', background: viewMode === v ? '#8b5cf6' : 'transparent', color: viewMode === v ? '#fff' : '#64748b', transition: 'all .18s' }}>{l}</button>))}
+              {[['matiere', '📚 Par matière'], ['niveau', '🎓 Par niveau']].map(([v, l]) => (<button key={v} onClick={() => setViewModeAndReset(v)} style={{ padding: '6px 12px', fontSize: 12, fontWeight: 700, borderRadius: 10, border: 'none', cursor: 'pointer', background: viewMode === v ? '#8b5cf6' : 'transparent', color: viewMode === v ? '#fff' : '#64748b', transition: 'all .18s' }}>{l}</button>))}
             </div>
             {viewMode === 'matiere' && (
               <div style={{ display: 'flex', gap: 4, padding: 4, background: '#f8fafc', borderRadius: 14, border: '1.5px solid #f1f5f9' }}>
@@ -1445,11 +1001,16 @@ function AnalytiquesTab({ stats, allProfs, chartData, onTabChange, signalements 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.4fr', gap: 22, alignItems: 'start' }}>
               <div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 12 }}><div style={{ width: 8, height: 8, borderRadius: 2, background: metric === 'nb_resa' ? '#8b5cf6' : '#10b981' }} /><span style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '.08em' }}>{metric === 'nb_resa' ? 'Réservations' : 'Formateurs'} par matière</span></div>
-                <div style={{ background: '#fafbfc', borderRadius: 14, padding: '14px 10px', border: '1.5px solid #f1f5f9' }}><ChartHorizBar data={matiereData} metric={metric} /></div>
+                <div style={{ background: '#fafbfc', borderRadius: 14, padding: '14px 10px', border: '1.5px solid #f1f5f9' }}>
+                  {matiereData.filter(m => m.val > 0).length > 0
+                    ? <ChartHorizBar key={`chart-${metric}-${domainIdx}-${viewMode}`} data={matiereData.filter(m => m.val > 0)} metric={metric} />
+                    : <div style={{ textAlign: 'center', padding: '32px 16px', color: '#94a3b8', fontSize: 13 }}>Aucune donnée à afficher pour ce critère</div>
+                  }
+                </div>
               </div>
               <div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 12 }}><div style={{ width: 8, height: 8, borderRadius: 2, background: '#8b5cf6' }} /><span style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '.08em' }}>Tableau de synthèse</span></div>
-                <TableauBI data={matiereData} />
+                <TableauBI key={`tableau-${metric}-${domainIdx}-${viewMode}`} data={matiereData} />
               </div>
             </div>
           </>
@@ -1457,14 +1018,13 @@ function AnalytiquesTab({ stats, allProfs, chartData, onTabChange, signalements 
         {viewMode === 'niveau' && <VueParNiveau />}
       </div>
 
-      {/* ── Entonnoir de conversion ── */}
       {entonnoir && entonnoir.etudiants_inscrits > 0 && (() => {
         const steps = [
-          { icon: '👥', label: 'Étudiants inscrits',      val: entonnoir.etudiants_inscrits,       sub: '100% — base totale',                                                                        color: '#6366f1', bg: '#eef2ff', border: '#c7d2fe' },
-          { icon: '🎯', label: 'Étudiants actifs',        val: entonnoir.etudiants_actifs,          sub: `${entonnoir.taux_activation}% ont réservé`,                                                 color: '#3b82f6', bg: '#eff6ff', border: '#bfdbfe' },
-          { icon: '📋', label: 'Réservations envoyées',   val: entonnoir.reservations_total,         sub: `${entonnoir.etudiants_actifs > 0 ? (entonnoir.reservations_total / entonnoir.etudiants_actifs).toFixed(1) : 0} par étudiant actif`, color: '#f59e0b', bg: '#fffbeb', border: '#fcd34d' },
-          { icon: '✅', label: 'Confirmées',              val: entonnoir.reservations_confirmees,    sub: `${entonnoir.taux_confirmation}% de taux`,                                                   color: '#10b981', bg: '#ecfdf5', border: '#6ee7b7' },
-          { icon: '🏁', label: 'Terminées',               val: entonnoir.reservations_terminees,     sub: `${entonnoir.reservations_confirmees > 0 ? Math.round(entonnoir.reservations_terminees / entonnoir.reservations_confirmees * 100) : 0}% des confirmées`, color: '#059669', bg: '#d1fae5', border: '#34d399' },
+          { icon: '👥', label: 'Étudiants inscrits',    val: entonnoir.etudiants_inscrits,    sub: '100% — base totale',                                                                                                                                                 color: '#6366f1', bg: '#eef2ff', border: '#c7d2fe' },
+          { icon: '🎯', label: 'Étudiants actifs',      val: entonnoir.etudiants_actifs,      sub: `${entonnoir.taux_activation}% ont réservé`,                                                                                                                           color: '#3b82f6', bg: '#eff6ff', border: '#bfdbfe' },
+          { icon: '📋', label: 'Réservations envoyées', val: entonnoir.reservations_total,    sub: `${entonnoir.etudiants_actifs > 0 ? (entonnoir.reservations_total / entonnoir.etudiants_actifs).toFixed(1) : 0} par étudiant actif`,                                    color: '#f59e0b', bg: '#fffbeb', border: '#fcd34d' },
+          { icon: '✅', label: 'Confirmées',            val: entonnoir.reservations_confirmees, sub: `${entonnoir.taux_confirmation}% de taux`,                                                                                                                            color: '#10b981', bg: '#ecfdf5', border: '#6ee7b7' },
+          { icon: '🏁', label: 'Terminées',             val: entonnoir.reservations_terminees, sub: `${entonnoir.reservations_confirmees > 0 ? Math.round(entonnoir.reservations_terminees / entonnoir.reservations_confirmees * 100) : 0}% des confirmées`,               color: '#059669', bg: '#d1fae5', border: '#34d399' },
         ];
         return (
           <div style={{ background: '#fff', border: '1.5px solid #f1f5f9', borderRadius: 24, padding: 28, boxShadow: '0 2px 12px rgba(0,0,0,.04)' }}>
@@ -1497,9 +1057,9 @@ function AnalytiquesTab({ stats, allProfs, chartData, onTabChange, signalements 
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 12 }}>
                 {[
-                  { label: "Taux d'activation",    val: `${entonnoir.taux_activation}%`,    good: entonnoir.taux_activation >= 30,    color: '#6366f1' },
-                  { label: 'Taux de confirmation', val: `${entonnoir.taux_confirmation}%`,  good: entonnoir.taux_confirmation >= 60,  color: '#10b981' },
-                  { label: 'Taux de refus',        val: `${entonnoir.taux_refus}%`,         good: entonnoir.taux_refus <= 20,         color: '#ef4444' },
+                  { label: "Taux d'activation",    val: `${entonnoir.taux_activation}%`,   good: entonnoir.taux_activation >= 30,   color: '#6366f1' },
+                  { label: 'Taux de confirmation', val: `${entonnoir.taux_confirmation}%`, good: entonnoir.taux_confirmation >= 60, color: '#10b981' },
+                  { label: 'Taux de refus',        val: `${entonnoir.taux_refus}%`,        good: entonnoir.taux_refus <= 20,        color: '#ef4444' },
                 ].map((m, i) => (
                   <div key={i} style={{ background: '#fff', borderRadius: 12, padding: '12px 14px', border: '1.5px solid #f1f5f9' }}>
                     <div style={{ fontSize: 11, color: '#94a3b8', fontWeight: 600, marginBottom: 4 }}>{m.label}</div>
@@ -1518,7 +1078,6 @@ function AnalytiquesTab({ stats, allProfs, chartData, onTabChange, signalements 
         );
       })()}
 
-      {/* ── Cercle demandes de matières ── */}
       {(() => {
         const demandesStats = chartData.demandes_stats || [];
         if (!demandesStats.length) return null;
@@ -1530,7 +1089,6 @@ function AnalytiquesTab({ stats, allProfs, chartData, onTabChange, signalements 
         const COLORS  = { 'approuvé': '#10B981', 'en_attente': '#F59E0B', 'refusé': '#EF4444' };
         const LABELS  = { 'approuvé': 'Approuvées', 'en_attente': 'En attente', 'refusé': 'Refusées' };
         const ICONS   = { 'approuvé': '✅', 'en_attente': '⏳', 'refusé': '❌' };
-
         const DonutDemandes = () => {
           const [anim, setAnim] = useState(false);
           useEffect(() => { const t = setTimeout(() => setAnim(true), 400); return () => clearTimeout(t); }, []);
@@ -1556,7 +1114,6 @@ function AnalytiquesTab({ stats, allProfs, chartData, onTabChange, signalements 
             </div>
           );
         };
-
         return (
           <div style={{ background: '#fff', border: '1.5px solid #f1f5f9', borderRadius: 24, padding: 28, boxShadow: '0 2px 12px rgba(0,0,0,.04)' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 22 }}>
@@ -1620,7 +1177,7 @@ function AnalytiquesTab({ stats, allProfs, chartData, onTabChange, signalements 
   );
 }
 
-// ── PATCH 5 : ProfsTab avec filtre "bloqué" + handleRefuser avec raison ──
+
 function ProfsTab({ allProfs, structure = [], onView, onValider, onRefuser }) {
   const [filter, setFilter] = useState('tous');
   const [search, setSearch] = useState('');
@@ -1723,12 +1280,11 @@ function ProfsTab({ allProfs, structure = [], onView, onValider, onRefuser }) {
         <button onClick={() => exportAdminProfs(filtered)} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', background: '#00153D', color: '#fff', border: 'none', borderRadius: 10, cursor: 'pointer', fontFamily: "'Cabinet Grotesk',sans-serif", fontWeight: 800, fontSize: '.78rem', boxShadow: '0 3px 10px rgba(0,21,61,0.18)', transition: 'all .15s', whiteSpace: 'nowrap' }} onMouseEnter={e => e.currentTarget.style.background = '#1E3A8A'} onMouseLeave={e => e.currentTarget.style.background = '#00153D'}>📄 PDF</button>
       </div>
 
-      {/* Filtres domaine / niveau / matière */}
       <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', padding: '14px 18px', background: '#f8fafc', borderRadius: 16, border: '1.5px solid #f1f5f9' }}>
         {[
           { label: '🗂 Domaine', val: filterDomaine, set: (v) => { setFilterDomaine(v); setFilterNiveau(''); setFilterMatiere(''); }, opts: allDomaines, ph: 'Tous les domaines' },
-          { label: '🎓 Niveau', val: filterNiveau, set: (v) => { setFilterNiveau(v); setFilterMatiere(''); }, opts: allNiveaux, ph: 'Tous les niveaux' },
-          { label: '📚 Matière', val: filterMatiere, set: setFilterMatiere, opts: allMatieres, ph: 'Toutes les matières' },
+          { label: '🎓 Niveau',  val: filterNiveau,  set: (v) => { setFilterNiveau(v); setFilterMatiere(''); },                   opts: allNiveaux,  ph: 'Tous les niveaux' },
+          { label: '📚 Matière', val: filterMatiere, set: setFilterMatiere,                                                          opts: allMatieres, ph: 'Toutes les matières' },
         ].map(f => (
           <div key={f.label} style={{ display: 'flex', flexDirection: 'column', gap: 4, minWidth: 160 }}>
             <span style={{ fontSize: 10, fontWeight: 800, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '.08em' }}>{f.label}</span>
@@ -1800,8 +1356,6 @@ function ProfCardGrid({ prof, index, onView, onValider, onRefuser }) {
   const note = parseFloat(prof.note_moyenne || 0);
   const estBloque = prof.user_statut === 'bloqué';
   const statut = estBloque ? 'bloqué' : prof.statut_validation;
-
-  // Couleur accent selon statut
   const accentCfg = {
     'validé':     { color: '#10b981', bg: '#ecfdf5', border: '#6ee7b7' },
     'en_attente': { color: '#f59e0b', bg: '#fffbeb', border: '#fcd34d' },
@@ -1829,44 +1383,31 @@ function ProfCardGrid({ prof, index, onView, onValider, onRefuser }) {
       onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-3px)'; e.currentTarget.style.boxShadow = `0 10px 28px ${accentCfg.color}22`; }}
       onMouseLeave={e => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,.05)'; }}
     >
-      {/* Barre accent haut */}
       <div style={{ height: 4, background: accentCfg.color, flexShrink: 0 }} />
-
       <div style={{ padding: '14px 16px', display: 'flex', gap: 12, alignItems: 'flex-start', flex: 1 }}>
-        {/* Avatar */}
         <div style={{ width: 52, height: 52, borderRadius: 14, border: `2px solid ${accentCfg.border}`, overflow: 'hidden', flexShrink: 0, background: accentCfg.bg }}>
           <ProfAvatar prof={prof} size={48} />
         </div>
-
-        {/* Infos principales */}
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 6, marginBottom: 4 }}>
             <div style={{ fontFamily: "'Cabinet Grotesk',sans-serif", fontWeight: 900, fontSize: 13, color: '#0F172A', lineHeight: 1.2 }}>{nm}</div>
             <StatutBadge s={statut} />
           </div>
-
-          {/* Ville + mode */}
           <div style={{ display: 'flex', gap: 6, alignItems: 'center', marginBottom: 8, flexWrap: 'wrap' }}>
             {prof.ville && <span style={{ fontSize: 11, color: '#64748b', display: 'flex', alignItems: 'center', gap: 3 }}>📍 {prof.ville}</span>}
             <ModeBadge m={prof.mode_enseignement} />
             {minT && <span style={{ fontSize: 10, fontWeight: 800, color: accentCfg.color, background: accentCfg.bg, padding: '2px 7px', borderRadius: 8, border: `1px solid ${accentCfg.border}` }}>dès {minT} DT/séance</span>}
           </div>
-
-          {/* Matières */}
           {mats.length > 0 && (
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 5 }}>
               {mats.map(m => <span key={m} style={{ fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 10, background: '#f0f9ff', color: '#0369a1', border: '1px solid #bae6fd' }}>{m}</span>)}
             </div>
           )}
-
-          {/* Niveaux */}
           {niveaux.length > 0 && (
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 6 }}>
               {niveaux.map(n => <span key={n} style={{ fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 10, background: '#fefce8', color: '#a16207', border: '1px solid #fef08a' }}>🎓 {n}</span>)}
             </div>
           )}
-
-          {/* Note */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 11, color: '#64748b' }}>
             <span style={{ color: '#f59e0b' }}>⭐</span>
             <span style={{ fontWeight: 700, color: '#0F172A' }}>{note > 0 ? note.toFixed(1) : '—'}</span>
@@ -1874,8 +1415,6 @@ function ProfCardGrid({ prof, index, onView, onValider, onRefuser }) {
           </div>
         </div>
       </div>
-
-      {/* Footer actions */}
       <div style={{ borderTop: `1px solid ${accentCfg.border}`, padding: '10px 14px', display: 'flex', gap: 7, background: accentCfg.bg }}>
         <button
           className="adm-btn adm-btn-primary adm-btn-sm"
@@ -1891,7 +1430,7 @@ function ProfCardGrid({ prof, index, onView, onValider, onRefuser }) {
   );
 }
 
-// ─── DEMANDES TAB ─────────────────────────────────────────────────────────────
+
 function DemandesTab({ demandes, onApprouver, onRefuser }) {
   const pending = demandes.filter(d => d.statut === 'en_attente');
   const archived = demandes.filter(d => d.statut !== 'en_attente');
@@ -1918,10 +1457,8 @@ function DemandesTab({ demandes, onApprouver, onRefuser }) {
                 onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-4px)'; e.currentTarget.style.boxShadow = '0 12px 32px rgba(139,92,246,0.18)'; }}
                 onMouseLeave={e => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = '0 4px 16px rgba(139,92,246,0.10)'; }}
               >
-                {/* Bande colorée haut */}
                 <div style={{ height: 5, background: 'linear-gradient(90deg, #8b5cf6, #a78bfa, #c4b5fd)' }} />
                 <div style={{ padding: '16px 18px' }}>
-                  {/* En-tête : icône + matière + niveau */}
                   <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, marginBottom: 14 }}>
                     <div style={{ width: 48, height: 48, borderRadius: 14, background: 'linear-gradient(135deg,#7c3aed,#a78bfa)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.3rem', flexShrink: 0, boxShadow: '0 4px 12px rgba(124,58,237,0.25)' }}>📚</div>
                     <div style={{ flex: 1 }}>
@@ -1932,8 +1469,6 @@ function DemandesTab({ demandes, onApprouver, onRefuser }) {
                       </div>
                     </div>
                   </div>
-
-                  {/* Infos professeur */}
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', background: 'rgba(255,255,255,0.7)', borderRadius: 12, marginBottom: 14, border: '1px solid rgba(196,181,253,0.4)' }}>
                     <div style={{ width: 32, height: 32, borderRadius: 10, background: 'linear-gradient(135deg,#6d28d9,#8b5cf6)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.9rem', flexShrink: 0 }}>👨‍🏫</div>
                     <div style={{ flex: 1 }}>
@@ -1941,8 +1476,6 @@ function DemandesTab({ demandes, onApprouver, onRefuser }) {
                       <div style={{ fontSize: 10, color: '#7c3aed', fontWeight: 600, marginTop: 1 }}>Demande soumise le {new Date(d.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}</div>
                     </div>
                   </div>
-
-                  {/* Actions */}
                   <div style={{ display: 'flex', gap: 8 }}>
                     <button onClick={() => onApprouver(d.id)} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '10px 0', background: 'linear-gradient(135deg,#10b981,#059669)', color: '#fff', border: 'none', borderRadius: 11, cursor: 'pointer', fontFamily: "'Cabinet Grotesk',sans-serif", fontWeight: 800, fontSize: 12, boxShadow: '0 3px 10px rgba(16,185,129,0.25)', transition: 'all .18s' }}
                       onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = '0 6px 16px rgba(16,185,129,0.35)'; }}
@@ -1964,7 +1497,7 @@ function DemandesTab({ demandes, onApprouver, onRefuser }) {
   );
 }
 
-// ─── REFERENTIEL TAB (identique à l'original) ────────────────────────────────
+
 function ReferentielTab({ structure, villes, onReload }) {
   const [expanded, setExpanded] = useState({});
   const [openGroupe, setOpenGroupe] = useState({});
@@ -2210,115 +1743,86 @@ function ReferentielTab({ structure, villes, onReload }) {
   );
 }
 
-// ─── CALENDRIER TAB (identique à l'original) ─────────────────────────────────
+
 const CAL_CSS3 = `
-@keyframes c3-in  { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:none} }
-@keyframes c3-pop { from{opacity:0;transform:scale(.95) translateY(4px)} to{opacity:1;transform:none} }
-.c3 { font-family:'Instrument Sans',system-ui,sans-serif; color:#0f172a; background:#f8fafc; min-height:100vh; padding:28px; animation:c3-in .35s ease both; }
-.c3-header { background:#fff; border:1.5px solid #e2e8f0; border-radius:20px; padding:20px 26px; margin-bottom:22px; box-shadow:0 2px 12px rgba(0,0,0,.04); }
-.c3-hicon { width:50px;height:50px;border-radius:14px;flex-shrink:0;background:linear-gradient(135deg,#1e40af,#7c3aed);display:flex;align-items:center;justify-content:center;font-size:24px;box-shadow:0 4px 16px rgba(59,130,246,.28); }
-.c3-htitle { font-family:'Cabinet Grotesk',sans-serif;font-weight:900;font-size:20px;color:#0f172a;margin:0 0 2px; }
-.c3-hsub { font-size:13px;color:#64748b;margin:0;font-weight:500; }
-.c3-nav { display:flex;align-items:center;gap:4px;background:#f8fafc;border:1.5px solid #e2e8f0;border-radius:12px;padding:4px; }
-.c3-nbtn { width:34px;height:34px;border-radius:9px;border:none;background:transparent;color:#64748b;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:18px;transition:all .14s; }
-.c3-nbtn:hover { background:#fff;color:#3b82f6;box-shadow:0 2px 8px rgba(0,0,0,.07); }
-.c3-period { font-family:'Cabinet Grotesk',sans-serif;font-weight:800;font-size:14px;color:#0f172a;padding:0 14px;min-width:160px;text-align:center; }
-.c3-today { padding:8px 16px;border-radius:10px;border:1.5px solid #e2e8f0;background:#fff;color:#64748b;font-size:13px;font-weight:700;cursor:pointer;transition:all .14s;font-family:'Cabinet Grotesk',sans-serif; }
-.c3-today:hover { border-color:#3b82f6;color:#3b82f6;background:#eff6ff; }
-.c3-toggle { display:flex;gap:3px;background:#f8fafc;border:1.5px solid #e2e8f0;border-radius:12px;padding:4px; }
-.c3-tvbtn { padding:7px 16px;border-radius:9px;border:none;background:transparent;color:#64748b;font-size:13px;font-weight:700;cursor:pointer;transition:all .16s;font-family:'Cabinet Grotesk',sans-serif;display:flex;align-items:center;gap:6px; }
-.c3-tvbtn.on { background:#fff;color:#1d4ed8;box-shadow:0 2px 8px rgba(59,130,246,.13);border:1.5px solid rgba(59,130,246,.2); }
-.c3-kpis { display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:22px; }
-.c3-kpi { background:#fff;border:1.5px solid #f1f5f9;border-radius:16px;padding:18px 20px;position:relative;overflow:hidden;transition:all .18s; }
-.c3-kpi::before { content:'';position:absolute;top:0;left:0;right:0;height:3px;background:var(--kc,#3b82f6);border-radius:16px 16px 0 0; }
-.c3-kpi:hover { transform:translateY(-2px);box-shadow:0 8px 24px rgba(0,0,0,.07); }
-.c3-kico { font-size:22px;margin-bottom:11px; }
-.c3-kval { font-family:'Cabinet Grotesk',sans-serif;font-size:28px;font-weight:900;color:var(--kc,#3b82f6);line-height:1;margin-bottom:4px; }
-.c3-klbl { font-size:12px;color:#64748b;font-weight:600; }
-.c3-legend { display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:12px 18px;background:#fff;border:1.5px solid #f1f5f9;border-radius:13px;margin-top:14px; }
-.c3-leg { display:flex;align-items:center;gap:7px;font-size:12px;font-weight:700;padding:4px 12px;border-radius:20px;border:1.5px solid; }
-.c3-grid { background:#fff;border:1.5px solid #e2e8f0;border-radius:20px;overflow:hidden;box-shadow:0 2px 14px rgba(0,0,0,.05); }
-.c3-wdays { display:grid;grid-template-columns:repeat(7,1fr);background:linear-gradient(135deg,#00153d,#1e3a8a); }
-.c3-wday { padding:13px 6px;text-align:center;font-family:'Cabinet Grotesk',sans-serif;font-weight:900;font-size:11px;color:rgba(255,255,255,.82);text-transform:uppercase;letter-spacing:.08em; }
-.c3-days { display:grid;grid-template-columns:repeat(7,1fr); }
-.c3-day { min-height:122px;border-right:1px solid #f1f5f9;border-bottom:1px solid #f1f5f9;padding:9px 7px 7px;background:#fff;cursor:pointer;position:relative;transition:background .12s; }
-.c3-day:nth-child(7n) { border-right:none; }
-.c3-day:hover { background:#f8faff; }
-.c3-day.other { background:#fafbfc; }
-.c3-day.other .c3-dnum { color:#cbd5e1; }
-.c3-day.today { background:linear-gradient(135deg,#eff6ff,#f0fdf4); }
-.c3-day.today::after { content:'';position:absolute;inset:0;border:2px solid #3b82f6;pointer-events:none; }
-.c3-dnum { width:28px;height:28px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-family:'Cabinet Grotesk',sans-serif;font-weight:700;font-size:13px;color:#0f172a; }
-.c3-day.today .c3-dnum { background:#3b82f6;color:#fff; }
-.c3-dbadge { font-size:10px;font-weight:900;color:#fff;padding:2px 7px;border-radius:8px;background:#3b82f6;font-family:'Cabinet Grotesk',sans-serif; }
-.c3-pill { display:flex;align-items:center;gap:5px;padding:5px 8px;border-radius:9px;margin-bottom:3px;cursor:pointer;transition:transform .12s,filter .12s;border:1.5px solid transparent;white-space:nowrap;overflow:hidden; }
-.c3-pill:hover { transform:translateX(2px);filter:brightness(.94); }
-.c3-pill-dot { width:7px;height:7px;border-radius:50%;flex-shrink:0; }
-.c3-pill-info { display:flex;flex-direction:column;gap:1px;overflow:hidden;flex:1;min-width:0; }
-.c3-pill-top { display:flex;align-items:center;gap:4px; }
-.c3-pill-time { font-size:9px;font-weight:800;opacity:.8;flex-shrink:0; }
-.c3-pill-mat { font-size:10px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis; }
-.c3-pill-prof { font-size:9px;opacity:.75;white-space:nowrap;overflow:hidden;text-overflow:ellipsis; }
-.c3-pill-cap { display:flex;align-items:center;gap:4px;margin-top:2px; }
-.c3-pill-bar { flex:1;height:3px;border-radius:2px;background:rgba(0,0,0,.12);overflow:hidden; }
-.c3-pill-fill { height:100%;border-radius:2px; }
-.c3-pill-cnt { font-size:8px;font-weight:900;flex-shrink:0; }
-.c3-more { font-size:10px;font-weight:700;color:#94a3b8;padding:2px 7px;background:#f1f5f9;border-radius:6px;display:inline-block;cursor:pointer;margin-top:1px;transition:all .12s; }
-.c3-more:hover { color:#3b82f6;background:#eff6ff; }
-.c3-week { background:#fff;border:1.5px solid #e2e8f0;border-radius:20px;overflow:hidden;box-shadow:0 2px 14px rgba(0,0,0,.05); }
-.c3-wk-head { display:grid;grid-template-columns:58px repeat(7,1fr);background:linear-gradient(135deg,#00153d,#1e3a8a); }
-.c3-wk-ch { padding:12px 6px;text-align:center;border-right:1px solid rgba(255,255,255,.08); }
-.c3-wk-ch .wd { font-family:'Cabinet Grotesk',sans-serif;font-weight:900;font-size:10px;color:rgba(255,255,255,.65);text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px; }
-.c3-wk-ch .dm { font-family:'Cabinet Grotesk',sans-serif;font-weight:900;font-size:20px;color:#fff;line-height:1; }
-.c3-wk-ch .wn { font-size:10px;color:rgba(255,255,255,.5);font-weight:700;margin-top:3px; }
-.c3-wk-ch.tc .dm { background:#3b82f6;width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto;font-size:14px; }
-.c3-wk-body { display:grid;grid-template-columns:58px repeat(7,1fr); }
-.c3-tcol { border-right:1.5px solid #f1f5f9;background:#fafbfc; }
-.c3-tcell { height:84px;display:flex;align-items:flex-start;justify-content:flex-end;padding:6px 8px 0;border-bottom:1px solid #f1f5f9; }
-.c3-tlbl { font-size:10px;font-weight:700;color:#94a3b8; }
-.c3-wk-day { border-right:1px solid #f1f5f9; }
-.c3-wk-day:last-child { border-right:none; }
-.c3-wk-slot { height:84px;border-bottom:1px solid #f1f5f9;padding:4px 5px; }
-.c3-ev { border-radius:10px;padding:7px 9px;cursor:pointer;transition:all .15s;border:1.5px solid transparent;margin-bottom:3px;overflow:hidden; }
-.c3-ev:hover { transform:scale(1.02);box-shadow:0 3px 12px rgba(0,0,0,.1);z-index:5;position:relative; }
-.c3-ev-time { font-size:9px;font-weight:800;opacity:.8;margin-bottom:2px; }
-.c3-ev-mat { font-size:11px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis; }
-.c3-ev-prof { font-size:10px;opacity:.8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis; }
-.c3-ev-bar { margin-top:4px;height:4px;border-radius:2px;background:rgba(0,0,0,.1);overflow:hidden; }
-.c3-ev-fill { height:100%;border-radius:2px; }
-.c3-tt { position:fixed;z-index:9999;pointer-events:none;background:#fff;border:1.5px solid #e2e8f0;border-radius:14px;min-width:270px;max-width:310px;box-shadow:0 6px 28px rgba(0,0,0,.13);overflow:hidden; }
-.c3-tt-head { padding:11px 15px;display:flex;align-items:center;gap:9px;border-bottom:1px solid #f1f5f9; }
-.c3-tt-ico { width:34px;height:34px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0; }
-.c3-tt-name { font-family:'Cabinet Grotesk',sans-serif;font-weight:900;font-size:13px;color:#0f172a; }
-.c3-tt-sub2 { font-size:10px;font-weight:700;margin-top:2px;padding:2px 8px;border-radius:20px;display:inline-block; }
-.c3-tt-body { padding:10px 15px;display:flex;flex-direction:column;gap:6px; }
-.c3-tt-row { display:flex;align-items:flex-start;gap:8px; }
-.c3-tt-ico2 { width:24px;height:24px;border-radius:7px;background:#f8fafc;display:flex;align-items:center;justify-content:center;font-size:11px;flex-shrink:0;margin-top:1px; }
-.c3-tt-info label { display:block;font-size:9px;color:#94a3b8;font-weight:700;text-transform:uppercase;letter-spacing:.05em;line-height:1; }
-.c3-tt-info value { display:block;font-size:12px;color:#0f172a;font-weight:700;line-height:1.3; }
-.c3-tt-capbar { height:6px;background:#e2e8f0;border-radius:3px;overflow:hidden;margin-top:4px; }
-.c3-tt-capfill { height:100%;border-radius:3px; }
-.c3-mo { position:fixed;inset:0;background:rgba(15,23,42,.42);backdrop-filter:blur(4px);z-index:2000;display:flex;align-items:center;justify-content:center;padding:20px; }
-.c3-mbox { background:#fff;border-radius:22px;border:1.5px solid #e2e8f0;width:100%;max-width:520px;max-height:82vh;overflow:hidden;box-shadow:0 32px 80px rgba(0,0,0,.16);display:flex;flex-direction:column; }
-.c3-mhead { padding:20px 24px;border-bottom:1.5px solid #f1f5f9;display:flex;justify-content:space-between;align-items:center; }
-.c3-mhead h2 { font-family:'Cabinet Grotesk',sans-serif;font-weight:900;font-size:17px;color:#0f172a;margin:0;text-transform:capitalize; }
-.c3-mbody { padding:14px 22px 20px;overflow-y:auto;display:flex;flex-direction:column;gap:10px; }
-.c3-mcard { display:flex;gap:14px;padding:16px;border-radius:14px;border:1.5px solid;transition:transform .12s; }
-.c3-mcard:hover { transform:translateX(3px); }
-.c3-mc-time { width:54px;text-align:center;flex-shrink:0;padding-top:2px; }
-.c3-mc-start { font-family:'Cabinet Grotesk',sans-serif;font-weight:900;font-size:17px;color:#0f172a;display:block;line-height:1; }
-.c3-mc-end { font-size:11px;color:#64748b;display:block;margin-top:2px; }
-.c3-mc-sep { width:1px;background:#f1f5f9;flex-shrink:0; }
-.c3-mc-data { flex:1;min-width:0; }
-.c3-mc-mat { font-family:'Cabinet Grotesk',sans-serif;font-weight:900;font-size:14px;color:#0f172a;margin-bottom:5px; }
-.c3-mc-prof { font-size:12px;color:#64748b;margin-bottom:8px; }
-.c3-mc-tags { display:flex;gap:6px;flex-wrap:wrap;align-items:center; }
-.c3-mc-tag { font-size:11px;font-weight:700;padding:3px 9px;border-radius:8px;background:#f8fafc;color:#64748b;border:1px solid #f1f5f9; }
-.c3-mc-caprow { margin-top:8px; }
-.c3-mc-caplbl { display:flex;justify-content:space-between;margin-bottom:4px; }
-.c3-mc-capbar { height:6px;background:#e2e8f0;border-radius:3px;overflow:hidden; }
-.c3-mc-capfill { height:100%;border-radius:3px;transition:width .4s; }
-.c3-empty { text-align:center;padding:56px 20px;background:#fff;border-radius:20px;border:1.5px solid #f1f5f9;margin-top:4px; }
+.c3 { display:flex; flex-direction:column; gap:20px; font-family:'Instrument Sans',system-ui,sans-serif; }
+.c3-header { background:#fff; border:1.5px solid #f1f5f9; border-radius:20px; padding:22px 24px; box-shadow:0 2px 8px rgba(0,0,0,.04); }
+.c3-hicon { width:46px; height:46px; borderRadius:14px; background:linear-gradient(135deg,#1e40af,#3b82f6); display:flex; align-items:center; justify-content:center; font-size:1.4rem; flex-shrink:0; border-radius:14px; }
+.c3-htitle { font-family:'Cabinet Grotesk',sans-serif; font-weight:900; font-size:17px; color:#0F172A; margin-bottom:2px; }
+.c3-hsub { font-size:12px; color:#94a3b8; }
+.c3-toggle { display:flex; background:#f8fafc; border:1.5px solid #e2e8f0; border-radius:10px; padding:3px; gap:2px; }
+.c3-tvbtn { padding:6px 14px; border-radius:8px; border:none; background:transparent; color:#64748b; font-size:12px; font-weight:600; cursor:pointer; transition:all .15s; font-family:'Instrument Sans',sans-serif; white-space:nowrap; }
+.c3-tvbtn.on { background:#0F172A; color:#fff; font-weight:700; box-shadow:0 1px 6px rgba(15,23,42,.2); }
+.c3-nav { display:flex; align-items:center; gap:8px; background:#f8fafc; border:1.5px solid #e2e8f0; border-radius:10px; padding:4px 8px; }
+.c3-nbtn { width:28px; height:28px; border-radius:7px; border:1.5px solid #e2e8f0; background:#fff; color:#64748b; font-size:16px; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:all .15s; line-height:1; }
+.c3-nbtn:hover { background:#0F172A; color:#fff; border-color:#0F172A; }
+.c3-period { font-family:'Cabinet Grotesk',sans-serif; font-weight:800; font-size:13px; color:#0F172A; min-width:160px; text-align:center; }
+.c3-today { padding:7px 14px; border-radius:9px; border:1.5px solid #e2e8f0; background:#fff; color:#0F172A; font-size:12px; font-weight:700; cursor:pointer; transition:all .15s; font-family:'Instrument Sans',sans-serif; }
+.c3-today:hover { background:#0F172A; color:#fff; border-color:#0F172A; }
+.c3-legend { display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-top:14px; padding-top:14px; border-top:1px solid #f1f5f9; }
+.c3-leg { display:inline-flex; align-items:center; gap:5px; padding:4px 10px; border-radius:20px; border:1.5px solid; font-size:11px; font-weight:700; }
+.c3-kpis { display:grid; grid-template-columns:repeat(5,1fr); gap:12px; }
+.c3-kpi { background:#fff; border:1.5px solid #f1f5f9; border-radius:16px; padding:16px 18px; text-align:center; box-shadow:0 2px 6px rgba(0,0,0,.03); transition:all .18s; }
+.c3-kpi:hover { transform:translateY(-2px); box-shadow:0 6px 18px rgba(0,0,0,.07); }
+.c3-kico { font-size:1.4rem; margin-bottom:6px; }
+.c3-kval { font-family:'Cabinet Grotesk',sans-serif; font-weight:900; font-size:1.8rem; color:var(--kc,#3b82f6); line-height:1; margin-bottom:3px; }
+.c3-klbl { font-size:11px; color:#94a3b8; font-weight:600; }
+.c3-grid { background:#fff; border:1.5px solid #f1f5f9; border-radius:20px; overflow:hidden; box-shadow:0 2px 8px rgba(0,0,0,.04); }
+.c3-wdays { display:grid; grid-template-columns:repeat(7,1fr); border-bottom:1.5px solid #f1f5f9; background:#fafbfc; }
+.c3-wday { padding:10px 4px; text-align:center; font-size:11px; font-weight:800; color:#94a3b8; text-transform:uppercase; letter-spacing:.06em; }
+.c3-days { display:grid; grid-template-columns:repeat(7,1fr); }
+.c3-day { min-height:110px; padding:8px 6px 6px; border-right:1px solid #f8fafc; border-bottom:1px solid #f8fafc; transition:background .12s; cursor:default; box-sizing:border-box; }
+.c3-day:hover { background:#f8fafc; }
+.c3-day.other { background:#fafbfc; opacity:.5; }
+.c3-day.today .c3-dnum { background:#3b82f6; color:#fff; border-radius:50%; width:24px; height:24px; display:flex; align-items:center; justify-content:center; font-weight:900; }
+.c3-dnum { font-family:'Cabinet Grotesk',sans-serif; font-weight:700; font-size:13px; color:#0F172A; width:24px; height:24px; display:flex; align-items:center; justify-content:center; }
+.c3-dbadge { font-size:9px; font-weight:900; background:#3b82f6; color:#fff; padding:1px 5px; border-radius:6px; }
+.c3-more { font-size:10px; font-weight:800; color:#3b82f6; cursor:pointer; padding:2px 4px; border-radius:4px; display:block; margin-top:2px; }
+.c3-more:hover { background:#eff6ff; }
+.c3-week { background:#fff; border:1.5px solid #f1f5f9; border-radius:20px; overflow:hidden; box-shadow:0 2px 8px rgba(0,0,0,.04); }
+.c3-wk-head { display:grid; grid-template-columns:60px repeat(7,1fr); border-bottom:1.5px solid #f1f5f9; background:#fafbfc; }
+.c3-wk-ch { padding:10px 6px; text-align:center; border-right:1px solid #f1f5f9; }
+.c3-wk-ch .wd { font-size:11px; font-weight:800; color:#94a3b8; text-transform:uppercase; letter-spacing:.06em; }
+.c3-wk-ch .dm { font-family:'Cabinet Grotesk',sans-serif; font-weight:900; font-size:18px; color:#0F172A; line-height:1.1; margin-top:2px; }
+.c3-wk-ch .wn { font-size:9px; font-weight:700; color:#3b82f6; margin-top:2px; }
+.c3-wk-ch.tc { background:linear-gradient(135deg,#eff6ff,#f0fdf4); }
+.c3-wk-ch.tc .dm { color:#3b82f6; }
+.c3-wk-body { display:grid; grid-template-columns:60px repeat(7,1fr); }
+.c3-tcol { display:flex; flex-direction:column; border-right:1px solid #f1f5f9; }
+.c3-tcell { height:70px; display:flex; align-items:flex-start; justify-content:flex-end; padding:4px 8px 0 0; border-bottom:1px solid #f8fafc; }
+.c3-tlbl { font-size:10px; font-weight:700; color:#94a3b8; }
+.c3-wk-day { display:flex; flex-direction:column; border-right:1px solid #f8fafc; }
+.c3-wk-slot { height:70px; border-bottom:1px solid #f8fafc; padding:2px 3px; overflow:hidden; position:relative; }
+.c3-ev { border-radius:8px; border:1.5px solid; padding:3px 6px; margin-bottom:2px; font-size:10px; overflow:hidden; transition:all .15s; }
+.c3-ev:hover { filter:brightness(.92); transform:scale(1.01); z-index:2; position:relative; }
+.c3-ev-time { font-weight:800; font-size:9px; opacity:.8; margin-bottom:1px; }
+.c3-ev-mat { font-family:'Cabinet Grotesk',sans-serif; font-weight:800; font-size:10px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.c3-ev-prof { font-size:9px; opacity:.7; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.c3-ev-bar { height:3px; background:rgba(0,0,0,.1); border-radius:2px; overflow:hidden; margin-top:3px; }
+.c3-ev-fill { height:100%; border-radius:2px; }
+.c3-mo { position:fixed; inset:0; background:rgba(15,23,42,.6); backdrop-filter:blur(8px); z-index:8000; display:flex; align-items:flex-end; justify-content:center; padding:0; }
+@media (min-width:640px) { .c3-mo { align-items:center; padding:20px; } }
+.c3-mbox { background:#fff; border-radius:24px 24px 0 0; width:100%; max-width:640px; max-height:88vh; display:flex; flex-direction:column; box-shadow:0 -8px 40px rgba(0,0,0,.15); animation:adm-modalIn .25s ease; }
+@media (min-width:640px) { .c3-mbox { border-radius:24px; box-shadow:0 32px 80px rgba(0,0,0,.2); } }
+.c3-mhead { display:flex; justify-content:space-between; align-items:center; padding:20px 22px 16px; border-bottom:1.5px solid #f1f5f9; flex-shrink:0; }
+.c3-mhead h2 { font-family:'Cabinet Grotesk',sans-serif; font-weight:900; font-size:16px; color:#0F172A; margin:0; }
+.c3-mbody { overflow-y:auto; flex:1; padding:16px; display:flex; flex-direction:column; gap:10px; }
+.c3-mcard { border-radius:16px; border:1.5px solid; padding:14px 16px; display:flex; gap:14px; align-items:flex-start; cursor:pointer; transition:all .15s; }
+.c3-mcard:hover { transform:translateX(3px); filter:brightness(.96); }
+.c3-mc-time { display:flex; flex-direction:column; align-items:center; justify-content:center; min-width:52px; padding:8px; background:rgba(255,255,255,.7); border-radius:10px; border:1px solid rgba(0,0,0,.06); flex-shrink:0; }
+.c3-mc-start { font-family:'Cabinet Grotesk',sans-serif; font-weight:900; font-size:15px; color:#0F172A; line-height:1; }
+.c3-mc-end { font-size:10px; color:#94a3b8; font-weight:600; margin-top:2px; }
+.c3-mc-sep { width:1px; background:rgba(0,0,0,.08); align-self:stretch; flex-shrink:0; }
+.c3-mc-data { flex:1; min-width:0; }
+.c3-mc-mat { font-family:'Cabinet Grotesk',sans-serif; font-weight:900; font-size:14px; color:#0F172A; margin-bottom:4px; }
+.c3-mc-prof { font-size:12px; color:#64748b; margin-bottom:6px; }
+.c3-mc-tags { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:8px; }
+.c3-mc-tag { font-size:11px; font-weight:700; padding:2px 8px; border-radius:10px; background:rgba(255,255,255,.7); border:1px solid rgba(0,0,0,.08); color:#374151; }
+.c3-mc-caprow { display:flex; flex-direction:column; gap:4px; }
+.c3-mc-caplbl { display:flex; justify-content:space-between; font-size:11px; }
+.c3-mc-capbar { height:5px; background:rgba(0,0,0,.08); border-radius:3px; overflow:hidden; }
+.c3-mc-capfill { height:100%; border-radius:3px; transition:width .6s ease; }
+.c3-empty { text-align:center; padding:60px 20px; background:#fff; border:1.5px solid #f1f5f9; border-radius:20px; box-shadow:0 2px 8px rgba(0,0,0,.04); }
 `;
 
 function injectCalCSS3() {
@@ -2339,64 +1843,146 @@ const MOIS_S  = ['jan.', 'fév.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août
 const HOURS   = ['08h', '09h', '10h', '11h', '12h', '13h', '14h', '15h', '16h', '17h', '18h', '19h', '20h'];
 const HOUR_N  = [8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20];
 
-function CalendrierTab({ reservations, allProfs }) {
+// ─── CalendrierTab ─────────────────────────────────────────────────────────────
+// disponibilites : toutes les séances des profs (vient de /api/admin/disponibilites/all)
+// reservations   : toutes les réservations (pour afficher les inscrits dans la modal)
+function CalendrierTab({ disponibilites = [], reservations = [] }) {
   const today = new Date();
   const [year, setYear]   = useState(today.getFullYear());
   const [month, setMonth] = useState(today.getMonth());
   const [view, setView]   = useState('month');
-  const [tt, setTT]       = useState(null);
   const [modal, setModal] = useState(null);
-  const [ws, setWs]       = useState(() => { const d = new Date(today); const dow = (d.getDay() + 6) % 7; d.setDate(d.getDate() - dow); d.setHours(0, 0, 0, 0); return d; });
+  const [seanceModal, setSeanceModal] = useState(null);
+  const [ws, setWs] = useState(() => {
+    const d = new Date(today);
+    const dow = (d.getDay() + 6) % 7;
+    d.setDate(d.getDate() - dow);
+    d.setHours(0, 0, 0, 0);
+    return d;
+  });
 
   useEffect(() => { injectCalCSS3(); }, []);
 
+  // ── Construire les événements depuis les DISPONIBILITÉS ──
   const events = useMemo(() => {
-    if (!reservations || !allProfs) return [];
-    const profIndex = {};
-    (allProfs || []).forEach(p => { const nm = `${p.user_prenom || ''} ${p.user_nom || ''}`.trim().toLowerCase(); profIndex[nm] = p; });
-    return reservations.filter(r => r.statut === 'confirmé').map(r => {
-      const prof = profIndex[(r.prof_nom || '').toLowerCase().trim()] || null;
-      const mats = prof?.tarifs_matieres ? [...new Set(prof.tarifs_matieres.map(t => t.nom_matiere))].slice(0, 2).join(' / ') : '—';
-      // niveau vient de la SÉANCE (disponibilite.niveau_id → niveaux.nom), pas du profil
-      const niveauSeance = r.niveau_nom || null;
-      const dispo = (prof?.disponibilites || []).find(d => d.date_specifique === r.date_cours && (d.heure_debut || '').slice(0, 5) === (r.heure_debut || '').slice(0, 5)) || null;
-      const nb = dispo?.nb_inscrits ?? 1; const max = dispo?.nb_max_etudiants ?? 0;
-      const cls = occClass(nb, max); const pal = occBg(cls);
-      return { id: r.id, date: r.date_cours, hDebut: (r.heure_debut || '').slice(0, 5), hFin: (r.heure_fin || '').slice(0, 5), prof: r.prof_nom || '—', profEmail: r.prof_email || null, etudiant: r.etudiant_nom || '—', etudiantEmail: r.etudiant_email || null, matieres: mats, niveau: niveauSeance, mode: r.mode_seance || 'presentiel', tarif: r.tarif_applique || 0, nb, max, cls, pal };
-    }).sort((a, b) => a.hDebut.localeCompare(b.hDebut));
-  }, [reservations, allProfs]);
+    if (!disponibilites || disponibilites.length === 0) return [];
+    return disponibilites
+      .filter(d => d.date_cours)
+      .map(d => {
+        const nb  = d.nb_inscrits        || 0;
+        const max = d.nb_max_etudiants   || 0;
+        const cls = occClass(nb, max);
+        const pal = occBg(cls);
+        // Inscrits confirmés pour cette dispo depuis reservations
+        const inscritsConfirmes = (reservations || []).filter(r =>
+          r.disponibilite_id === d.id && r.statut === 'confirmé'
+        );
+        return {
+          id:          d.id,
+          date:        d.date_cours,
+          hDebut:      (d.heure_debut || '').slice(0, 5),
+          hFin:        (d.heure_fin   || '').slice(0, 5),
+          prof:        d.prof_nom    || '—',
+          profEmail:   d.prof_email  || null,
+          profVille:   d.prof_ville  || null,
+          matieres:    d.matieres    || '—',
+          niveau:      d.niveau_nom  || null,
+          mode:        d.mode_seance || 'presentiel',
+          tarif:       d.tarif_applique || 0,
+          description: d.description || '',
+          nb, max,
+          nbConfirmes:  d.nb_confirmes || inscritsConfirmes.length,
+          inscrits:     inscritsConfirmes,
+          cls, pal,
+        };
+      })
+      .sort((a, b) => a.hDebut.localeCompare(b.hDebut));
+  }, [disponibilites, reservations]);
 
-  const evsMois = useMemo(() => events.filter(e => { if (!e.date) return false; const d = new Date(e.date + 'T00:00:00'); return d.getFullYear() === year && d.getMonth() === month; }), [events, year, month]);
-  const weDays = useMemo(() => Array.from({ length: 7 }, (_, i) => { const d = new Date(ws); d.setDate(d.getDate() + i); return d; }), [ws]);
-  const evsSemaine = useMemo(() => { const end = new Date(ws); end.setDate(end.getDate() + 7); return events.filter(e => { if (!e.date) return false; const d = new Date(e.date + 'T00:00:00'); return d >= ws && d < end; }); }, [events, ws]);
+  // ── Filtrage par vue ──
+  const evsMois = useMemo(() =>
+    events.filter(e => {
+      if (!e.date) return false;
+      const d = new Date(e.date + 'T00:00:00');
+      return d.getFullYear() === year && d.getMonth() === month;
+    }), [events, year, month]);
+
+  const weDays = useMemo(() =>
+    Array.from({ length: 7 }, (_, i) => {
+      const d = new Date(ws); d.setDate(d.getDate() + i); return d;
+    }), [ws]);
+
+  const evsSemaine = useMemo(() => {
+    const end = new Date(ws); end.setDate(end.getDate() + 7);
+    return events.filter(e => {
+      if (!e.date) return false;
+      const d = new Date(e.date + 'T00:00:00');
+      return d >= ws && d < end;
+    });
+  }, [events, ws]);
+
   const src = view === 'week' ? evsSemaine : evsMois;
-  const kpis = useMemo(() => ({ total: src.length, libres: src.filter(e => e.cls === 'libre').length, warn: src.filter(e => e.cls === 'warn').length, full: src.filter(e => e.cls === 'full').length }), [src]);
-  const byDay = useMemo(() => { const m = {}; evsMois.forEach(e => { const d = new Date(e.date + 'T00:00:00').getDate(); if (!m[d]) m[d] = []; m[d].push(e); }); return m; }, [evsMois]);
-  const byWD = useMemo(() => { const m = {}; weDays.forEach((wd, i) => { m[i] = evsSemaine.filter(e => e.date === wd.toISOString().slice(0, 10)); }); return m; }, [evsSemaine, weDays]);
 
+  // ── KPIs ──
+  const kpis = useMemo(() => ({
+    total:    src.length,
+    sansResa: src.filter(e => e.nb === 0).length,
+    libres:   src.filter(e => e.cls === 'libre' && e.nb > 0).length,
+    warn:     src.filter(e => e.cls === 'warn').length,
+    full:     src.filter(e => e.cls === 'full').length,
+  }), [src]);
+
+  // ── Navigation ──
   const prevM = () => { if (month === 0) { setMonth(11); setYear(y => y - 1); } else setMonth(m => m - 1); };
   const nextM = () => { if (month === 11) { setMonth(0); setYear(y => y + 1); } else setMonth(m => m + 1); };
   const prevW = () => { const d = new Date(ws); d.setDate(d.getDate() - 7); setWs(d); };
   const nextW = () => { const d = new Date(ws); d.setDate(d.getDate() + 7); setWs(d); };
-  const goToday = () => { setYear(today.getFullYear()); setMonth(today.getMonth()); const d = new Date(today); const dow = (d.getDay() + 6) % 7; d.setDate(d.getDate() - dow); d.setHours(0, 0, 0, 0); setWs(d); };
+  const goToday = () => {
+    setYear(today.getFullYear()); setMonth(today.getMonth());
+    const d = new Date(today); const dow = (d.getDay() + 6) % 7;
+    d.setDate(d.getDate() - dow); d.setHours(0, 0, 0, 0); setWs(d);
+  };
 
-  const showTT = (e, ev) => { const rect = e.currentTarget.getBoundingClientRect(); const TW = 290, TH = 240; let x = rect.left + rect.width / 2 - TW / 2; let y = rect.top - TH - 8; if (y < 10) y = rect.bottom + 8; if (x < 10) x = 10; if (x + TW > window.innerWidth - 10) x = window.innerWidth - TW - 10; if (y + TH > window.innerHeight - 10) y = window.innerHeight - TH - 10; setTT({ ev, x, y }); };
-  const hideTT = () => setTT(null);
-
-  const firstDay = new Date(year, month, 1).getDay(); const offset = (firstDay + 6) % 7; const dim = new Date(year, month + 1, 0).getDate(); const prevDim = new Date(year, month, 0).getDate(); const cells = [];
-  for (let i = 0; i < 42; i++) { const d = i - offset + 1; if (d < 1) cells.push({ day: prevDim + d, type: 'prev' }); else if (d > dim) cells.push({ day: d - dim, type: 'next' }); else cells.push({ day: d, type: 'cur' }); }
+  // ── Cellules du calendrier mensuel ──
+  const firstDay = new Date(year, month, 1).getDay();
+  const offset   = (firstDay + 6) % 7;
+  const dim      = new Date(year, month + 1, 0).getDate();
+  const prevDim  = new Date(year, month, 0).getDate();
+  const cells    = [];
+  for (let i = 0; i < 42; i++) {
+    const d = i - offset + 1;
+    if (d < 1)    cells.push({ day: prevDim + d, type: 'prev' });
+    else if (d > dim) cells.push({ day: d - dim, type: 'next' });
+    else          cells.push({ day: d, type: 'cur' });
+  }
   const isToday = d => d === today.getDate() && month === today.getMonth() && year === today.getFullYear();
 
-  const [seanceModal, setSeanceModal] = useState(null);
+  const byDay = useMemo(() => {
+    const m = {};
+    evsMois.forEach(e => {
+      const d = new Date(e.date + 'T00:00:00').getDate();
+      if (!m[d]) m[d] = [];
+      m[d].push(e);
+    });
+    return m;
+  }, [evsMois]);
 
-  // Pill = pastille couleur pure, clic → modal, pas de tooltip
+  const byWD = useMemo(() => {
+    const m = {};
+    weDays.forEach((wd, i) => {
+      m[i] = evsSemaine.filter(e => e.date === wd.toISOString().slice(0, 10));
+    });
+    return m;
+  }, [evsSemaine, weDays]);
+
+  // ── Pill dans le calendrier ──
   const Pill = ({ ev }) => {
     const col = occColor(ev.cls);
     const { bg, border } = ev.pal;
     return (
       <div
         onClick={e => { e.stopPropagation(); setSeanceModal(ev); }}
-        title={`${ev.hDebut} ${ev.matieres}`}
+        title={`${ev.hDebut} — ${ev.matieres} — ${ev.prof}${ev.nb > 0 ? ` (${ev.nb}/${ev.max || '?'})` : ' (libre)'}`}
         style={{
           display: 'flex', alignItems: 'center', gap: 4,
           padding: '3px 7px', borderRadius: 8, marginBottom: 2,
@@ -2408,68 +1994,85 @@ function CalendrierTab({ reservations, allProfs }) {
         onMouseLeave={e => { e.currentTarget.style.filter = 'none'; e.currentTarget.style.transform = 'none'; }}
       >
         <span style={{ width: 8, height: 8, borderRadius: '50%', background: col, flexShrink: 0, display: 'inline-block' }} />
-        <span style={{ fontSize: 9, fontWeight: 800, color: col, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+        <span style={{ fontSize: 9, fontWeight: 800, color: col, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', flex: 1 }}>
           {ev.hDebut}
+          {' · '}
+          {(ev.matieres || '').slice(0, 14)}
+          {ev.nb === 0 && <span style={{ marginLeft: 3, opacity: .7 }}>✨</span>}
         </span>
       </div>
     );
   };
 
-  // ── Modal séance centrée ──
+  // ── Modal détail séance ──
   const SeanceModal = () => {
     if (!seanceModal) return null;
-    const ev = seanceModal;
+    const ev  = seanceModal;
     const col = occColor(ev.cls);
     const { bg, border } = ev.pal;
     const pct = ev.max > 0 ? Math.min(100, Math.round(ev.nb / ev.max * 100)) : 0;
     const modeIcon  = ev.mode === 'en_ligne' ? '🌐' : '🏫';
     const modeLabel = ev.mode === 'en_ligne' ? 'En ligne' : 'Présentiel';
-    // Tous les étudiants inscrits à cette même séance (même date + même heure + même prof)
-    const tousInscrits = (reservations || []).filter(r =>
-      r.statut === 'confirmé' &&
-      r.prof_nom === ev.prof &&
-      r.date_cours === ev.date &&
-      (r.heure_debut || '').slice(0, 5) === ev.hDebut
+    const inscritsConfirmes = (reservations || []).filter(r =>
+      r.disponibilite_id === ev.id && r.statut === 'confirmé'
     );
     return (
-      <div style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.65)', backdropFilter: 'blur(10px)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}
-        onClick={e => e.target === e.currentTarget && setSeanceModal(null)}>
-        <div style={{ background: '#fff', borderRadius: 24, width: '100%', maxWidth: 560, maxHeight: '88vh', display: 'flex', flexDirection: 'column', boxShadow: '0 32px 80px rgba(0,0,0,0.22)', overflow: 'hidden', animation: 'adm-modalIn .26s cubic-bezier(.34,1.56,.64,1)' }}>
-
-          {/* ── Header coloré ── */}
+      <div
+        style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.65)', backdropFilter: 'blur(10px)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}
+        onClick={e => e.target === e.currentTarget && setSeanceModal(null)}
+      >
+        <div style={{ background: '#fff', borderRadius: 24, width: '100%', maxWidth: 580, maxHeight: '88vh', display: 'flex', flexDirection: 'column', boxShadow: '0 32px 80px rgba(0,0,0,0.22)', overflow: 'hidden', animation: 'adm-modalIn .26s cubic-bezier(.34,1.56,.64,1)' }}>
+          {/* Header */}
           <div style={{ background: bg, borderBottom: `2px solid ${border}`, padding: '20px 24px 16px', flexShrink: 0 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-              <div>
-                <div style={{ fontFamily: "'Cabinet Grotesk',sans-serif", fontWeight: 900, fontSize: 18, color: '#0F172A', marginBottom: 4 }}>📚 {ev.matieres}</div>
-                {ev.niveau && (
-                  <span style={{ display:'inline-flex', alignItems:'center', gap:5, fontSize:11, fontWeight:700, padding:'3px 10px', borderRadius:20, background:'rgba(255,255,255,.7)', color:'#4f46e5', border:'1.5px solid rgba(79,70,229,.25)', marginTop:2 }}>
-                    🎓 {ev.niveau}
-                  </span>
-                )}
+              <div style={{ flex: 1 }}>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 8 }}>
+                  {(ev.matieres || '').split('/').map((m, i) => (
+                    <span key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontFamily: "'Cabinet Grotesk',sans-serif", fontWeight: 900, fontSize: 15, color: '#0F172A', background: 'rgba(255,255,255,0.7)', padding: '4px 12px', borderRadius: 20, border: '1.5px solid rgba(0,0,0,0.08)' }}>
+                      📚 {m.trim()}
+                    </span>
+                  ))}
+                </div>
                 <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-                  <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 20, background: 'rgba(255,255,255,.75)', color: col, border: `1.5px solid ${border}` }}>{occLabel(ev.cls)}</span>
+                  {ev.niveau && (
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 20, background: 'rgba(255,255,255,.7)', color: '#4f46e5', border: '1.5px solid rgba(79,70,229,.25)' }}>
+                      🎓 {ev.niveau}
+                    </span>
+                  )}
+                  <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 20, background: 'rgba(255,255,255,.75)', color: col, border: `1.5px solid ${border}` }}>
+                    {occLabel(ev.cls)}
+                  </span>
                   <span style={{ fontSize: 12, color: '#64748b', fontWeight: 600 }}>🕐 {ev.hDebut} → {ev.hFin}</span>
-                  <span style={{ fontSize: 12, color: '#64748b', fontWeight: 600 }}>📅 {new Date((ev.date || '') + 'T00:00:00').toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' })}</span>
+                  <span style={{ fontSize: 12, color: '#64748b', fontWeight: 600 }}>
+                    📅 {new Date((ev.date || '') + 'T00:00:00').toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })}
+                  </span>
                 </div>
               </div>
-              <button onClick={() => setSeanceModal(null)}
-                style={{ width: 34, height: 34, borderRadius: 10, border: '1.5px solid rgba(0,0,0,0.1)', background: 'rgba(255,255,255,.6)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, color: '#64748b', flexShrink: 0 }}>✕</button>
+              <button onClick={() => setSeanceModal(null)} style={{ width: 34, height: 34, borderRadius: 10, border: '1.5px solid rgba(0,0,0,0.1)', background: 'rgba(255,255,255,.6)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, color: '#64748b', flexShrink: 0, marginLeft: 12 }}>✕</button>
             </div>
           </div>
-
-          {/* ── Corps scrollable ── */}
-          <div style={{ overflowY: 'auto', flex: 1, padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 16, scrollbarWidth: 'thin', scrollbarColor: '#e2e8f0 transparent' }}>
-
-            {/* Mode */}
+          {/* Corps */}
+          <div style={{ overflowY: 'auto', flex: 1, padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 16 }}>
+            {/* Mode + tarif */}
             <div style={{ padding: '12px 16px', background: ev.mode === 'en_ligne' ? '#eff6ff' : '#ecfdf5', border: `1.5px solid ${ev.mode === 'en_ligne' ? '#bfdbfe' : '#6ee7b7'}`, borderRadius: 12, display: 'flex', alignItems: 'center', gap: 10 }}>
               <span style={{ fontSize: 20 }}>{modeIcon}</span>
               <div>
                 <div style={{ fontSize: 10, fontWeight: 800, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '.08em', marginBottom: 2 }}>Mode</div>
                 <div style={{ fontFamily: "'Cabinet Grotesk',sans-serif", fontWeight: 800, fontSize: 14, color: ev.mode === 'en_ligne' ? '#1d4ed8' : '#065f46' }}>{modeLabel}</div>
               </div>
-              {ev.tarif > 0 && <span style={{ marginLeft: 'auto', fontFamily: "'Cabinet Grotesk',sans-serif", fontWeight: 900, color: '#059669', fontSize: 15 }}>💰 {ev.tarif} DT/séance</span>}
+              {ev.tarif > 0 && (
+                <span style={{ marginLeft: 'auto', fontFamily: "'Cabinet Grotesk',sans-serif", fontWeight: 900, color: '#059669', fontSize: 15 }}>
+                  💰 {ev.tarif} DT/séance
+                </span>
+              )}
             </div>
-
+            {/* Description */}
+            {ev.description && (
+              <div style={{ padding: '12px 16px', background: '#f8fafc', border: '1.5px solid #e2e8f0', borderRadius: 12 }}>
+                <div style={{ fontSize: 10, fontWeight: 800, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '.08em', marginBottom: 8 }}>📝 Description</div>
+                <p style={{ margin: 0, fontSize: 13, color: '#374151', lineHeight: 1.65, borderLeft: '3px solid #3b82f6', paddingLeft: 12 }}>{ev.description}</p>
+              </div>
+            )}
             {/* Professeur */}
             <div style={{ padding: '14px 16px', background: '#f8fafc', border: '1.5px solid #e2e8f0', borderRadius: 12 }}>
               <div style={{ fontSize: 10, fontWeight: 800, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '.08em', marginBottom: 8 }}>👨‍🏫 Formateur</div>
@@ -2480,22 +2083,35 @@ function CalendrierTab({ reservations, allProfs }) {
                 <div>
                   <div style={{ fontFamily: "'Cabinet Grotesk',sans-serif", fontWeight: 800, fontSize: 14, color: '#0F172A' }}>{ev.prof}</div>
                   {ev.profEmail && <div style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>✉️ {ev.profEmail}</div>}
+                  {ev.profVille && <div style={{ fontSize: 12, color: '#64748b', marginTop: 1 }}>📍 {ev.profVille}</div>}
                 </div>
               </div>
             </div>
-
-            {/* Étudiants inscrits */}
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-                <div style={{ fontSize: 10, fontWeight: 800, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '.08em' }}>👥 Étudiants inscrits</div>
-                <span style={{ fontSize: 11, fontWeight: 800, padding: '3px 10px', borderRadius: 20, background: bg, color: col, border: `1.5px solid ${border}` }}>
-                  {tousInscrits.length} {ev.max > 0 ? `/ ${ev.max} places` : 'inscrits'}
-                  {ev.max > 0 && ` · ${pct}%`}
+            {/* Occupation */}
+            <div style={{ padding: '14px 16px', background: bg, border: `1.5px solid ${border}`, borderRadius: 12 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                <div style={{ fontSize: 10, fontWeight: 800, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '.08em' }}>👥 Occupation</div>
+                <span style={{ fontFamily: "'Cabinet Grotesk',sans-serif", fontWeight: 900, fontSize: 14, color: col }}>
+                  {ev.nb} {ev.max > 0 ? `/ ${ev.max} places · ${pct}%` : 'inscrit(s)'}
                 </span>
               </div>
-              {tousInscrits.length === 0 ? (
-                <div style={{ padding: '16px', textAlign: 'center', background: '#f8fafc', borderRadius: 12, color: '#94a3b8', fontSize: 13 }}>Aucune donnée disponible</div>
-              ) : (
+              {ev.max > 0 && (
+                <div style={{ height: 8, background: 'rgba(0,0,0,.08)', borderRadius: 4, overflow: 'hidden' }}>
+                  <div style={{ height: '100%', width: `${pct}%`, background: col, borderRadius: 4, transition: 'width .5s ease' }} />
+                </div>
+              )}
+              {ev.nb === 0 && (
+                <div style={{ marginTop: 8, fontSize: 12, color: '#10b981', fontWeight: 600 }}>
+                  ✨ Aucune réservation — créneau entièrement libre
+                </div>
+              )}
+            </div>
+            {/* Étudiants inscrits (confirmés) */}
+            {inscritsConfirmes.length > 0 && (
+              <div>
+                <div style={{ fontSize: 10, fontWeight: 800, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '.08em', marginBottom: 10 }}>
+                  ✅ Étudiants confirmés ({inscritsConfirmes.length})
+                </div>
                 <div style={{ border: '1.5px solid #e2e8f0', borderRadius: 12, overflow: 'hidden' }}>
                   <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
                     <thead>
@@ -2505,8 +2121,8 @@ function CalendrierTab({ reservations, allProfs }) {
                       </tr>
                     </thead>
                     <tbody>
-                      {tousInscrits.map((r, i) => (
-                        <tr key={r.id} style={{ borderBottom: i < tousInscrits.length - 1 ? '1px solid #f8fafc' : 'none' }}>
+                      {inscritsConfirmes.map((r, i) => (
+                        <tr key={r.id} style={{ borderBottom: i < inscritsConfirmes.length - 1 ? '1px solid #f8fafc' : 'none' }}>
                           <td style={{ padding: '10px 14px', fontWeight: 700, color: '#0F172A', fontFamily: "'Cabinet Grotesk',sans-serif" }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                               <div style={{ width: 26, height: 26, borderRadius: '50%', background: 'linear-gradient(135deg,#4C1D95,#6D28D9)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 900, color: '#fff', flexShrink: 0 }}>
@@ -2521,88 +2137,250 @@ function CalendrierTab({ reservations, allProfs }) {
                     </tbody>
                   </table>
                 </div>
-              )}
-              {ev.max > 0 && (
-                <div style={{ marginTop: 8, height: 6, background: '#f1f5f9', borderRadius: 4, overflow: 'hidden' }}>
-                  <div style={{ height: '100%', width: `${pct}%`, background: col, borderRadius: 4, transition: 'width .5s ease' }}/>
-                </div>
-              )}
-            </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
     );
   };
 
-  // Tooltip supprimé — remplacé par modal centrée au clic
-  const TTComp = () => null;
-
-  const ModalJour = () => { if (!modal) return null; const list = (byDay[modal.day] || []).slice().sort((a, b) => a.hDebut.localeCompare(b.hDebut)); const lbl = new Date(year, month, modal.day).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }); return (<div className="c3-mo" onClick={e => e.target === e.currentTarget && setModal(null)}><div className="c3-mbox"><div className="c3-mhead"><h2>{lbl}</h2><div style={{ display: 'flex', alignItems: 'center', gap: 10 }}><span style={{ fontSize: 12, color: '#64748b', fontWeight: 700 }}>{list.length} séance{list.length > 1 ? 's' : ''}</span><button onClick={() => setModal(null)} style={{ width: 32, height: 32, borderRadius: 9, border: '1.5px solid #e2e8f0', background: '#f8fafc', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, color: '#64748b' }}>✕</button></div></div><div className="c3-mbody">{list.map(ev => { const col = occColor(ev.cls); const { bg, border } = ev.pal; const pct = ev.max > 0 ? Math.min(100, Math.round(ev.nb / ev.max * 100)) : 0; return (<div key={ev.id} className="c3-mcard" style={{ background: bg, borderColor: border }}><div className="c3-mc-time"><span className="c3-mc-start">{ev.hDebut}</span><span className="c3-mc-end">→ {ev.hFin}</span></div><div className="c3-mc-sep" /><div className="c3-mc-data"><div className="c3-mc-mat">{ev.matieres}</div><div className="c3-mc-prof">👨‍🏫 {ev.prof} · 👤 {ev.etudiant}</div><div className="c3-mc-tags"><span className="c3-mc-tag">{ev.mode === 'en_ligne' ? '🌐 En ligne' : '🏫 Présentiel'}</span>{ev.tarif > 0 && <span className="c3-mc-tag" style={{ color: '#059669', fontWeight: 800 }}>💰 {ev.tarif} DT/séance</span>}</div>{ev.max > 0 && <div className="c3-mc-caprow"><div className="c3-mc-caplbl"><span style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8' }}>Inscrits / Capacité</span><span style={{ fontSize: 11, fontWeight: 900, color: col }}>{ev.nb}/{ev.max} · {pct}%</span></div><div className="c3-mc-capbar"><div className="c3-mc-capfill" style={{ width: `${pct}%`, background: col }} /></div></div>}</div></div>); })}</div></div></div>); };
+  // ── Modal liste du jour ──
+  const ModalJour = () => {
+    if (!modal) return null;
+    const list = (byDay[modal.day] || []).slice().sort((a, b) => a.hDebut.localeCompare(b.hDebut));
+    const lbl  = new Date(year, month, modal.day).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+    return (
+      <div className="c3-mo" onClick={e => e.target === e.currentTarget && setModal(null)}>
+        <div className="c3-mbox">
+          <div className="c3-mhead">
+            <h2>{lbl}</h2>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <span style={{ fontSize: 12, color: '#64748b', fontWeight: 700 }}>{list.length} séance{list.length > 1 ? 's' : ''}</span>
+              <button onClick={() => setModal(null)} style={{ width: 32, height: 32, borderRadius: 9, border: '1.5px solid #e2e8f0', background: '#f8fafc', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, color: '#64748b' }}>✕</button>
+            </div>
+          </div>
+          <div className="c3-mbody">
+            {list.map(ev => {
+              const col = occColor(ev.cls);
+              const { bg, border } = ev.pal;
+              const pct = ev.max > 0 ? Math.min(100, Math.round(ev.nb / ev.max * 100)) : 0;
+              return (
+                <div key={ev.id} className="c3-mcard" style={{ background: bg, borderColor: border }} onClick={() => { setModal(null); setSeanceModal(ev); }}>
+                  <div className="c3-mc-time">
+                    <span className="c3-mc-start">{ev.hDebut}</span>
+                    <span className="c3-mc-end">→ {ev.hFin}</span>
+                  </div>
+                  <div className="c3-mc-sep" />
+                  <div className="c3-mc-data">
+                    <div className="c3-mc-mat">{ev.matieres}</div>
+                    <div className="c3-mc-prof">👨‍🏫 {ev.prof}</div>
+                    {ev.niveau && <div style={{ fontSize: 11, color: '#64748b', marginBottom: 4 }}>🎓 {ev.niveau}</div>}
+                    <div className="c3-mc-tags">
+                      <span className="c3-mc-tag">{ev.mode === 'en_ligne' ? '🌐 En ligne' : '🏫 Présentiel'}</span>
+                      {ev.tarif > 0 && <span className="c3-mc-tag" style={{ color: '#059669', fontWeight: 800 }}>💰 {ev.tarif} DT</span>}
+                      <span className="c3-mc-tag" style={{ color: col, fontWeight: 800 }}>
+                        {ev.nb === 0 ? '✨ Libre' : `${ev.nb}${ev.max > 0 ? `/${ev.max}` : ''} inscrits`}
+                      </span>
+                    </div>
+                    {ev.max > 0 && (
+                      <div className="c3-mc-caprow">
+                        <div className="c3-mc-caplbl">
+                          <span style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8' }}>Occupation</span>
+                          <span style={{ fontSize: 11, fontWeight: 900, color: col }}>{ev.nb}/{ev.max} · {pct}%</span>
+                        </div>
+                        <div className="c3-mc-capbar">
+                          <div className="c3-mc-capfill" style={{ width: `${pct}%`, background: col }} />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+    );
+  };
 
   const weEnd = new Date(ws); weEnd.setDate(weEnd.getDate() + 6);
-  const periodLabel = view === 'month' ? `${MOIS_FR[month]} ${year}` : `${ws.getDate()} ${MOIS_S[ws.getMonth()]} – ${weEnd.getDate()} ${MOIS_S[weEnd.getMonth()]} ${weEnd.getFullYear()}`;
+  const periodLabel = view === 'month'
+    ? `${MOIS_FR[month]} ${year}`
+    : `${ws.getDate()} ${MOIS_S[ws.getMonth()]} – ${weEnd.getDate()} ${MOIS_S[weEnd.getMonth()]} ${weEnd.getFullYear()}`;
 
   return (
     <div className="c3">
+      {/* ── En-tête ── */}
       <div className="c3-header">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 14, marginBottom: 14 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
             <div className="c3-hicon">🗓</div>
-            <div><div className="c3-htitle">Calendrier des réservations confirmées</div><div className="c3-hsub">Matière · Formateur · Mode · Inscrits/Capacité · Prix</div></div>
+            <div>
+              <div className="c3-htitle">Calendrier de toutes les séances</div>
+              <div className="c3-hsub">Toutes les disponibilités des formateurs validés — avec ou sans réservation</div>
+            </div>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-            <div className="c3-toggle"><button className={`c3-tvbtn${view === 'month' ? ' on' : ''}`} onClick={() => setView('month')}>📅 Mensuel</button><button className={`c3-tvbtn${view === 'week' ? ' on' : ''}`} onClick={() => setView('week')}>📆 Semaine</button></div>
-            <div className="c3-nav"><button className="c3-nbtn" onClick={view === 'month' ? prevM : prevW}>‹</button><span className="c3-period">{periodLabel}</span><button className="c3-nbtn" onClick={view === 'month' ? nextM : nextW}>›</button></div>
+            <div className="c3-toggle">
+              <button className={`c3-tvbtn${view === 'month' ? ' on' : ''}`} onClick={() => setView('month')}>📅 Mensuel</button>
+              <button className={`c3-tvbtn${view === 'week' ? ' on' : ''}`}  onClick={() => setView('week')}>📆 Semaine</button>
+            </div>
+            <div className="c3-nav">
+              <button className="c3-nbtn" onClick={view === 'month' ? prevM : prevW}>‹</button>
+              <span className="c3-period">{periodLabel}</span>
+              <button className="c3-nbtn" onClick={view === 'month' ? nextM : nextW}>›</button>
+            </div>
             <button className="c3-today" onClick={goToday}>Aujourd'hui</button>
           </div>
         </div>
+        {/* Légende */}
         <div className="c3-legend">
           <span style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', marginRight: 4 }}>Occupation :</span>
-          {[{ col: '#10b981', bg: '#ecfdf5', border: '#6ee7b7', text: '#065f46', l: 'Disponible (< 75%)' }, { col: '#f97316', bg: '#fff7ed', border: '#fed7aa', text: '#9a3412', l: 'Presque complet (≥ 75%)' }, { col: '#ef4444', bg: '#fef2f2', border: '#fca5a5', text: '#991b1b', l: 'Complet (100%)' }].map(s => (<div key={s.l} className="c3-leg" style={{ background: s.bg, borderColor: s.border, color: s.text }}><div style={{ width: 8, height: 8, borderRadius: 2, background: s.col, flexShrink: 0 }} /><span style={{ fontSize: 12, fontWeight: 700 }}>{s.l}</span></div>))}
+          {[
+            { col: '#8b5cf6', bg: '#f5f3ff', border: '#ddd6fe', text: '#6d28d9', l: '✨ Aucune réservation' },
+            { col: '#10b981', bg: '#ecfdf5', border: '#6ee7b7', text: '#065f46', l: '🟢 Disponible (< 75%)' },
+            { col: '#f97316', bg: '#fff7ed', border: '#fed7aa', text: '#9a3412', l: '🟠 Presque complet (≥ 75%)' },
+            { col: '#ef4444', bg: '#fef2f2', border: '#fca5a5', text: '#991b1b', l: '🔴 Complet (100%)' },
+          ].map(s => (
+            <div key={s.l} className="c3-leg" style={{ background: s.bg, borderColor: s.border, color: s.text }}>
+              <div style={{ width: 8, height: 8, borderRadius: 2, background: s.col, flexShrink: 0 }} />
+              <span style={{ fontSize: 11, fontWeight: 700 }}>{s.l}</span>
+            </div>
+          ))}
         </div>
       </div>
+
+      {/* ── KPIs ── */}
       <div className="c3-kpis">
-        {[{ ico: '📋', val: kpis.total, lbl: 'Séances confirmées', c: '#3b82f6' }, { ico: '🟢', val: kpis.libres, lbl: 'Disponibles', c: '#10b981' }, { ico: '🟠', val: kpis.warn, lbl: 'Presque complet', c: '#f97316' }, { ico: '🔴', val: kpis.full, lbl: 'Complet', c: '#ef4444' }].map((k, i) => (<div key={i} className="c3-kpi" style={{ '--kc': k.c }}><div className="c3-kico">{k.ico}</div><div className="c3-kval">{k.val}</div><div className="c3-klbl">{k.lbl}</div></div>))}
+        {[
+          { ico: '📋', val: kpis.total,    lbl: 'Séances total',    c: '#3b82f6' },
+          { ico: '✨', val: kpis.sansResa, lbl: 'Sans réservation', c: '#8b5cf6' },
+          { ico: '🟢', val: kpis.libres,   lbl: 'Partiellement',    c: '#10b981' },
+          { ico: '🟠', val: kpis.warn,     lbl: 'Presque complet',  c: '#f97316' },
+          { ico: '🔴', val: kpis.full,     lbl: 'Complet',          c: '#ef4444' },
+        ].map((k, i) => (
+          <div key={i} className="c3-kpi" style={{ '--kc': k.c }}>
+            <div className="c3-kico">{k.ico}</div>
+            <div className="c3-kval">{k.val}</div>
+            <div className="c3-klbl">{k.lbl}</div>
+          </div>
+        ))}
       </div>
+
+      {/* ── Vue mensuelle ── */}
       {view === 'month' && (
         <div className="c3-grid">
-          <div className="c3-wdays">{DAYS_W.map(d => <div key={d} className="c3-wday">{d}</div>)}</div>
+          <div className="c3-wdays">
+            {DAYS_W.map(d => <div key={d} className="c3-wday">{d}</div>)}
+          </div>
           <div className="c3-days">
             {cells.map((cell, i) => {
-              const isCur = cell.type === 'cur'; const isTod = isCur && isToday(cell.day); const list = isCur ? (byDay[cell.day] || []) : []; const MAX = 3; const vis = list.slice(0, MAX); const hid = list.length - MAX;
-              return (<div key={i} className={`c3-day${!isCur ? ' other' : ''}${isTod ? ' today' : ''}`} onClick={() => isCur && list.length > 0 && setModal({ day: cell.day })}><div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 5 }}><div className="c3-dnum">{cell.day}</div>{list.length > 0 && <span className="c3-dbadge">{list.length}</span>}</div>{vis.map((ev, idx) => <Pill key={idx} ev={ev} />)}{hid > 0 && <span className="c3-more" onClick={e => { e.stopPropagation(); setModal({ day: cell.day }); }}>+{hid} de plus</span>}</div>);
+              const isCur = cell.type === 'cur';
+              const isTod = isCur && isToday(cell.day);
+              const list  = isCur ? (byDay[cell.day] || []) : [];
+              const MAX   = 3;
+              const vis   = list.slice(0, MAX);
+              const hid   = list.length - MAX;
+              return (
+                <div
+                  key={i}
+                  className={`c3-day${!isCur ? ' other' : ''}${isTod ? ' today' : ''}`}
+                  onClick={() => isCur && list.length > 0 && setModal({ day: cell.day })}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 5 }}>
+                    <div className="c3-dnum">{cell.day}</div>
+                    {list.length > 0 && <span className="c3-dbadge">{list.length}</span>}
+                  </div>
+                  {vis.map((ev, idx) => <Pill key={idx} ev={ev} />)}
+                  {hid > 0 && (
+                    <span className="c3-more" onClick={e => { e.stopPropagation(); setModal({ day: cell.day }); }}>
+                      +{hid} de plus
+                    </span>
+                  )}
+                </div>
+              );
             })}
           </div>
         </div>
       )}
+
+      {/* ── Vue semaine ── */}
       {view === 'week' && (
         <div className="c3-week">
           <div className="c3-wk-head">
             <div style={{ padding: '12px 6px' }} />
-            {weDays.map((wd, i) => { const isTodWd = wd.toDateString() === today.toDateString(); const nb = byWD[i]?.length || 0; return (<div key={i} className={`c3-wk-ch${isTodWd ? ' tc' : ''}`}><div className="wd">{DAYS_W[i]}</div><div className="dm">{wd.getDate()}</div>{nb > 0 && <div className="wn">{nb} séance{nb > 1 ? 's' : ''}</div>}</div>); })}
+            {weDays.map((wd, i) => {
+              const isTodWd = wd.toDateString() === today.toDateString();
+              const nb      = byWD[i]?.length || 0;
+              return (
+                <div key={i} className={`c3-wk-ch${isTodWd ? ' tc' : ''}`}>
+                  <div className="wd">{DAYS_W[i]}</div>
+                  <div className="dm">{wd.getDate()}</div>
+                  {nb > 0 && <div className="wn">{nb} séance{nb > 1 ? 's' : ''}</div>}
+                </div>
+              );
+            })}
           </div>
           <div className="c3-wk-body">
-            <div className="c3-tcol">{HOURS.map(h => <div key={h} className="c3-tcell"><span className="c3-tlbl">{h}</span></div>)}</div>
+            <div className="c3-tcol">
+              {HOURS.map(h => <div key={h} className="c3-tcell"><span className="c3-tlbl">{h}</span></div>)}
+            </div>
             {weDays.map((wd, di) => (
               <div key={di} className="c3-wk-day">
-                {HOUR_N.map(h => { const inSlot = (byWD[di] || []).filter(ev => parseInt((ev.hDebut || '00').split(':')[0], 10) === h); return (<div key={h} className="c3-wk-slot">{inSlot.map((ev, si) => { const col = occColor(ev.cls); const { bg, border, text } = ev.pal; const pct = ev.max > 0 ? Math.min(100, Math.round(ev.nb / ev.max * 100)) : 0; return (<div key={si} className="c3-ev" style={{ background: bg, borderColor: border, color: text, cursor: 'pointer' }} onClick={e => { e.stopPropagation(); setSeanceModal(ev); }}><div className="c3-ev-time">{ev.hDebut} – {ev.hFin}</div><div className="c3-ev-mat">{ev.matieres}</div>{ev.max > 0 && <div className="c3-ev-bar"><div className="c3-ev-fill" style={{ width: `${pct}%`, background: col }} /></div>}</div>); })}</div>); })}
+                {HOUR_N.map(h => {
+                  const inSlot = (byWD[di] || []).filter(ev => parseInt((ev.hDebut || '00').split(':')[0], 10) === h);
+                  return (
+                    <div key={h} className="c3-wk-slot">
+                      {inSlot.map((ev, si) => {
+                        const col = occColor(ev.cls);
+                        const { bg, border, text } = ev.pal;
+                        const pct = ev.max > 0 ? Math.min(100, Math.round(ev.nb / ev.max * 100)) : 0;
+                        return (
+                          <div
+                            key={si}
+                            className="c3-ev"
+                            style={{ background: bg, borderColor: border, color: text, cursor: 'pointer' }}
+                            onClick={e => { e.stopPropagation(); setSeanceModal(ev); }}
+                          >
+                            <div className="c3-ev-time">{ev.hDebut} – {ev.hFin}</div>
+                            <div className="c3-ev-mat">{ev.matieres}</div>
+                            <div className="c3-ev-prof">{ev.prof}</div>
+                            {ev.nb === 0
+                              ? <div style={{ fontSize: 8, fontWeight: 800, color: '#8b5cf6', marginTop: 2 }}>✨ libre</div>
+                              : ev.max > 0 && (
+                                <div className="c3-ev-bar">
+                                  <div className="c3-ev-fill" style={{ width: `${pct}%`, background: col }} />
+                                </div>
+                              )
+                            }
+                          </div>
+                        );
+                      })}
+                    </div>
+                  );
+                })}
               </div>
             ))}
           </div>
         </div>
       )}
+
+      {/* ── État vide ── */}
       {src.length === 0 && (
         <div className="c3-empty">
           <div style={{ width: 68, height: 68, borderRadius: 18, background: '#f8fafc', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 30, margin: '0 auto 14px', border: '1.5px solid #e2e8f0' }}>📅</div>
-          <div style={{ fontFamily: 'Cabinet Grotesk,sans-serif', fontWeight: 900, fontSize: 15, color: '#0f172a', marginBottom: 5 }}>Aucune séance confirmée</div>
-          <div style={{ fontSize: 13, color: '#94a3b8' }}>Aucune réservation confirmée pour cette période.</div>
+          <div style={{ fontFamily: 'Cabinet Grotesk,sans-serif', fontWeight: 900, fontSize: 15, color: '#0f172a', marginBottom: 5 }}>Aucune séance pour cette période</div>
+          <div style={{ fontSize: 13, color: '#94a3b8' }}>Les formateurs n'ont pas encore créé de disponibilités pour cette période.</div>
         </div>
       )}
-      <TTComp /><ModalJour /><SeanceModal />
+
+      {/* ── Modals ── */}
+      <ModalJour />
+      <SeanceModal />
     </div>
   );
 }
-
 // ─── TABS CONFIGURATION ───────────────────────────────────────────────────────
 const TABS = [
   { k: 'overview',     l: "Vue d'ensemble" },
@@ -2632,7 +2410,6 @@ function AdminNotifBell({ signalements, demandes, allProfs, onNavigate }) {
 
   const notifs = useMemo(() => {
     const list = [];
-    // Nouveaux signalements
     (signalements || []).filter(s => s.statut === 'nouveau').forEach(s => {
       list.push({
         id: `sig-${s.id}`,
@@ -2647,7 +2424,6 @@ function AdminNotifBell({ signalements, demandes, allProfs, onNavigate }) {
         tab: 'signalements',
       });
     });
-    // Demandes matières en attente
     (demandes || []).filter(d => d.statut === 'en_attente').forEach(d => {
       list.push({
         id: `dem-${d.id}`,
@@ -2662,7 +2438,6 @@ function AdminNotifBell({ signalements, demandes, allProfs, onNavigate }) {
         tab: 'demandes',
       });
     });
-    // Profs en attente de validation
     (allProfs || []).filter(p => p.statut_validation === 'en_attente').slice(0, 5).forEach(p => {
       const nom = `${p.user_prenom || ''} ${p.user_nom || ''}`.trim();
       list.push({
@@ -2763,44 +2538,42 @@ function AdminNotifBell({ signalements, demandes, allProfs, onNavigate }) {
   );
 }
 
-// ─── COMPOSANT PRINCIPAL Admin() ─────────────────────────────────────────────
 export default function Admin() {
   const location = useLocation();
 
-  const [tab, setTab]               = useState(() => { const p = new URLSearchParams(window.location.search); return p.get('tab') || 'overview'; });
+  const [tab, setTab] = useState(() => { const p = new URLSearchParams(window.location.search); return p.get('tab') || 'overview'; });
   const admRootRef    = React.useRef(null);
   const tabContentRef = React.useRef(null);
   const handleTabChange = React.useCallback((k) => {
     setTab(k);
     setTimeout(() => {
       if (admRootRef.current) {
-        // Calcul position absolue du div racine admin → scroll window vers ce point
         const rect = admRootRef.current.getBoundingClientRect();
-        const absTop = rect.top + window.scrollY - 8; // -8px de marge
+        const absTop = rect.top + window.scrollY - 8;
         window.scrollTo({ top: absTop, behavior: 'smooth' });
       } else {
         window.scrollTo({ top: 0, behavior: 'smooth' });
       }
     }, 0);
   }, []);
-  const [stats, setStats]           = useState({});
-  const [allProfs, setAllProfs]     = useState([]);
-  const [structure, setStructure]   = useState([]);
-  const [villes, setVilles]         = useState([]);
-  const [demandes, setDemandes]     = useState([]);
-  const [chartData, setChartData]   = useState({});
-  const [reservations, setReservations] = useState([]);
-  const [signalements, setSignalements] = useState([]);
-  const [allUsers, setAllUsers]     = useState([]);
-  const [loading, setLoading]       = useState(true);
-  const [selectedProf, setSelectedProf] = useState(null);
 
-  // ── PATCH : Modal refus avec raison ──
-  const [refusModal, setRefusModal]   = useState(null); // { profId, nom }
+  const [stats, setStats]             = useState({});
+  const [allProfs, setAllProfs]       = useState([]);
+  const [structure, setStructure]     = useState([]);
+  const [villes, setVilles]           = useState([]);
+  const [demandes, setDemandes]       = useState([]);
+  const [chartData, setChartData]     = useState({});
+  const [reservations, setReservations]   = useState([]);
+  const [disponibilites, setDisponibilites] = useState([]);  // ← NOUVEAU : toutes les dispos
+  const [signalements, setSignalements]   = useState([]);
+  const [allUsers, setAllUsers]       = useState([]);
+  const [loading, setLoading]         = useState(true);
+  const [selectedProf, setSelectedProf]   = useState(null);
+
+  const [refusModal, setRefusModal]   = useState(null);
   const [refusRaison, setRefusRaison] = useState('');
   const [refusSaving, setRefusSaving] = useState(false);
 
-  // Sync tab depuis URL
   useEffect(() => {
     const p = new URLSearchParams(location.search);
     const t = p.get('tab');
@@ -2817,7 +2590,8 @@ export default function Admin() {
       return { data: fallback };
     });
     try {
-      const [s, allP, struct, v, dem, cd, resa, sigs, usrs] = await Promise.all([
+      // ← MODIFICATION : ajout de l'appel /api/admin/disponibilites/all
+      const [s, allP, struct, v, dem, cd, resa, sigs, usrs, dispos] = await Promise.all([
         safe(api.get('/api/admin/stats'), {}),
         safe(api.get('/api/admin/professeurs/all'), []),
         safe(api.get('/api/admin/referentiel/structure'), []),
@@ -2827,6 +2601,7 @@ export default function Admin() {
         safe(api.get('/api/admin/reservations/all'), []),
         safe(api.get('/api/admin/signalements'), []),
         safe(api.get('/api/admin/users/all'), []),
+        safe(api.get('/api/admin/disponibilites/all'), []),  // ← NOUVEAU
       ]);
       setStats(s.data || {});
       setAllProfs(Array.isArray(allP.data) ? allP.data : []);
@@ -2837,38 +2612,31 @@ export default function Admin() {
       setReservations(Array.isArray(resa.data) ? resa.data : []);
       setSignalements(Array.isArray(sigs.data) ? sigs.data : []);
       setAllUsers(Array.isArray(usrs.data) ? usrs.data : []);
+      setDisponibilites(Array.isArray(dispos.data) ? dispos.data : []);  // ← NOUVEAU
     } catch (e) { console.error('loadAll error:', e); }
     finally { setLoading(false); }
   };
 
-  // ── Valider un professeur ──
   const handleValider = async (id) => {
-    try {
-      await api.put(`/api/admin/professeurs/${id}/valider`);
-      loadAll();
-    } catch (e) { alert(e.response?.data?.detail || 'Erreur lors de la validation'); }
+    try { await api.put(`/api/admin/professeurs/${id}/valider`); loadAll(); }
+    catch (e) { alert(e.response?.data?.detail || 'Erreur lors de la validation'); }
   };
 
-  // ── Ouvrir la modal de refus (PATCH : remplace confirm()) ──
   const handleRefuser = (id, nom) => {
     setRefusRaison('');
     setRefusModal({ profId: id, nom: nom || `Prof #${id}` });
   };
 
-  // ── Confirmer le refus avec la raison saisie ──
   const handleRefuserConfirm = async () => {
     if (!refusModal) return;
     setRefusSaving(true);
     try {
       await api.put(`/api/admin/professeurs/${refusModal.profId}/refuser`, { raison: refusRaison });
-      setRefusModal(null);
-      setRefusRaison('');
-      loadAll();
+      setRefusModal(null); setRefusRaison(''); loadAll();
     } catch (e) { alert(e.response?.data?.detail || 'Erreur lors du refus'); }
     finally { setRefusSaving(false); }
   };
 
-  // ── Demandes de matières ──
   const handleApprouverDemande = async (id) => {
     try { await api.put(`/api/admin/demandes-matieres/${id}/approuver`); loadAll(); }
     catch (e) { alert(e.response?.data?.detail || e.message); }
@@ -2891,11 +2659,11 @@ export default function Admin() {
   const signalementsNouveaux = signalements.filter(s => s.statut === 'nouveau').length;
 
   const STAT_CARDS = [
-    { icon: '👥', val: stats.total_users || 0,       label: 'Utilisateurs',     color: '#3b82f6', bg: '#eff6ff', delay: 0 },
-    { icon: '✓',  val: counts['validé'] || 0,        label: 'Profs validés',    color: '#10b981', bg: '#ecfdf5', delay: 50 },
-    { icon: '⏳', val: counts.en_attente || 0,        label: 'En attente',       color: '#f59e0b', bg: '#fffbeb', delay: 100 },
-    { icon: '📅', val: stats.total_reservations || 0, label: 'Réservations',     color: '#8b5cf6', bg: '#f5f3ff', delay: 150 },
-    { icon: '🚨', val: signalementsNouveaux || 0,     label: 'Signalements',     color: '#ef4444', bg: '#fef2f2', delay: 200 },
+    { icon: '👥', val: stats.total_users || 0,       label: 'Utilisateurs',  color: '#3b82f6', bg: '#eff6ff', delay: 0 },
+    { icon: '✓',  val: counts['validé'] || 0,        label: 'Profs validés', color: '#10b981', bg: '#ecfdf5', delay: 50 },
+    { icon: '⏳', val: counts.en_attente || 0,        label: 'En attente',    color: '#f59e0b', bg: '#fffbeb', delay: 100 },
+    { icon: '📅', val: stats.total_reservations || 0, label: 'Réservations',  color: '#8b5cf6', bg: '#f5f3ff', delay: 150 },
+    { icon: '🚨', val: signalementsNouveaux || 0,     label: 'Signalements',  color: '#ef4444', bg: '#fef2f2', delay: 200 },
   ];
 
   if (loading) return (
@@ -2907,7 +2675,6 @@ export default function Admin() {
 
   return (
     <div ref={admRootRef} className="adm" style={{ padding: '36px 40px' }}>
-
       {/* ── En-tête ── */}
       <div style={{ marginBottom: 32 }} className="adm-fadeUp">
         <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 6 }}>
@@ -2924,7 +2691,7 @@ export default function Admin() {
         </div>
       </div>
 
-      {/* ── Barre de navigation par onglets — AVANT les KPIs ── */}
+      {/* ── Barre de navigation ── */}
       <div style={{ position: 'sticky', top: 0, zIndex: 400, background: 'white', paddingTop: 10, paddingBottom: 10, marginBottom: 20, borderBottom: '1px solid #f1f5f9', marginLeft: -40, marginRight: -40, paddingLeft: 40, paddingRight: 40 }}>
         <div className="adm-tab-bar">
           {TABS.map(({ k, l }) => (
@@ -2959,83 +2726,42 @@ export default function Admin() {
       {tab === 'signalements' && <SignalementsTab signalements={signalements} onReload={loadAll} />}
       {tab === 'users'        && <UsersTab onReload={loadAll} />}
       {tab === 'referentiel'  && <ReferentielTab structure={structure} villes={villes} onReload={loadAll} />}
-      {tab === 'calendrier'   && <CalendrierTab reservations={reservations} allProfs={allProfs} />}
+      {/* ← MODIFICATION : CalendrierTab reçoit disponibilites + reservations */}
+      {tab === 'calendrier'   && <CalendrierTab disponibilites={disponibilites} reservations={reservations} />}
       {tab === 'finances'     && <FinancesTab />}
 
       {/* ── Drawer profil prof ── */}
-      <ProfDrawer
-        prof={selectedProf}
-        onClose={() => setSelectedProf(null)}
-        onValider={handleValider}
-        onRefuser={handleRefuser}
-      />
+      <ProfDrawer prof={selectedProf} onClose={() => setSelectedProf(null)} onValider={handleValider} onRefuser={handleRefuser} />
 
-      {/* ── PATCH : Modal refus avec saisie de la raison ── */}
+      {/* ── Modal refus ── */}
       {refusModal && (
         <div className="adm-modal-overlay" onClick={e => { if (e.target === e.currentTarget) setRefusModal(null); }}>
           <div className="adm-modal" style={{ maxWidth: 460 }}>
-
-            {/* Header */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 }}>
               <div>
-                <h3 style={{ fontFamily: "'Cabinet Grotesk',sans-serif", fontWeight: 900, fontSize: 17, color: '#0F172A', margin: '0 0 5px' }}>
-                  ❌ Refuser ce professeur
-                </h3>
+                <h3 style={{ fontFamily: "'Cabinet Grotesk',sans-serif", fontWeight: 900, fontSize: 17, color: '#0F172A', margin: '0 0 5px' }}>❌ Refuser ce professeur</h3>
                 <div style={{ fontSize: 13, color: '#64748b', display: 'flex', alignItems: 'center', gap: 6 }}>
                   <span style={{ width: 22, height: 22, borderRadius: 6, background: '#fef2f2', border: '1px solid #fca5a5', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 12 }}>👨‍🏫</span>
                   {refusModal.nom}
                 </div>
               </div>
-              <button
-                onClick={() => setRefusModal(null)}
-                style={{ width: 32, height: 32, borderRadius: 9, background: '#f8fafc', border: '1.5px solid #e2e8f0', cursor: 'pointer', color: '#64748b', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, flexShrink: 0, marginLeft: 12 }}
-              >✕</button>
+              <button onClick={() => setRefusModal(null)} style={{ width: 32, height: 32, borderRadius: 9, background: '#f8fafc', border: '1.5px solid #e2e8f0', cursor: 'pointer', color: '#64748b', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, flexShrink: 0, marginLeft: 12 }}>✕</button>
             </div>
-
-            {/* Info */}
             <div style={{ padding: '10px 14px', background: '#fffbeb', border: '1.5px solid #fcd34d', borderRadius: 10, marginBottom: 18, fontSize: 12, color: '#b45309', lineHeight: 1.6 }}>
-              ⚠️ La raison sera visible par le professeur dans son tableau de bord. Il pourra corriger son profil et resoumettre sa candidature.
+              ⚠️ La raison sera visible par le professeur dans son tableau de bord.
             </div>
-
-            {/* Textarea raison */}
-            <label className="adm-label">
-              Raison du refus <span style={{ color: '#94a3b8', fontWeight: 400 }}>(optionnel mais recommandé)</span>
-            </label>
-            <textarea
-              autoFocus
-              className="adm-input adm-textarea"
-              placeholder="Ex: Documents manquants, profil incomplet, diplômes non vérifiables..."
-              value={refusRaison}
-              onChange={e => setRefusRaison(e.target.value)}
-              onKeyDown={e => { if (e.key === 'Enter' && e.ctrlKey) handleRefuserConfirm(); }}
-              rows={4}
-            />
-            <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 6, marginBottom: 20 }}>
-              Ctrl+Entrée pour confirmer rapidement
-            </div>
-
-            {/* Actions */}
+            <label className="adm-label">Raison du refus <span style={{ color: '#94a3b8', fontWeight: 400 }}>(optionnel mais recommandé)</span></label>
+            <textarea autoFocus className="adm-input adm-textarea" placeholder="Ex: Documents manquants, profil incomplet..." value={refusRaison} onChange={e => setRefusRaison(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && e.ctrlKey) handleRefuserConfirm(); }} rows={4} />
+            <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 6, marginBottom: 20 }}>Ctrl+Entrée pour confirmer rapidement</div>
             <div style={{ display: 'flex', gap: 10 }}>
-              <button
-                className="adm-btn adm-btn-danger"
-                style={{ flex: 2, justifyContent: 'center', opacity: refusSaving ? .6 : 1 }}
-                disabled={refusSaving}
-                onClick={handleRefuserConfirm}
-              >
+              <button className="adm-btn adm-btn-danger" style={{ flex: 2, justifyContent: 'center', opacity: refusSaving ? .6 : 1 }} disabled={refusSaving} onClick={handleRefuserConfirm}>
                 {refusSaving ? '⏳ Refus en cours...' : '❌ Confirmer le refus'}
               </button>
-              <button
-                className="adm-btn adm-btn-ghost"
-                style={{ flex: 1, justifyContent: 'center' }}
-                onClick={() => setRefusModal(null)}
-              >
-                Annuler
-              </button>
+              <button className="adm-btn adm-btn-ghost" style={{ flex: 1, justifyContent: 'center' }} onClick={() => setRefusModal(null)}>Annuler</button>
             </div>
           </div>
         </div>
       )}
-
     </div>
   );
 }

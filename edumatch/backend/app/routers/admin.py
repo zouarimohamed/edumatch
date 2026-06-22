@@ -305,7 +305,6 @@ def valider_prof(prof_id: int, db: Session = Depends(get_db), _=Depends(require_
     prof.statut_validation = "validé"
     prof.raison_refus = None
     db.commit()
-    # ── Notification au professeur : candidature validée ──
     msg = f"Félicitations ! Votre profil a été validé le {datetime.now().strftime('%d/%m/%Y')}. Vous êtes maintenant visible par les étudiants sur EduMatch."
     try:
         db.execute(text("""
@@ -325,7 +324,6 @@ def refuser_prof(prof_id: int, data: dict = Body(default={}), db: Session = Depe
     prof.statut_validation = "refusé"
     prof.raison_refus = raison if raison else None
     db.commit()
-    # ── Notification automatique au professeur (re-envoyée à chaque refus) ──
     msg = f"Votre candidature a été refusée le {datetime.now().strftime('%d/%m/%Y')}."
     if raison:
         msg += f" Raison : {raison}"
@@ -333,13 +331,10 @@ def refuser_prof(prof_id: int, data: dict = Body(default={}), db: Session = Depe
         msg += " Aucune raison précisée."
     msg += " Vous pouvez corriger votre profil et resoumettre votre candidature."
     try:
-        # Supprimer les anciennes notifs de refus non lues pour ce prof
-        # afin que la nouvelle soit bien perçue comme "nouvelle"
         db.execute(text("""
             DELETE FROM notifications
             WHERE prof_id = :prof_id AND type = 'refus'
         """), {"prof_id": prof_id})
-        # Insérer la nouvelle notification
         db.execute(text("""
             INSERT INTO notifications (prof_id, type, message, lu, created_at)
             VALUES (:prof_id, 'refus', :message, false, NOW())
@@ -357,16 +352,13 @@ def bloquer_user(user_id: int, data: dict = Body(default={}), db: Session = Depe
     if not user: raise HTTPException(404, "Utilisateur introuvable")
     if user.role == "admin": raise HTTPException(400, "Impossible de bloquer un administrateur")
     raison = (data.get("raison") or "").strip() if data else ""
-    # UPDATE SQL brut pour garantir la sauvegarde même si colonne hors modèle ORM
     db.execute(text("""
         UPDATE users
         SET statut = 'bloqué', raison_blocage = :raison
         WHERE id = :uid
     """), {"raison": raison if raison else None, "uid": user_id})
     db.commit()
-    # Recharger pour les notifications
     user = db.query(User).filter(User.id == user_id).first()
-    # notification automatique
     msg = f"Votre compte a été suspendu le {datetime.now().strftime('%d/%m/%Y')} par l'administration."
     if raison:
         msg += f" Raison : {raison}"
@@ -412,7 +404,6 @@ def debloquer_user(user_id: int, db: Session = Depends(get_db), _=Depends(requir
 
 @router.get("/users/all")
 def get_all_users(db: Session = Depends(get_db), _=Depends(require_admin)):
-    # SQL brut pour lire raison_blocage même si absent du modèle ORM
     rows = db.execute(text("""
         SELECT
             id, nom, prenom, email, role, statut,
@@ -478,7 +469,6 @@ def get_signalements(db: Session = Depends(get_db), _=Depends(require_admin)):
 
 @router.post("/signalements")
 def create_signalement(data: dict, db: Session = Depends(get_db)):
-    """Route publique — étudiant connecté peut signaler un prof"""
     etudiant_id = data.get("etudiant_id")
     prof_id = data.get("prof_id")
     raison = data.get("raison", "").strip()
@@ -497,19 +487,16 @@ def create_signalement(data: dict, db: Session = Depends(get_db)):
 
 @router.put("/signalements/{sig_id}/action")
 def action_signalement(sig_id: int, data: dict, db: Session = Depends(get_db), _=Depends(require_admin)):
-    action = data.get("action")  # 'ignorer' | 'avertir' | 'bloquer'
+    action = data.get("action")
     if action not in ["ignorer", "avertir", "bloquer"]:
         raise HTTPException(400, "Action invalide: ignorer | avertir | bloquer")
     try:
-        # Récupérer le signalement
         sig = db.execute(text("SELECT * FROM signalements WHERE id = :id"), {"id": sig_id}).fetchone()
         if not sig: raise HTTPException(404, "Signalement introuvable")
-
         if action == "ignorer":
             db.execute(text("UPDATE signalements SET statut = 'ignoré' WHERE id = :id"), {"id": sig_id})
         elif action == "avertir":
             db.execute(text("UPDATE signalements SET statut = 'traité' WHERE id = :id"), {"id": sig_id})
-            # Envoyer une notification au professeur concerné
             etudiant_info = db.execute(text("""
                 SELECT u.prenom || ' ' || u.nom AS nom
                 FROM etudiants e JOIN users u ON u.id = e.user_id
@@ -531,7 +518,6 @@ def action_signalement(sig_id: int, data: dict, db: Session = Depends(get_db), _
                 print(f"[admin] avertissement notification error: {e2}")
         elif action == "bloquer":
             db.execute(text("UPDATE signalements SET statut = 'traité' WHERE id = :id"), {"id": sig_id})
-            # Bloquer le prof (via user)
             raison = data.get("raison", "Signalement étudiant")
             db.execute(text("""
                 UPDATE users SET statut = 'bloqué', raison_blocage = :raison
@@ -614,3 +600,95 @@ def get_all_reservations(db: Session = Depends(get_db), _=Depends(require_admin)
         ]
     except Exception as e:
         print(f"[admin] reservations/all error: {e}"); return []
+
+
+# ── TOUTES LES DISPONIBILITÉS (calendrier admin) ─────────────────
+@router.get("/disponibilites/all")
+def get_all_disponibilites(db: Session = Depends(get_db), _=Depends(require_admin)):
+    """
+    Retourne TOUTES les disponibilités créées par les professeurs validés,
+    avec le nombre de réservations confirmées par créneau.
+    Permet à l'admin de voir le calendrier complet même sans réservation.
+    """
+    try:
+        rows = db.execute(text("""
+            SELECT
+                d.id                                    AS dispo_id,
+                d.date_specifique::text                 AS date_cours,
+                d.heure_debut::text                     AS heure_debut,
+                d.heure_fin::text                       AS heure_fin,
+                d.mode_seance                           AS mode_seance,
+                COALESCE(d.nb_max_etudiants, 0)         AS nb_max_etudiants,
+                COALESCE(d.nb_inscrits, 0)              AS nb_inscrits,
+                d.description                           AS description,
+                COALESCE(d.actif, true)                 AS actif,
+                p.id                                    AS prof_id,
+                pu.prenom || ' ' || pu.nom              AS prof_nom,
+                pu.email                                AS prof_email,
+                p.ville                                 AS prof_ville,
+                p.mode_enseignement                     AS prof_mode,
+                niv.nom                                 AS niveau_nom,
+                COALESCE(p.tarif_en_ligne, 0)           AS tarif_en_ligne,
+                COALESCE(p.tarif_presentiel, 0)         AS tarif_presentiel,
+                COUNT(r.id) FILTER (
+                    WHERE r.statut = 'confirmé'
+                )                                       AS nb_confirmes,
+                (
+                    SELECT STRING_AGG(DISTINCT m2.nom, ' / ' ORDER BY m2.nom)
+                    FROM prof_matiere_tarif pmt2
+                    JOIN matieres m2 ON m2.id = pmt2.matiere_id
+                    WHERE pmt2.prof_id = p.id
+                )                                       AS matieres
+            FROM disponibilites d
+            JOIN professeurs p   ON p.id = d.prof_id
+            JOIN users pu        ON pu.id = p.user_id
+            LEFT JOIN niveaux niv ON niv.id = d.niveau_id
+            LEFT JOIN reservations r ON r.disponibilite_id = d.id
+            WHERE p.statut_validation = 'validé'
+              AND COALESCE(d.actif, true) = true
+            GROUP BY
+                d.id, d.date_specifique, d.heure_debut, d.heure_fin,
+                d.mode_seance, d.nb_max_etudiants, d.nb_inscrits,
+                d.description, d.actif,
+                p.id, pu.prenom, pu.nom, pu.email,
+                p.ville, p.mode_enseignement,
+                p.tarif_en_ligne, p.tarif_presentiel,
+                niv.nom
+            ORDER BY d.date_specifique DESC, d.heure_debut
+        """)).fetchall()
+
+        result = []
+        for row in rows:
+            nb    = int(row.nb_inscrits or 0)
+            max_e = int(row.nb_max_etudiants or 0)
+            mode  = row.mode_seance or "presentiel"
+            # Tarif selon le mode de la séance
+            if mode == "en_ligne":
+                tarif = float(row.tarif_en_ligne or 0)
+            else:
+                tarif = float(row.tarif_presentiel or 0)
+
+            result.append({
+                "id":               row.dispo_id,
+                "date_cours":       str(row.date_cours) if row.date_cours else None,
+                "heure_debut":      str(row.heure_debut)[:5] if row.heure_debut else None,
+                "heure_fin":        str(row.heure_fin)[:5]   if row.heure_fin  else None,
+                "mode_seance":      mode,
+                "nb_max_etudiants": max_e,
+                "nb_inscrits":      nb,
+                "nb_confirmes":     int(row.nb_confirmes or 0),
+                "description":      row.description or "",
+                "prof_id":          row.prof_id,
+                "prof_nom":         row.prof_nom or "—",
+                "prof_email":       row.prof_email or None,
+                "prof_ville":       row.prof_ville or None,
+                "prof_mode":        row.prof_mode or None,
+                "matieres":         row.matieres or "—",
+                "niveau_nom":       row.niveau_nom or None,
+                "tarif_applique":   round(tarif, 2),
+            })
+        return result
+    except Exception as e:
+        print(f"[admin] disponibilites/all error: {e}")
+        import traceback; traceback.print_exc()
+        return []
